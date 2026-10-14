@@ -166,12 +166,12 @@ export default function AboutPage() {
               figures — we extract and link what the government publishes.
             </p>
             <p className="text-muted-foreground leading-7 mt-3">
-              Every rendered number is in one of three citation states: directly
-              cited (linked to a PDF page, workbook cell, or API endpoint),
-              XML-path traced (zero-dollar line from structured budget XML), or
-              citation tier pending (dataset where row-level linkage is a work in
-              progress). No number is displayed without disclosing which state it
-              is in. See{" "}
+              Every rendered dollar figure is in one of three citation states:
+              directly cited (linked to a PDF page, workbook cell, or API
+              endpoint), XML-path traced (zero-dollar line from structured budget
+              XML), or citation tier pending (a dataset without row-level
+              citations). No dollar figure is displayed without disclosing which
+              state it is in. See{" "}
               <Link href="/methodology/" className="underline hover:text-foreground">
                 methodology
               </Link>{" "}

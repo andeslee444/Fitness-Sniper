@@ -53,7 +53,7 @@ const FAQ_ITEMS = [
   {
     question: "What is Fiscal Receipts and what does it cover?",
     answer:
-      "Fiscal Receipts connects four government data silos: DoD budget justification books (J-books), USAspending federal award records, corporate entity registries, and Senate LDA lobbying disclosures. Every rendered number carries a citation to the exact source document, page, or API endpoint.",
+      "Fiscal Receipts connects four government data silos: DoD budget justification books (J-books), USAspending federal award records, corporate entity registries, and Senate LDA lobbying disclosures. Every rendered dollar figure carries a citation state; a cited one links to the exact source document, page, or API endpoint.",
   },
   {
     question: "Where does every number come from?",
@@ -68,7 +68,7 @@ const FAQ_ITEMS = [
   {
     question: "How confident should I be in the figures?",
     answer:
-      "Figures in one of three states: Cited (underlined, clickable) — a fact_id resolves to a source document, query, or derived formula; XML-path chip — a zero-dollar budget line in XML with no citation row; Citation tier pending (⁂) — reserved for datasets without citations (currently p1_era_line_map).",
+      "Dollar figures in one of three states: Cited (underlined, clickable) — a fact_id resolves to a source document, query, or derived formula; XML-path chip — a zero-dollar budget line in XML with no citation row; Citation tier pending (⁂) — a dataset without row-level citations (currently p1_era_line_map).",
   },
   {
     question: "What are the known limitations?",
@@ -1012,7 +1012,7 @@ export default function MethodologyPage() {
                   Citation tiers
                 </h3>
                 <p>
-                  Every rendered figure is in one of three states. <strong>Cited</strong>{" "}
+                  Every rendered dollar figure is in one of three states. <strong>Cited</strong>{" "}
                   (underlined, clickable): a fact_id resolves to a source document
                   in our citation index — J-book PDF page-and-bbox, a specific
                   workbook cell, an LDA filing, a USAspending query, or a derived
@@ -1020,12 +1020,12 @@ export default function MethodologyPage() {
                   <strong>XML-path chip</strong>: a zero-dollar
                   budget line that exists in the structured XML but has no
                   corresponding citation row — the XML element path is displayed.{" "}
-                  <strong>Citation tier pending</strong> (⁂): figure is from a
-                  dataset for which row-level citation linkage is not yet
-                  complete. As of this build only p1_era_line_map is on the
-                  pending ledger, as it holds no amounts to cite; the state
-                  remains defined — and gate-enforced — for future datasets that
-                  ship before their citations do.
+                  <strong>Citation tier pending</strong> (⁂): a figure from a
+                  dataset without row-level citations. As of this build only
+                  p1_era_line_map is on the pending ledger, as it holds no
+                  amounts to cite; the state remains defined, and
+                  gate-enforced, for future datasets that ship before their
+                  citations do.
                 </p>
               </div>
               <div id="company-families" className="scroll-mt-16">

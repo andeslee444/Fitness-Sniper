@@ -43,13 +43,14 @@ describe("/methodology/ pending-ledger clause", () => {
  * Task 19 fix round 1: the FAQ answer in /methodology/'s JSON-LD said the
  * pending tier is "reserved for datasets shipped before their citations
  * (currently none)", false beside the clause above once p1_era_line_map
- * ships. It names the dataset now, two bytes shorter (the page sits near its
- * gate-1 ceiling).
+ * ships. It names the dataset now, shorter than the answer it replaced (the
+ * page sits near its gate-1 ceiling). Follow-ups T7 (ROADMAP #206, owner
+ * Q16) gave it the shared definition below: 98 bytes against 102.
  */
 describe("/methodology/ FAQ JSON-LD: the pending tier", () => {
   const src = fs.readFileSync(PAGE, "utf8");
   const OLD_FAQ = "Citation tier pending (⁂) — reserved for datasets shipped before their citations (currently none).";
-  const NEW_FAQ = "Citation tier pending (⁂) — reserved for datasets without citations (currently p1_era_line_map).";
+  const NEW_FAQ = "Citation tier pending (⁂) — a dataset without row-level citations (currently p1_era_line_map).";
 
   it("names p1_era_line_map and no longer says none", () => {
     expect(src).toContain(NEW_FAQ);
@@ -58,5 +59,51 @@ describe("/methodology/ FAQ JSON-LD: the pending tier", () => {
 
   it("is no longer than the answer it replaced", () => {
     expect(Buffer.byteLength(NEW_FAQ)).toBeLessThanOrEqual(Buffer.byteLength(OLD_FAQ));
+  });
+});
+
+/**
+ * ROADMAP #206 T7 (families piece-1 follow-ups, design §5.3; owner sign-off
+ * Q16, 2026-10-04). "Citation tier pending" had three definitions: the
+ * /methodology/ body ("row-level citation linkage is not yet complete"), its
+ * FAQ JSON-LD ("reserved for datasets without citations") and /about/ ("row-
+ * level linkage is a work in progress"). None fits p1_era_line_map, whose
+ * rows are decisions and will never carry amounts. There is one definition
+ * now, and the claims around it say "dollar figure", which is what gate 2
+ * (render-static.mjs) enforces, instead of "number".
+ */
+describe("one definition of citation tier pending (T7)", () => {
+  const ABOUT = path.resolve(__dirname, "..", "app", "about", "page.tsx");
+  const flat = (file: string) => fs.readFileSync(file, "utf8").replace(/\s+/g, " ");
+  const SHARED = "a dataset without row-level citations";
+
+  it("the /methodology/ body, its FAQ and /about/ share one phrase", () => {
+    expect(rendered()).toContain(`(⁂): a figure from ${SHARED}.`);
+    expect(flat(PAGE)).toContain(`Citation tier pending (⁂) — ${SHARED} (currently p1_era_line_map).`);
+    expect(flat(ABOUT)).toContain(`citation tier pending (${SHARED}).`);
+  });
+
+  it("no older definition or unnarrowed claim is left", () => {
+    for (const file of [PAGE, ABOUT]) {
+      const text = flat(file);
+      for (const stale of ["work in progress", "not yet complete", "reserved for datasets",
+        "Every rendered number", "No number is displayed", "Every rendered figure"]) {
+        expect(text.includes(stale), `${path.basename(path.dirname(file))} still says "${stale}"`).toBe(false);
+      }
+    }
+  });
+
+  it("narrows each claim to dollar figures", () => {
+    const page = flat(PAGE);
+    expect(page).toContain("Every rendered dollar figure is in one of three states.");
+    expect(page).toContain("Every rendered dollar figure carries a citation state; a cited one links to the exact source document, page, or API endpoint.");
+    expect(page).toContain("Dollar figures in one of three states:");
+    const about = flat(ABOUT);
+    expect(about).toContain("Every rendered dollar figure is in one of three citation states:");
+    expect(about).toContain("No dollar figure is displayed without disclosing which state it is in.");
+  });
+
+  it("keeps the em-dash-free clause the copy gate's allowlist entry no longer covers", () => {
+    expect(rendered()).toContain("the state remains defined, and gate-enforced, for future datasets");
   });
 });
