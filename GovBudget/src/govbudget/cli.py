@@ -150,10 +150,14 @@ def _jbooks_load_rollups(fiscal_year: int | None = None) -> tuple[int, list[str]
     from govbudget.jbooks.p1_loader import load_p1_rollup
 
     with psycopg.connect(config.PG_DSN) as con:
+        # Each edition's R-1 loads before its P-1/P-1R: the P-1 loader checks
+        # the lines it records as R-1 restatements against the loaded R-1
+        # (p1_loader.verify_r1_restatements, #194).
         rows = con.execute(
             "select id, title, file_path, fiscal_year from jbook_documents "
             "where exhibit_family='rollup' and status='downloaded'"
-            + (" and fiscal_year = %s" if fiscal_year is not None else ""),
+            + (" and fiscal_year = %s" if fiscal_year is not None else "")
+            + " order by fiscal_year, case when title like 'r1%%' then 0 else 1 end, id",
             ((fiscal_year,) if fiscal_year is not None else ()),
         ).fetchall()
     loaded = 0

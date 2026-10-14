@@ -1,7 +1,7 @@
 import logging
 import re
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -12,29 +12,26 @@ from openpyxl.utils import get_column_letter
 
 from govbudget.jbooks.era_keys import EraKeyConflict, era_procurement_key
 from govbudget.jbooks.rollup_loader import norm_header
+from govbudget.jbooks.route_safe_codes import (
+    P1_R1_RESTATEMENTS,
+    R1_AMOUNT_TYPE_EQUIVALENTS,
+    P1RestatementMismatch,
+    RouteSafeCode,
+    UnsafeBudgetLineCode,
+    is_route_safe_code,
+    load_route_safe_codes,
+)
 
 logger = logging.getLogger(__name__)
 
-# Chars that never appear in a real P-1 BLI (or an era P-1 line number) but DO
-# appear in Army P-1 appropriation SECTION-HEADER labels ('RDT&E', 'O&M', …)
-# that mis-parse into the BLI cell. A valid BLI is alphanumeric; era line
-# numbers are digits plus optional hyphen sub-line forms ('46-1'), so the
-# hyphen is deliberately NOT rejected — only these label chars + whitespace.
-_INVALID_PE_BLI_CHARS = set("&/%#")
-
-
-def _is_valid_pe_bli(raw) -> bool:
-    """False for an appropriation-label / section-header cell wrongly in the
-    BLI slot (the '&' also breaks the /program/[peBli] static route). Applied
-    to the RAW workbook cell before era re-keying, so digits, letters and era
-    sub-line hyphens all pass; 'RDT&E', 'O&M', and any whitespace-bearing label
-    are rejected."""
-    s = str(raw).strip()
-    if not s:
-        return False
-    if _INVALID_PE_BLI_CHARS & set(s):
-        return False
-    return not any(c.isspace() for c in s)
+# #194 (owner decisions 2026-10-04): a '_is_valid_pe_bli' guard used to skip
+# every row whose Budget Line Item cell held '&', '/', '%', '#' or
+# whitespace, taking them for appropriation section-header labels. It caught
+# exactly two rows in each PB2024-PB2026 P-1 workbook and none in the other
+# 17 P-1/P-1R workbooks (measured 2026-10-04, re-measured 2026-10-13): 0390D's
+# real Chem Demilitarization O&M and RDT&E lines. Route-unsafe codes now
+# resolve through route_safe_codes: a seeded page key (O&M -> 0390DOM), a
+# checked R-1 restatement (RDT&E), or UnsafeBudgetLineCode.
 
 
 P1_ID_HEADERS = {
@@ -89,7 +86,9 @@ class P1Row:
 class P1Parse:
     rows: list[P1Row]
     sheet_title: str
-    skipped_invalid: int
+    # P1_R1_RESTATEMENTS lines, parsed exactly like a loaded line but never
+    # in `rows`: verify_r1_restatements checks them against the R-1 first.
+    restated: tuple[P1Row, ...]
     era_line_keying: bool
 
 
@@ -130,7 +129,10 @@ def _find_header_row(ws) -> tuple[int, dict[int, str]]:
     )
 
 
-def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Parse:
+def parse_p1_rollup(
+    xlsx_path: Path, *, exhibit: str, fiscal_year: int,
+    route_safe: Mapping[tuple[str, str], RouteSafeCode] | None = None,
+) -> P1Parse:
     """Melt a P-1/P-1R display workbook into BLI-grain budget_lines rows,
     without touching any database (V1 diffs this against Postgres; the S1
     script writes it inside a transaction it owns).
@@ -145,6 +147,14 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
     or budget activity across its Add rows, and P1KeyConflict when two
     groups would upsert into one budget_lines row (ROADMAP #202).
     """
+    # #194: a modern Budget Line Item a web address cannot carry loads under
+    # its seeded page key with line_item_code the printed code (route_safe,
+    # default dbt/seeds/p1_route_safe_codes.csv), or, when P1_R1_RESTATEMENTS
+    # names it, goes to P1Parse.restated instead of rows. Any other
+    # route-unsafe code, or era line number, on an Add row raises
+    # UnsafeBudgetLineCode.
+    if route_safe is None:
+        route_safe = load_route_safe_codes()
     wb = load_workbook(xlsx_path, read_only=True, data_only=True)
     sheet = wb[f"Exhibit {exhibit}"] if f"Exhibit {exhibit}" in wb.sheetnames else wb[wb.sheetnames[0]]
     header_row, headers = _find_header_row(sheet)
@@ -196,7 +206,8 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
     codes: dict[tuple, str | None] = {}
     # era key -> every (code, title, budget activity) its Add rows print
     era_prints: dict[str, set[tuple]] = defaultdict(set)
-    skipped_invalid = 0
+    # keys of the P1_R1_RESTATEMENTS lines (summed like any line, kept apart)
+    restated_keys: set[tuple] = set()
     for row_idx, row in enumerate(
         sheet.iter_rows(min_row=header_row + 1, values_only=True),
         start=header_row + 1,
@@ -210,18 +221,14 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
             era_line_keying and not ids.get("pe_bli")
             and code_col < len(row) and _code(row[code_col]) == CLASSIFIED_CODE
         )
-        if not ids.get("pe_bli") and not classified:
-            continue
-        # Reject appropriation section-header rows ('RDT&E', 'O&M', …) whose
-        # label mis-parses into the BLI cell. Guard the RAW cell (before era
-        # re-keying), so a valid alphanumeric BLI / era line number survives.
-        if not classified and not _is_valid_pe_bli(ids.get("pe_bli")):
-            skipped_invalid += 1
+        raw = ids.get("pe_bli")
+        if (raw is None or not str(raw).strip()) and not classified:
             continue
         if add_col is not None and (
             add_col >= len(row) or str(row[add_col]).strip().lower() != "add"
         ):
             continue
+        restated = False
         if classified:
             pe_bli = code = CLASSIFIED_CODE
             # The line names no organization: the workbooks print '' (as
@@ -230,6 +237,11 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
             if ids.get("organization") is None:
                 ids["organization"] = ""
         elif era_line_keying:
+            if not is_route_safe_code(str(raw).strip()):
+                raise UnsafeBudgetLineCode(
+                    f"{xlsx_path.name} ({exhibit} PB{fiscal_year}) row {row_idx}:"
+                    f" era line number {str(raw).strip()!r} under"
+                    f" {ids.get('account')} is not route-safe")
             pe_bli = era_procurement_key(
                 str(ids.get("account")), str(ids.get("organization")),
                 str(ids.get("pe_bli")),
@@ -239,8 +251,22 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
                 (code, ids.get("title"), _str(ids.get("budget_activity")))
             )
         else:
-            pe_bli = str(ids.get("pe_bli")).strip()
-            code = pe_bli
+            code = str(raw).strip()
+            account = str(ids.get("account"))
+            alias = route_safe.get((account, code))
+            if is_route_safe_code(code):
+                pe_bli = code
+            elif alias is not None:
+                pe_bli = alias.page_key
+            elif (account, code) in P1_R1_RESTATEMENTS:
+                pe_bli = code
+                restated = True
+            else:
+                raise UnsafeBudgetLineCode(
+                    f"{xlsx_path.name} ({exhibit} PB{fiscal_year}) row {row_idx}:"
+                    f" {account} prints {code!r}, which a web address cannot"
+                    " carry; give it a page key in dbt/seeds/p1_route_safe_codes.csv"
+                    " (owner decision) or record it in P1_R1_RESTATEMENTS")
         key = (
             str(ids.get("account")), ids.get("account_title"),
             str(ids.get("organization")), _str(ids.get("budget_activity")),
@@ -249,6 +275,8 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
             ids.get("title"),
         )
         codes[key] = code
+        if restated:
+            restated_keys.add(key)
         for j, amount_type in amount_cols.items():
             if j >= len(row) or row[j] is None or str(row[j]).strip() == "":
                 continue
@@ -297,19 +325,14 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
             f" more than one (account title, budget activity title, title): {detail}"
         )
 
-    if skipped_invalid:
-        logger.info(
-            "parse_p1_rollup(%s): skipped %d row(s) with an invalid/non-BLI"
-            " pe_bli (appropriation section-header labels)",
-            xlsx_path.name, skipped_invalid,
-        )
-
     rows: list[P1Row] = []
+    restated_rows: list[P1Row] = []
     for key, amounts in sums.items():
         (account, account_title, organization, ba, ba_title,
          pe_bli, title) = key
+        target = restated_rows if key in restated_keys else rows
         for amount_type, amount in amounts.items():
-            rows.append(P1Row(
+            target.append(P1Row(
                 exhibit=exhibit, fiscal_year=fiscal_year, account=account,
                 account_title=_str(account_title), organization=organization,
                 budget_activity=ba, budget_activity_title=_str(ba_title),
@@ -318,10 +341,61 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
                 source_cells=tuple(cells[key][amount_type]),
                 line_item_code=codes[key],
             ))
+    if restated_rows:
+        logger.info(
+            "parse_p1_rollup(%s): %d row(s) of %d P-1 line(s) that restate R-1"
+            " program elements kept apart (P1_R1_RESTATEMENTS)",
+            xlsx_path.name, len(restated_rows), len(restated_keys),
+        )
     return P1Parse(
-        rows=rows, sheet_title=sheet.title, skipped_invalid=skipped_invalid,
+        rows=rows, sheet_title=sheet.title, restated=tuple(restated_rows),
         era_line_keying=era_line_keying,
     )
+
+
+def verify_r1_restatements(con: psycopg.Connection, parsed: P1Parse) -> int:
+    """Check every restated row of a parse against the R-1 it restates, on
+    the CALLER's connection, before anything is written (#194, design §4.3).
+
+    For each (account, code) of parsed.restated: the printed title must be
+    P1_R1_RESTATEMENTS' title, and each amount must equal the sum of the
+    named R-1 program elements' budget_lines rows for the same edition,
+    account and amount type (R1_AMOUNT_TYPE_EQUIVALENTS maps PB2025's CR
+    column). Raises P1RestatementMismatch on any difference, or when that
+    R-1 holds no row at all (load each edition's R-1 before its P-1:
+    cli._jbooks_load_rollups orders them). Returns the rows checked."""
+    groups: dict[tuple, list[P1Row]] = defaultdict(list)
+    for r in parsed.restated:
+        groups[(r.fiscal_year, r.account, r.line_item_code)].append(r)
+    checked = 0
+    for (fiscal_year, account, code), rows in sorted(groups.items()):
+        rule = P1_R1_RESTATEMENTS[(account, code)]
+        titles = sorted({r.title or "" for r in rows})
+        if titles != [rule.title]:
+            raise P1RestatementMismatch(
+                f"PB{fiscal_year} P-1 {account} {code!r} prints title(s) {titles},"
+                f" not {rule.title!r}")
+        r1 = dict(con.execute(
+            "select amount_type, sum(amount_thousands) from budget_lines"
+            " where exhibit = 'R-1' and fiscal_year = %s and account = %s"
+            "   and pe_bli = any(%s) group by amount_type",
+            (fiscal_year, account, list(rule.program_elements)),
+        ).fetchall())
+        if not r1:
+            raise P1RestatementMismatch(
+                f"PB{fiscal_year} R-1 holds no {account} row for"
+                f" {', '.join(rule.program_elements)}: load the edition's R-1"
+                f" before its P-1, which restates it ({code!r})")
+        for r in sorted(rows, key=lambda r: r.amount_type):
+            r1_type = R1_AMOUNT_TYPE_EQUIVALENTS.get(r.amount_type, r.amount_type)
+            if r1.get(r1_type) != r.amount_thousands:
+                raise P1RestatementMismatch(
+                    f"PB{fiscal_year} P-1 {account} {code!r} {r.amount_type}"
+                    f" = {r.amount_thousands} but R-1"
+                    f" {' + '.join(rule.program_elements)} {r1_type}"
+                    f" = {r1.get(r1_type)}")
+            checked += 1
+    return checked
 
 
 _UPSERT = """
@@ -373,4 +447,5 @@ def load_p1_rollup(
     """
     parsed = parse_p1_rollup(xlsx_path, exhibit=exhibit, fiscal_year=fiscal_year)
     with psycopg.connect(dsn) as con:
+        verify_r1_restatements(con, parsed)
         return write_p1_rows(con, parsed.rows, source_document_id=source_document_id)

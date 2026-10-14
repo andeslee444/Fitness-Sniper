@@ -24,6 +24,7 @@ from govbudget.jbooks.p1_loader import (
     parse_p1_rollup,
     write_p1_rows,
 )
+from govbudget.jbooks.route_safe_codes import UnsafeBudgetLineCode
 
 # data/raw_docs/fy2021/dod/p1_display.xlsx, 'Exhibit P-1', row 2, columns A-Q.
 PB2021_ERA_HEADERS = [
@@ -79,9 +80,11 @@ FOOTNOTES = [
     ["*Includes Division A, Title IX and X of the Consolidated Appropriations Act, 2020"]
     + [None] * 16,
 ]
-# Section header: an appropriation label in the line slot (the guard's '&').
-SECTION_HEADER = _row(("0390D", "RDT&E, Defense-Wide"), "DW", "", "", "RDT&E",
-                      "RDT&E", "RDT&E Total", "A", "Add", 1002560, 754762)
+# A route-unsafe value in the era line slot. No PB2017-PB2023 P-1 or P-1R
+# workbook prints one (all 14, measured 2026-10-13); since #194 the loader
+# raises on it instead of skipping it as a "section header".
+UNSAFE_LINE = _row(("0390D", "RDT&E, Defense-Wide"), "DW", "", "", "RDT&E",
+                   "RDT&E", "RDT&E Total", "A", "Add", 1002560, 754762)
 
 
 def test_parse_captures_the_printed_code_and_keys_by_line(tmp_path):
@@ -112,14 +115,16 @@ def test_parse_captures_the_printed_code_and_keys_by_line(tmp_path):
     assert line2.source_cells == ("Q6",)
 
 
-def test_parse_loads_classified_and_skips_footnote_and_section_header_rows(tmp_path):
+def test_parse_loads_classified_and_skips_footnote_rows(tmp_path):
     """S1b: the blank-line Classified Programs row loads under its printed
-    code, as modern editions load it; footnotes and the section header
-    (blank or label Line Number, no classified code) stay skipped."""
-    rows = ADVANCE_PROCUREMENT_PAIR[:1] + [CLASSIFIED, SECTION_HEADER] + FOOTNOTES
+    code, as modern editions load it; footnotes (blank Line Number, no
+    classified code) stay skipped. Corrected (#194, owner decisions
+    2026-10-04): this test also fed a 'RDT&E' line-slot row and required it
+    skipped; such a row now raises (test_parse_raises_on_a_route_unsafe_era_line)."""
+    rows = ADVANCE_PROCUREMENT_PAIR[:1] + [CLASSIFIED] + FOOTNOTES
     parsed = parse_p1_rollup(make_era_xlsx(tmp_path, rows), exhibit="P-1", fiscal_year=2021)
     assert {r.pe_bli for r in parsed.rows} == {"1506N-N-L1", "9999999999"}
-    assert parsed.skipped_invalid == 1  # the 'RDT&E' label row
+    assert parsed.restated == ()
     classified = sorted(
         (r for r in parsed.rows if r.pe_bli == "9999999999"), key=lambda r: r.amount_type)
     assert classified == [
@@ -145,7 +150,13 @@ def test_parse_skips_a_blank_line_row_with_any_other_code(tmp_path):
                  "3080F00001", "Not classified", "", "Add", 5, 6)
     parsed = parse_p1_rollup(make_era_xlsx(tmp_path, [stray]), exhibit="P-1", fiscal_year=2021)
     assert parsed.rows == []
-    assert parsed.skipped_invalid == 0
+    assert parsed.restated == ()
+
+
+def test_parse_raises_on_a_route_unsafe_era_line(tmp_path):
+    with pytest.raises(UnsafeBudgetLineCode, match="era line number 'RDT&E' under 0390D"):
+        parse_p1_rollup(make_era_xlsx(tmp_path, ADVANCE_PROCUREMENT_PAIR[:1] + [UNSAFE_LINE]),
+                        exhibit="P-1", fiscal_year=2021)
 
 
 @pytest.mark.parametrize("field, value", [

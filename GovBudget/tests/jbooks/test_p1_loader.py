@@ -311,45 +311,13 @@ def test_p1_loader_era_headers_line_item_and_wrapped_add(pg_dsn, tmp_path, doc_i
     assert li_rows == 0
 
 
-def test_p1_loader_skips_appropriation_section_header_rows(pg_dsn, tmp_path, doc_id):
-    """Army P-1 appropriation SECTION-HEADER rows carry an appropriation label
-    ('RDT&E', 'O&M', …) in the BLI cell instead of a real Budget Line Item.
-    Those are not program elements — the '&' also breaks the /program/[peBli]
-    static route — so the loader must reject them at the pe_bli guard, NOT
-    insert a junk budget_lines row. A genuine alphanumeric BLI on the same
-    sheet still loads."""
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Exhibit P-1"
-    ws.append(["Total of Displayed Rows"])
-    ws.append(P1_HEADERS)
-    # Section-header rows: the 'Budget Line Item' cell is an appropriation
-    # label. Both must be skipped (any FY amount they carry is a section total).
-    ws.append(["0390D", "RDT&E, Defense-Wide", "A", "", "",
-               "", "", "A", "RDT&E", "RDT&E Total",
-               "A", "Weapon System Cost", "Add", "", 1002560, "", 754762, "", 210039])
-    ws.append(["0390D", "O&M, Defense-Wide", "A", "", "",
-               "", "", "A", "O&M", "O&M Total",
-               "A", "Weapon System Cost", "Add", "", 87404, "", 20745, "", 3243])
-    # A genuine BLI on the same sheet must survive.
-    ws.append(["2035A", "Other Procurement, Army", "A", "02", "Comm",
-               "10", "1", "A", "BZ7015", "Handheld Manpack",
-               "A", "Weapon System Cost", "Add", "", 114329, "", 98000, "", 105500])
-    p = tmp_path / "p1_section_headers.xlsx"
-    wb.save(p)
-
-    n = load_p1_rollup(pg_dsn, p, exhibit="P-1", fiscal_year=2026, source_document_id=doc_id)
-    # Only the real BLI's three FY amount columns load; the two label rows are skipped.
-    assert n == 3
-    with psycopg.connect(pg_dsn) as con:
-        junk = con.execute(
-            "select count(*) from budget_lines where pe_bli in ('RDT&E', 'O&M')"
-        ).fetchone()[0]
-        real = con.execute(
-            "select count(*) from budget_lines where pe_bli = 'BZ7015'"
-        ).fetchone()[0]
-    assert junk == 0, "appropriation-label rows must never insert budget_lines"
-    assert real == 3, "the genuine alphanumeric BLI must still load"
+# Corrected (#194, owner decisions 2026-10-04): test_p1_loader_skips_
+# appropriation_section_header_rows stood here. It fed the loader 0390D's two
+# Chem Demilitarization lines as "section totals" and required both dropped.
+# They are real P-1 lines (PB2026 rows 303-304): O&M loads under its route-
+# safe key 0390DOM, and RDT&E, which restates R-1 PEs 0708081D + 0708083D, is
+# checked against that R-1 and left out. tests/jbooks/test_p1_loader_route_safe.py
+# holds the tests that replace it.
 
 
 def test_p1_loader_keeps_era_line_number_and_hyphen_subline(pg_dsn, tmp_path, doc_id):
