@@ -45,7 +45,8 @@ Create `docs/superpowers/plans/2026-10-04-families-piece1-followups/expected-dif
   {"path": "json/search_quick.json", "status": ["changed"], "pointer": "/docs/[]", "change": ["added", "removed"], "required": true, "why": "#197 (design §5.8): alias:jassm -> /program/0207325F/ and alias:c-130j -> /program/0401132F/, each one removed and one added list entry"},
   {"path": "json/f15_funding_history.json", "status": ["changed"], "pointer": "/programs/[]", "change": ["added", "removed"], "required": true, "why": "#206 T9 (design §5.2, Q17 as amended): F015E0's note gains the gloss [the PB2026 F-15EX AP (F015EX) P-40]; Task 21g's hermetic check proves that note is the only leaf that moved"},
   {"path": "json/datasets.json", "status": ["changed"], "pointer": "/datasets/[]", "change": ["added", "removed"], "required": true, "why": "Q3 scope amendment (design §4.5): the p1_era_line_map entry's scope names program_key (the printed code except 0390DOM for 0390D's O&M line)"},
-  {"path": "json/site_meta.json", "status": ["changed"], "pointer": "/build_checks/dbt_assertions", "change": ["changed"], "required": true, "why": "W2: the dbt assertion count grows with this wave's tests (A's dbt parse manifest has 196 test nodes, B's more; Task 21d prints both)"}
+  {"path": "json/site_meta.json", "status": ["changed"], "pointer": "/build_checks/dbt_assertions", "change": ["changed"], "required": true, "why": "W2: the dbt assertion count grows with this wave's tests (A's dbt parse manifest has 196 test nodes, B's more; Task 21d prints both)"},
+  {"path": "json/flows/*.json", "status": ["changed"], "pointer": "/awards", "change": ["reordered"], "why": "Task 21f2: the flows top-12 query gained a total order (tiebreaker on its group-by columns); tied awards may reorder between the deployed and the new code; no award is added or removed"}
 ]
 ```
 
@@ -173,7 +174,7 @@ PY
 ```
 Expected:
 ```
-expected-diff-code.json 24 rules, 24 required
+expected-diff-code.json 25 rules, 24 required
 expected-diff-lake.json 40 rules, 31 required
 expected-diff-release.json 12 rules, 0 required
 expected-fact-moves-lake.json 11 moved aggregates, ['data/budget_lines.parquet', 'data/budget_lines_decade.parquet', 'data/fct_budget_trajectory.parquet']
