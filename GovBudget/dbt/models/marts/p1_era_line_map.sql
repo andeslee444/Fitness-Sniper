@@ -36,6 +36,14 @@
 -- join); they are set only for chains on one of the 13 PB2026 collision
 -- codes (assert_p1_era_map_collision_pinned.sql).
 --
+-- decided_on is the seed row's decided_on as a DATE (ROADMAP #206 T6): the
+-- date the owner approved the ruling the decision is recorded under. For the
+-- class rulings R-DEC-ERA-SAME / -HISTORY / -EXCLUDE that is the spec's
+-- approval date, 2026-10-02, applied by rule rather than row by row; for
+-- R-DEC-ERA-B<n> it is the date the owner answered the batch, as its answers
+-- file records it. NULL only for undecided keys. verify-era-map leg b proves
+-- it equals the seed on disk.
+--
 -- keys_sha_ok is the drift guard: the seed stores keys_sha256, the sha256 of
 -- the sorted 'edition|era_key|budget_activity|filed_title' lines the owner
 -- reviewed (NULL parts rendered as ''), joined by '\n' with no trailing
@@ -120,7 +128,8 @@ decisions as (
         nullif(trim(coalesce(program_org, '')), '') as program_org,
         nullif(trim(coalesce(successor_code, '')), '') as successor_code,
         keys_sha256 as reviewed_keys_sha256,
-        ruling
+        ruling,
+        cast(decided_on as date) as decided_on
     from {{ ref('p1_era_code_decisions') }}
 ),
 
@@ -133,7 +142,8 @@ bound as (
         d.program_org,
         d.successor_code,
         d.reviewed_keys_sha256,
-        d.ruling
+        d.ruling,
+        d.decided_on
     from keys k
     left join decisions d
       on d.line_item_code = k.line_item_code
@@ -172,6 +182,7 @@ select
     coalesce(b.decision, 'undecided') as decision,
     b.decision_id,
     b.ruling,
+    b.decided_on,
     case when b.decision_id is not null then cs.keys_sha256 = b.reviewed_keys_sha256 end as keys_sha_ok,
     b.successor_code,
     doc.sha256 as source_document_sha256,

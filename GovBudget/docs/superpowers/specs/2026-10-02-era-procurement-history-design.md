@@ -169,6 +169,17 @@ uncited ledger: its rows are decisions, not money.
 A small `json/era_map_summary.json` (chains and dollars by decision and ruling,
 receipt completeness per edition) is exported for the site to render (§6.4).
 
+*Amendment (owner decision 2026-10-04, families piece-1 follow-ups, ROADMAP
+#206 T6; nothing above reworded).* The map also publishes `decided_on`, the
+seed row's date as a DATE, placed right after `ruling` (column 14 of 18): the
+date the owner approved the ruling the decision is recorded under. For the
+class rulings R-DEC-ERA-SAME/HISTORY/EXCLUDE that is this spec's approval
+date, 2026-10-02, applied by rule rather than row by row; for R-DEC-ERA-B<n>
+it is the date the owner answered the batch, as its answers file records it
+(B7: 2026-10-04, before its ratify). `decided_by` is not published (it is always
+`owner`, and `assert_p1_era_map_decisions_no_overlap` enforces that).
+verify-era-map leg b proves the published date equals the seed.
+
 ### 4.5 dbt model — `fct_program_decade_series` (table)
 
 - The same CTEs as `fct_decade_series`. Era rows enter only when `decision in

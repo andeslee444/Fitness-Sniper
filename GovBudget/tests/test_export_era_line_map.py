@@ -24,22 +24,22 @@ MAP_DDL = (
     " budget_activity varchar, era_key varchar, line_item_code varchar,"
     " filed_title varchar, program_key varchar, program_account varchar,"
     " program_org varchar, decision varchar, decision_id varchar,"
-    " ruling varchar, keys_sha_ok boolean, successor_code varchar,"
+    " ruling varchar, decided_on date, keys_sha_ok boolean, successor_code varchar,"
     " source_document_sha256 varchar, source_cells varchar)"
 )
 ROWS = [
     (2018, "3010F", "AF", "01", "3010F-AF-L2", "ATA000", "F-35", "ATA000", None, None,
-     "same_program", "ATA000|3010F||2017-2018", "R-DEC-ERA-SAME", True, None, "sha18", "J9"),
+     "same_program", "ATA000|3010F||2017-2018", "R-DEC-ERA-SAME", "2026-10-02", True, None, "sha18", "J9"),
     (2017, "3010F", "AF", "01", "3010F-AF-L1", "ATA000", "F-35", "ATA000", None, None,
-     "same_program", "ATA000|3010F||2017-2018", "R-DEC-ERA-SAME", True, None, "sha17", "J8"),
+     "same_program", "ATA000|3010F||2017-2018", "R-DEC-ERA-SAME", "2026-10-02", True, None, "sha17", "J8"),
     (2017, "3010F", "AF", "05", "3010F-AF-L9", "F0150P", "LEGACY LINE", "F0150P", None, None,
-     "history_only", "F0150P|3010F||2017-2017", "R-DEC-ERA-HISTORY", True, None, "sha17", "J20"),
+     "history_only", "F0150P|3010F||2017-2017", "R-DEC-ERA-HISTORY", "2026-10-02", True, None, "sha17", "J20"),
     (2017, "0300D", "OSD", "01", "0300D-OSD-L50", "50", "INDIAN FINANCING ACT", None, None, None,
-     "exclude_reused_code", "50|0300D||2017-2019", "R-DEC-ERA-B1", True, None, "sha17", "J60"),
+     "exclude_reused_code", "50|0300D||2017-2019", "R-DEC-ERA-B1", "2026-10-03", True, None, "sha17", "J60"),
     (2017, "2035A", "A", "01", "2035A-A-L3", "FY2017CR", "CR ADJUSTMENT", None, None, None,
-     "exclude_placeholder", "FY2017CR|2035A||2017-2017", "R-DEC-ERA-EXCLUDE", True, None, "sha17", "J70"),
+     "exclude_placeholder", "FY2017CR|2035A||2017-2017", "R-DEC-ERA-EXCLUDE", "2026-10-02", True, None, "sha17", "J70"),
 ]
-INSERT = "insert into p1_era_line_map values (" + ",".join("?" * 17) + ")"
+INSERT = "insert into p1_era_line_map values (" + ",".join("?" * 18) + ")"
 
 
 def _con_with_map(rows=ROWS):
@@ -151,6 +151,21 @@ def test_exports_every_row_in_key_order(tmp_path):
         (2017, "0300D-OSD-L50"), (2017, "2035A-A-L3"), (2017, "3010F-AF-L1"),
         (2017, "3010F-AF-L9"), (2018, "3010F-AF-L2"),
     ]
+
+
+def test_ships_each_decisions_date(tmp_path):
+    """ROADMAP #206 T6: the export is `select *` of the mart, so the decision
+    date ships as column 14, a DATE, right after ruling."""
+    con = _con_with_map()
+    _export_p1_era_line_map(con, tmp_path)
+    cur = duckdb.connect().execute(
+        "select * from read_parquet(?) order by edition, era_key",
+        [str(tmp_path / "p1_era_line_map.parquet")])
+    names = [d[0] for d in cur.description]
+    assert names.index("decided_on") == 13 and names[12] == "ruling" and len(names) == 18
+    rows = cur.fetchall()
+    assert [str(r[13]) for r in rows] == [
+        "2026-10-03", "2026-10-02", "2026-10-02", "2026-10-02", "2026-10-02"]
 
 
 def test_refuses_an_undecided_line(tmp_path):

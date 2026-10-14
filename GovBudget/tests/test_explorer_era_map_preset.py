@@ -23,20 +23,20 @@ MAP_DDL = (
     " budget_activity varchar, era_key varchar, line_item_code varchar,"
     " filed_title varchar, program_key varchar, program_account varchar,"
     " program_org varchar, decision varchar, decision_id varchar,"
-    " ruling varchar, keys_sha_ok boolean, successor_code varchar,"
+    " ruling varchar, decided_on date, keys_sha_ok boolean, successor_code varchar,"
     " source_document_sha256 varchar, source_cells varchar)"
 )
 ROWS = [
     (2017, "3010F", "AF", "01", "3010F-AF-L1", "ATA000", "F-35", "ATA000", None, None,
-     "same_program", "ATA000|3010F||2017-2021", "R-DEC-ERA-SAME", True, None, "sha17", "J8"),
+     "same_program", "ATA000|3010F||2017-2021", "R-DEC-ERA-SAME", "2026-10-02", True, None, "sha17", "J8"),
     (2017, "3010F", "AF", "01", "3010F-AF-L2", "ATA000", "F-35 AP", "ATA000", None, None,
-     "same_program", "ATA000|3010F||2017-2021", "R-DEC-ERA-SAME", True, None, "sha17", "J9"),
+     "same_program", "ATA000|3010F||2017-2021", "R-DEC-ERA-SAME", "2026-10-02", True, None, "sha17", "J9"),
     (2017, "1611N", "N", "02", "1611N-N-L4", "1045", "OHIO REPLACEMENT", "1045", "1611N", None,
-     "same_program", "1045|1611N||2017-2020", "R-DEC-ERA-B1", True, None, "sha17", "J30"),
+     "same_program", "1045|1611N||2017-2020", "R-DEC-ERA-B1", "2026-10-03", True, None, "sha17", "J30"),
     (2018, "1611N", "N", "02", "1611N-N-L4", "1045", "OHIO REPLACEMENT", "1045", "1611N", None,
-     "same_program", "1045|1611N||2017-2020", "R-DEC-ERA-B1", True, None, "sha18", "J31"),
+     "same_program", "1045|1611N||2017-2020", "R-DEC-ERA-B1", "2026-10-03", True, None, "sha18", "J31"),
     (2018, "0300D", "OSD", "01", "0300D-OSD-L50", "50", "INDIAN FINANCING ACT", None, None, None,
-     "exclude_reused_code", "50|0300D||2017-2019", "R-DEC-ERA-B2", True, None, "sha18", "J60"),
+     "exclude_reused_code", "50|0300D||2017-2019", "R-DEC-ERA-B2", "2026-10-03", True, None, "sha18", "J60"),
 ]
 
 
@@ -53,7 +53,7 @@ def run(tmp_path):
     pq = tmp_path / "p1_era_line_map.parquet"
     con = duckdb.connect()
     con.execute(MAP_DDL)
-    con.executemany("insert into m values (" + ",".join("?" * 17) + ")", ROWS)
+    con.executemany("insert into m values (" + ",".join("?" * 18) + ")", ROWS)
     con.execute(f"copy m to '{pq.as_posix()}' (format parquet)")
 
     def _run(label: str):

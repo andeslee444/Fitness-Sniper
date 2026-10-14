@@ -74,7 +74,7 @@ def _sha(path: Path) -> str:
 
 def _write_map(duckdb_path: Path, rows: list[dict]) -> None:
     con = duckdb.connect(str(duckdb_path))
-    types = {"edition": "integer", "keys_sha_ok": "boolean"}
+    types = {"edition": "integer", "keys_sha_ok": "boolean", "decided_on": "date"}
     con.execute("create or replace table p1_era_line_map ("
                 + ", ".join(f"{c} {types.get(c, 'varchar')}" for c in MAP_COLUMNS) + ")")
     con.executemany(f"insert into p1_era_line_map values ({', '.join('?' * len(MAP_COLUMNS))})",
@@ -138,7 +138,8 @@ class Corpus:
             for k in keys:
                 k.update(program_key=code, program_account=None, program_org=None,
                          decision=decision, decision_id=did,
-                         ruling=self.seed[-1]["ruling"], keys_sha_ok=True, successor_code=None)
+                         ruling=self.seed[-1]["ruling"], decided_on="2026-10-02",
+                         keys_sha_ok=True, successor_code=None)
         self.save()
 
     def save(self) -> None:
@@ -290,6 +291,18 @@ def test_leg_b_fails_on_a_map_built_from_another_seed(corpus):
     corpus.save()
     assert any(f.startswith("F0150P|3010F||2017-2020: map ('history_only'")
                for f in _failures(corpus.leg_b()))
+
+
+def test_leg_b_fails_when_the_published_date_is_not_the_seed_date(corpus):
+    """ROADMAP #206 T6: leg b proves the map's decided_on is the seed's, so a
+    date edited in the seed after the build reads as a stale build."""
+    next(s for s in corpus.seed if s["line_item_code"] == "F15EWS")["decided_on"] = "2026-10-03"
+    corpus.save()
+    failures = _failures(corpus.leg_b())
+    assert failures == [
+        "F15EWS|3010F||2019-2023: map ('same_program', 'R-DEC-ERA-SAME', None, None, None,"
+        " '2026-10-02') != seed ('same_program', 'R-DEC-ERA-SAME', None, None, None,"
+        " '2026-10-03') (stale build)"]
 
 
 def test_leg_b_fails_on_an_unreadable_seed(corpus):

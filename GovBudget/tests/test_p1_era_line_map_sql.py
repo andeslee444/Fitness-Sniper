@@ -19,6 +19,8 @@ P-1 rows for the collision anchors and the JLTV successor):
   0300D-DTRA-L23     2019  01  20          Major Equipment, DTRA 20|0300D|DTRA|2019-2019 same_program -> DTRA
   2035A-ARMY-L5      2019  03  5600D15603  JLTV                  none -> undecided
 """
+from datetime import date
+
 import duckdb
 import pytest
 from dbt_render import render_dbt_sql
@@ -169,7 +171,7 @@ def test_one_row_per_era_key_with_the_spec_columns():
     assert cols == [
         "edition", "account", "organization", "budget_activity", "era_key",
         "line_item_code", "filed_title", "program_key", "program_account", "program_org",
-        "decision", "decision_id", "ruling", "keys_sha_ok", "successor_code",
+        "decision", "decision_id", "ruling", "decided_on", "keys_sha_ok", "successor_code",
         "source_document_sha256", "source_cells",
     ]
     assert sorted(_map(con)) == [
@@ -208,6 +210,20 @@ def test_organization_narrows_a_decision_and_pins_ride_along():
     assert (dss["decision_id"], dss["program_key"], dss["program_org"]) == (
         "20|0300D|DSS|2019-2019", "20", "DCSA")
     assert (dtra["decision_id"], dtra["program_org"]) == ("20|0300D|DTRA|2019-2019", "DTRA")
+
+
+def test_decided_on_is_the_date_of_the_decision_the_key_binds():
+    """ROADMAP #206 T6: the map publishes each decision's date (the seed's
+    decided_on, as a date), so "a dated decision" is true of the dataset
+    itself. An undecided key has none."""
+    seed = _seed()
+    seed[1]["decided_on"] = "2026-10-03"
+    m = _map(_lake(seed=seed))
+    assert m[(2019, "0300D-DSS-L21")]["decided_on"] == date(2026, 10, 3)
+    assert {m[k]["decided_on"] for k in [(2019, "3010F-AF-L25"), (2019, "3010F-AF-L79"),
+                                         (2020, "3010F-AF-L25"), (2019, "0300D-DTRA-L23")]} == {
+        date(2026, 10, 2)}
+    assert m[(2019, "2035A-ARMY-L5")]["decided_on"] is None
 
 
 def test_a_key_no_decision_covers_is_undecided_and_carries_nothing():

@@ -23,7 +23,8 @@ is a FAIL, never a skip.
   Leg (b) — decisions. No era key is undecided; every decided key's
     keys_sha_ok (the dbt-side drift hash) is true; the map was built from the
     seed on disk (each decided key's decision_id exists there with the same
-    decision, ruling, pins and successor); no seed row binds zero keys; and,
+    decision, ruling, pins, successor and decided_on — the published date,
+    ROADMAP #206 T6); no seed row binds zero keys; and,
     recomputed in Python with era_map.keys_sha256 over the keys each seed row
     binds, every seed row's keys_sha256 and n_keys still hold.
 
@@ -88,7 +89,7 @@ DEFAULT_SEED_PATH = config.ROOT / "dbt" / "seeds" / "p1_era_code_decisions.csv"
 MAP_COLUMNS = (
     "edition", "account", "organization", "budget_activity", "era_key",
     "line_item_code", "filed_title", "program_key", "program_account", "program_org",
-    "decision", "decision_id", "ruling", "keys_sha_ok", "successor_code",
+    "decision", "decision_id", "ruling", "decided_on", "keys_sha_ok", "successor_code",
     "source_document_sha256", "source_cells",
 )
 
@@ -305,10 +306,12 @@ def leg_b_decisions(*, map_rows: list[dict], seed_path: Path) -> dict:
             failures.append(f"{did}: in the map, not in {Path(seed_path).name} (stale build)")
             continue
         for r in rows:
+            decided_on = r["decided_on"]
             got = (r["decision"], r["ruling"], r["program_account"], r["program_org"],
-                   r["successor_code"])
+                   r["successor_code"],
+                   decided_on.isoformat() if hasattr(decided_on, "isoformat") else decided_on)
             want = (s["decision"], s["ruling"], s["program_account"], s["program_org"],
-                    s["successor_code"])
+                    s["successor_code"], s["decided_on"])
             if got != want:
                 failures.append(f"{did}: map {got!r} != seed {want!r} (stale build)")
                 break

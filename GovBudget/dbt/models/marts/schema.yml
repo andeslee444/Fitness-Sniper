@@ -452,6 +452,9 @@ models:
         description: "'{code}|{account}|{org}|{first}-{last}' of the seed row covering the key; NULL when undecided."
       - name: ruling
         description: "The owner ruling the decision was recorded under: R-DEC-ERA-SAME / R-DEC-ERA-EXCLUDE / R-DEC-ERA-HISTORY (the approved class rulings) or R-DEC-ERA-B<n> (review batch n). NULL when undecided."
+      - name: decided_on
+        data_tests: [not_null]
+        description: "The date the owner approved the ruling the decision is recorded under: for R-DEC-ERA-SAME/HISTORY/EXCLUDE the spec's approval date (2026-10-02), applied by rule rather than row by row; for R-DEC-ERA-B<n> the date the owner answered the batch, as its answers file records it."
       - name: keys_sha_ok
         description: "Drift guard: true when the sha256 of the sorted 'edition|era_key|budget_activity|filed_title' lines (NULL parts as '', joined by newline) of the keys this decision covers today equals the seed's keys_sha256 — what the owner reviewed (govbudget.jbooks.era_map.keys_sha256; tests/test_p1_era_line_map_sql.py proves the SQL and Python agree). false means the keys or titles changed after review (stale: `era-map check` and verify-era-map leg b fail). NULL when undecided."
       - name: successor_code
