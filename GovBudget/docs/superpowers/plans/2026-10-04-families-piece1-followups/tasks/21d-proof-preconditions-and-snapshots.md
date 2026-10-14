@@ -7,7 +7,7 @@
 **Files:**
 - No tracked file changes. Local only (ignored): `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs/{fu-pre,fu-post,fu-logs}/`, the detached worktree `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families-fu-a`, the worktree's `dbt/target/` (rewritten by `dbt parse`). Shared Postgres: creates the scratch databases `govbudget_proof_fu_pre` and `govbudget_proof_fu_post` only (through `govbudget proof snapshot`).
 
-Shell state does not persist between blocks: every block re-derives `P="$GOVBUDGET_PROOFS"` and `L="$P/fu-logs"`, and the A and B shas are written to `$L/shas.txt` (line 1 A, line 2 B) in Step 3 and read back where used.
+Shell state does not persist between blocks: every block re-derives `P="$GOVBUDGET_PROOFS"` and `L="$P/fu-logs"`, and the A and B shas are written to `$L/shas.txt` (line 1 A, line 2 B, line 3 the deployed sha that A was proven equal to) in Step 3 and read back where used.
 
 **Interfaces:**
 Consumes:
@@ -18,7 +18,7 @@ Consumes:
 Also consumes the red window Tasks 20a and 20c declare (G3 notes C1): exactly four tests fail between Task 20 and this proof's re-pin.
 Produces (kept until Task 22e's cleanup offer):
 - `.proofs/fu-pre` (scratch database `govbudget_proof_fu_pre`: the pre-write reference; its database is written only by Task 21f Steps 4–5, the `--apply`/`--revert` rehearsal after both fu-pre exports (README decision 2), which must leave every Postgres pin as Task 21e Step 1 took it) and `.proofs/fu-post` (scratch database `govbudget_proof_fu_post`, where Task 21e runs the write the release must reach);
-- `.proofs/fu-logs/shas.txt` (A sha, B sha), `snapshot-fu-pre.log`, `snapshot-fu-post.log`, `snapshot-shas.json`, `pins-fu-pre-fu-post.txt`, `dbt-tests.txt`, `w1-*.log`, `prewrite-live.txt`;
+- `.proofs/fu-logs/shas.txt` (A sha, B sha, deployed sha), `snapshot-fu-pre.log`, `snapshot-fu-post.log`, `snapshot-times.txt`, `snapshot-shas.json`, `pins-fu-pre-fu-post.txt`, `dbt-tests.txt`, `w1-*.log`, `prewrite-live.txt`;
 - the A worktree `/Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families-fu-a` (detached at A, its own `.venv` and `dbt/target/manifest.json`, `tmp/pdfs` cache), used by Task 21f's A export and Task 22b's abort path.
 
 Measured for this task (2026-10-13, read-only, outside :12–:22): `git merge-base main HEAD` is `7dccd983` (local `main`), and `git diff --stat 916ae88e 7dccd983 -- GovBudget/src GovBudget/dbt GovBudget/data-seeds GovBudget/scripts GovBudget/site` prints nothing (7dccd983 only stamps the ROADMAP); `dbt/target/manifest.json` has 196 test nodes; `uvx --offline ruff check --isolated --select F,E9 src/govbudget/cli.py src/govbudget/export_site.py` reports 15 findings (cli.py 5, export_site.py 10; ruff 0.16.10 from the uv cache); live Postgres `budget_lines` has 159,903 rows, 16 with a `pe_bli` matching `[&#/?%[:space:]]` (PB2024 ids 349016–349025, PB2025 ids 47733–47738) and none equal to `0390DOM`; the live `p1_era_line_map` has 17 columns and no `decided_on`; there is no `p1_route_safe_codes` relation; the database is 1,047 MB with 18 public base tables; `.proofs/` holds only `testpg` and `testpg.log`; the worktree's `tmp/pdfs` holds the 21 `*-program-pages-v1.json` caches.
@@ -82,9 +82,10 @@ The committed seed already carries B7 (Step 1), and `era-map check` hashes the l
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 L="${GOVBUDGET_PROOFS:?}/fu-logs" && cd .. || exit 1
 A_SHA=$(git merge-base main HEAD) && B_SHA=$(git rev-parse HEAD) && git log -1 --format='A: %h %s' "$A_SHA" && git log -1 --format='B: %h %s' "$B_SHA"
-git diff --quiet 916ae88e "$A_SHA" -- GovBudget/src GovBudget/dbt GovBudget/data-seeds GovBudget/scripts && echo "A's src/ dbt/ data-seeds/ scripts/ equal the deployed 916ae88e" && printf '%s\n%s\n' "$A_SHA" "$B_SHA" > "$L/shas.txt" && cat "$L/shas.txt"
+LIVE=$(curl -s https://fiscalreceipts.com/.build-meta.json | python3 -c "import json,sys; print(json.load(sys.stdin)['git_head'])") || { echo "STOP: could not read the deployed git_head from /.build-meta.json"; exit 1; }
+echo "deployed: $LIVE" && git diff --quiet "$LIVE" "$A_SHA" -- GovBudget/src GovBudget/dbt GovBudget/data-seeds GovBudget/scripts GovBudget/site && echo "A's src/ dbt/ data-seeds/ scripts/ site/ equal the deployed $(git rev-parse --short=8 "$LIVE")" && printf '%s\n%s\n%s\n' "$A_SHA" "$B_SHA" "$LIVE" > "$L/shas.txt" && cat "$L/shas.txt"
 ```
-Expected: `A: 7dccd983 docs(roadmap): stamp the families piece 1 deploy (916ae88e, rollback tag 2026-10-04T210918Z)` (or a later `main` commit if `main` moved; the next line is what matters), `B: <short sha> <Task 21c's subject>`, `A's src/ dbt/ data-seeds/ scripts/ equal the deployed 916ae88e`, and the two shas. If the equality line is missing, `main` holds code production does not run: stop and report (A must be the deployed code).
+Expected: `A: 7dccd983 docs(roadmap): stamp the families piece 1 deploy (916ae88e, rollback tag 2026-10-04T210918Z)` (or a later `main` commit if `main` moved; the equality line is what matters), `B: <short sha> <Task 21c's subject>`, `deployed: 916ae88eee04f1e2445040933f83a3e279c04209` (production's `/.build-meta.json` `git_head`, read as Task 25b Step 1 reads it, never typed), `A's src/ dbt/ data-seeds/ scripts/ site/ equal the deployed 916ae88e` (README decision 4 names `site/` too), and the three shas (`shas.txt`: line 1 A, line 2 B, line 3 the deployed sha). If the equality line is missing, `main` holds code production does not run, or production was redeployed from code this branch does not hold (`git diff` cannot resolve the sha): stop and report (A must be the deployed code).
 
 - [ ] **Step 4: Check out A in a detached worktree with its own dbt manifest**
 
@@ -144,11 +145,13 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 MIN=$(date +%M); if [ "$MIN" -lt 23 ] || [ "$MIN" -gt 40 ]; then echo "WAIT: start between :23 and :40 (minute $MIN)"; exit 0; fi
 P="${GOVBUDGET_PROOFS:?}" && L="$P/fu-logs"
 for n in fu-pre fu-post; do if [ -e "$P/$n" ]; then echo "STOP: $P/$n exists"; exit 1; fi; done
-date +%H:%M:%S; uv run --project . python -m govbudget proof snapshot --out "$P/fu-pre" --scratch-db govbudget_proof_fu_pre > "$L/snapshot-fu-pre.log" 2>&1; echo "fu-pre exit=$?"
-date +%H:%M:%S; uv run --project . python -m govbudget proof snapshot --out "$P/fu-post" --scratch-db govbudget_proof_fu_post > "$L/snapshot-fu-post.log" 2>&1; echo "fu-post exit=$?"
-date +%H:%M:%S; tail -5 "$L/snapshot-fu-pre.log" "$L/snapshot-fu-post.log"
+echo "fu-pre start $(date +%Y-%m-%dT%H:%M:%S)" | tee "$L/snapshot-times.txt"
+uv run --project . python -m govbudget proof snapshot --out "$P/fu-pre" --scratch-db govbudget_proof_fu_pre > "$L/snapshot-fu-pre.log" 2>&1; echo "fu-pre exit=$?" | tee -a "$L/snapshot-times.txt"
+echo "fu-post start $(date +%Y-%m-%dT%H:%M:%S)" | tee -a "$L/snapshot-times.txt"
+uv run --project . python -m govbudget proof snapshot --out "$P/fu-post" --scratch-db govbudget_proof_fu_post > "$L/snapshot-fu-post.log" 2>&1; echo "fu-post exit=$?" | tee -a "$L/snapshot-times.txt"
+echo "fu-post end $(date +%Y-%m-%dT%H:%M:%S)" | tee -a "$L/snapshot-times.txt"; tail -5 "$L/snapshot-fu-pre.log" "$L/snapshot-fu-post.log"
 ```
-Expected: `fu-pre exit=0` and `fu-post exit=0`, each log ending with the snapshot summary (`proof snapshot: …/.proofs/fu-pre`, the DuckDB sha and views repointed, file counts, `postgres govbudget -> govbudget_proof_fu_pre (18 tables, …)`, `source …/env.sh [RUN_DIR]`; likewise for fu-post), and three timestamps (record the durations for the proof note). If either refuses (SAM window, a DuckDB writer, an existing database), discard both and retake them together in a later window (a refused snapshot leaves no database it did not create; Task 2):
+Expected: `fu-pre exit=0` and `fu-post exit=0`, each log ending with the snapshot summary (`proof snapshot: …/.proofs/fu-pre`, the DuckDB sha and views repointed, file counts, `postgres govbudget -> govbudget_proof_fu_pre (18 tables, …)`, `source …/env.sh [RUN_DIR]`; likewise for fu-post), and the three timestamps, kept with the two exit lines in `$L/snapshot-times.txt` (the proof note's durations: fu-pre = `fu-post start` − `fu-pre start`, fu-post = `fu-post end` − `fu-post start`; a retake rewrites the file). If either refuses (SAM window, a DuckDB writer, an existing database), discard both and retake them together in a later window (a refused snapshot leaves no database it did not create; Task 2):
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1

@@ -91,17 +91,18 @@ Expected: `A exit=0` and `B exit=0` (B also prints `0`: no rail page moves befor
 
 - [ ] **Step 6: Rehearse release 2's writes on the scratch database, in Task 26's order**
 
-First the lineage-evidence rows that were never built (contract issue G6-3), then the relocation. Record the highest row id first, so the new rows can be named:
+First the lineage-evidence rows that were never built (contract issue G6-3), then the relocation. Record the highest row id and the id sequence's state first, so the new rows can be named and Task 26a Step 1 can prove the live sequence still stands where the snapshot copied it (the 19 inserted rows' ids are in D1):
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs
 (source "$P/fu2/env.sh" && "$GOVBUDGET_PG_BIN/psql" "$GOVBUDGET_PG_DSN" -Atc "select max(id) from provenance_pages") > "$P/fu2-logs/max-id-before.txt"; cat "$P/fu2-logs/max-id-before.txt"
+(source "$P/fu2/env.sh" && "$GOVBUDGET_PG_BIN/psql" "$GOVBUDGET_PG_DSN" -At -F' ' -c "select last_value, is_called from provenance_pages_id_seq") > "$P/fu2-logs/provenance-seq-before.txt"; cat "$P/fu2-logs/provenance-seq-before.txt"
 (source "$P/fu2/env.sh" && uv run --project . python -m govbudget jbooks narrative-provenance --lineage-evidence) > "$P/fu2-logs/scratch-lineage-evidence.log" 2>&1; echo "exit=$?"; cat "$P/fu2-logs/scratch-lineage-evidence.log"
 MAXID=$(cat "$P/fu2-logs/max-id-before.txt"); (source "$P/fu2/env.sh" && "$GOVBUDGET_PG_BIN/psql" "$GOVBUDGET_PG_DSN" -Atc "select count(*), count(printed_document_sha256), count(page_number) from provenance_pages where target_kind = 'narrative' and id > ${MAXID:?}")
 (source "$P/fu2/env.sh" && uv run --project . python scripts/fu/s195_narratives.py --digest) | tee "$P/fu2-logs/digest-mid.log"; cut -d' ' -f3 "$P/fu2-logs/digest-mid.log" > "$P/fu2-logs/digest-mid.txt"
 ```
-Expected: the max id (a number); `exit=0`, `narrative-provenance: scoped to 92 lineage-evidence narrative(s)` and `narrative-provenance: 19 inserted; located 6115/11980 ({'ambiguous_first': 657, 'unique': 5458, 'unresolved': 5865})`; `19|0|19` (19 new rows, none naming another volume, all with a page: under piece-1 code each one already cites the page it names, which is why Task 26's abort path may leave them); `state digest: <32 hex>` — D1, in `digest-mid.txt`.
+Expected: the max id (a number); `<last_value> <t|f>` (the sequence as `pg_dump` restored it from live: `provenance_pages_id_seq`'s `last_value` and `is_called`, in `provenance-seq-before.txt`); `exit=0`, `narrative-provenance: scoped to 92 lineage-evidence narrative(s)` and `narrative-provenance: 19 inserted; located 6115/11980 ({'ambiguous_first': 657, 'unique': 5458, 'unresolved': 5865})`; `19|0|19` (19 new rows, none naming another volume, all with a page: under piece-1 code each one already cites the page it names, which is why Task 26's abort path may leave them); `state digest: <32 hex>` — D1, in `digest-mid.txt`.
 
 Then the relocation, the write Task 26 makes on the live database, with its pre-image:
 

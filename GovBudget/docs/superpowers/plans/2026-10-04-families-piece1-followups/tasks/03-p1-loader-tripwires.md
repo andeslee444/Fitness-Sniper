@@ -168,6 +168,14 @@ class P1KeyConflict(ValueError):
 def _slug(header: str) -> str:
 ```
 
+Run the two files again; the tests now collect, and the tripwire tests fail for their own reason:
+
+```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/jbooks/test_p1_loader.py tests/jbooks/test_p1_loader_era.py -q 2>&1 | tail -4
+```
+
+Expected: `2 failed, 26 passed`. The two failures are the tripwire tests, `test_two_titles_on_one_upsert_key_raise` and `test_two_classified_titles_in_one_account_and_budget_activity_raise`, each `Failed: DID NOT RAISE <class 'govbudget.jbooks.p1_loader.P1KeyConflict'>`: the exception exists, the check does not yet (Step 4). The other two new tests pass already at HEAD's parse, because they pin behaviour that is right today (G4-3): `test_modern_p1_rows_carry_their_budget_line_item_as_code` (a modern P-1 keeps its printed BLI as `line_item_code`) and `test_two_titles_on_disjoint_amount_columns_load_both` (the live PB2026 case, which Step 4's tripwire must keep loading).
+
 - [ ] **Step 3: Correct the grouping comment**
 
 Replace:

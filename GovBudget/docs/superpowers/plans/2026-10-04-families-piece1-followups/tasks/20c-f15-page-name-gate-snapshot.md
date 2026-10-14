@@ -639,9 +639,11 @@ console.log("gloss inserted", n);
 const TH = '<th scope="row" id="history-row-7"';
 const LABEL = ' aria-label="BLI F015E0 F-15e (FY2020 F-15EX Lot 1 aircraft) Procurement · Historical code"';
 console.log("F015E0 th", count(after, TH));
+if (count(after, TH) !== 1) { console.log("STOP: the F015E0 row header anchor is not in this build exactly once"); process.exit(1); }
 after = after.replace(TH, TH + LABEL);
 const MN = '<p class="family-funding-history-module__vnWGSG__matrixNote"';
 console.log("matrix note p", count(after, MN));
+if (count(after, MN) !== 1) { console.log("STOP: the matrix-note anchor (a build-hashed CSS-module class) is not in this build exactly once"); process.exit(1); }
 after = after.replace(MN, MN + ' data-history-matrix-note=""');
 const w = (s) => ({ raw: Buffer.byteLength(s), gzip: zlib.gzipSync(Buffer.from(s), { level: 9 }).length });
 const b = w(before), a = w(after);
@@ -657,7 +659,7 @@ F015E0 th 1
 matrix note p 1
 /families/f-15/: 703427 / 68538 -> 703621 / 68605 (raw +194, gzip +67); ceiling 725,000 / 70,000
 ```
-1,395 gzip bytes stay free (the design's +68 / +36 measured the unamended gloss alone). If the build was redone by an
+`F015E0 th 1` and `matrix note p 1` are preconditions: on 0 (or any count but 1) the script prints `STOP: …` and exits 1 before measuring, because the substitution would otherwise silently leave out the `aria-label` or the matrix-note hook (the matrix-note anchor is a build-hashed class name, and Task 1 rebuilds `site/out`). On a `STOP`, find the row header and the matrix note in `out/families/f-15/index.html`, put their current opening tags in `TH` and `MN`, and re-run; never take a delta measured without them. 1,395 gzip bytes stay free (the design's +68 / +36 measured the unamended gloss alone). If the build was redone by an
 earlier task, the deltas must still be +194 / +67 within a few gzip bytes; a ceiling is never raised.
 
 - [ ] **Step 6: Commit**

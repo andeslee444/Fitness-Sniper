@@ -497,10 +497,10 @@ for a, b in (("new_map", "live.main.p1_era_line_map"), ("live.main.p1_era_line_m
     print(f"{a} except all {b} on the {len(live_cols)} live columns: {n}")
 EOF
 ```
-Expected (measured 2026-10-13 on the overlay; Task 8 adds `p1_route_safe_codes` to `refs` if its SQL refs that seed):
+Expected (measured 2026-10-13 on the overlay, and re-run read-only by the pre-flight scan with Task 8 applied first, as plan order runs it: Task 8's alias join makes the model `ref` the seed `p1_route_safe_codes`):
 
 ```
-refs: ['p1_era_code_decisions', 'stg_budget_lines']
+refs: ['p1_era_code_decisions', 'p1_route_safe_codes', 'stg_budget_lines']
 columns: 18 decided_on at 14
 rows: 6927
 decided_on: [('2026-10-02', 6212), ('2026-10-03', 701), ('2026-10-04', 14)]

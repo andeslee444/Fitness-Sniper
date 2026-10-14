@@ -771,10 +771,10 @@ with:
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget/site && npx vitest run src/lib/__tests__/program-tier.test.ts src/lib/__tests__/copy.test.ts src/__tests__/program-header-badge.test.tsx src/__tests__/program-header-printed-code.test.tsx src/__tests__/program-header-account.test.tsx 2>&1 | tail -4
-npx tsc --noEmit -p tsconfig.json 2>&1 | grep -E 'program-header|lib/copy|lib/data|program-tier|program/\\[peBli\\]/page|printed-code' ; echo "tsc lines in edited files: done"
+npx tsc --noEmit -p tsconfig.json 2>&1 | grep -E 'program-header|lib/copy|lib/data|program-tier|program/\[peBli\]/page|printed-code' ; echo "tsc lines in edited files: done"
 ```
 
-Expected: `Test Files  5 passed (5)`, `Tests  62 passed (62)`; the `grep` prints nothing before `tsc lines in edited files: done` (`tsc` may print errors elsewhere that HEAD already has; none in these files).
+Expected: `Test Files  5 passed (5)`, `Tests  62 passed (62)`; the `grep` prints nothing before `tsc lines in edited files: done` (`tsc` may print errors elsewhere that HEAD already has; none in these files). Inside the single quotes, `\[peBli\]` is ERE for the literal `[peBli]`, so a `tsc` error in `src/app/program/[peBli]/page.tsx` does print.
 
 - [ ] **Step 12: Weigh the scope string on today's /data/ page (read-only)**
 
@@ -803,7 +803,7 @@ Expected (with Task 1's build of today's `data/site` in `site/out`): `1 2`, then
 - [ ] **Step 13: Commit**
 
 ```bash
-cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families && git add GovBudget/src/govbudget/export_site.py GovBudget/src/govbudget/program_pdf_receipts.py GovBudget/site/scripts/gates/program-skeleton.mjs GovBudget/site/src/lib/data.ts GovBudget/site/src/lib/program-tier.ts GovBudget/site/src/lib/copy.ts GovBudget/site/src/components/program-header.tsx GovBudget/site/src/app/program/[peBli]/page.tsx GovBudget/tests/test_export_route_safe_page.py GovBudget/site/src/__tests__/program-header-printed-code.test.tsx GovBudget/tests/test_export_era_line_map.py GovBudget/tests/test_program_pdf_receipts.py GovBudget/tests/jbooks/test_export_site_5f.py GovBudget/site/src/lib/__tests__/program-tier.test.ts GovBudget/site/src/lib/__tests__/copy.test.ts && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "feat(program): /program/0390DOM/ shows the printed code O&M with an O&M badge and BLI term, says why the address differs and names the restated RDT&E line; map scope names program_key; receipts accept the alias (#194)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families && git add GovBudget/src/govbudget/export_site.py GovBudget/src/govbudget/program_pdf_receipts.py GovBudget/site/scripts/gates/program-skeleton.mjs GovBudget/site/src/lib/data.ts GovBudget/site/src/lib/program-tier.ts GovBudget/site/src/lib/copy.ts GovBudget/site/src/components/program-header.tsx 'GovBudget/site/src/app/program/[peBli]/page.tsx' GovBudget/tests/test_export_route_safe_page.py GovBudget/site/src/__tests__/program-header-printed-code.test.tsx GovBudget/tests/test_export_era_line_map.py GovBudget/tests/test_program_pdf_receipts.py GovBudget/tests/jbooks/test_export_site_5f.py GovBudget/site/src/lib/__tests__/program-tier.test.ts GovBudget/site/src/lib/__tests__/copy.test.ts && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "feat(program): /program/0390DOM/ shows the printed code O&M with an O&M badge and BLI term, says why the address differs and names the restated RDT&E line; map scope names program_key; receipts accept the alias (#194)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-Expected: `15 files changed`. The page exists only after Task 22's write and export; Task 21's proof builds it on the `fu-post` snapshot and checks the header, the two links and the sitemap (4,349 → 4,350).
+Expected: `15 files changed`. The `[peBli]` pathspec is single-quoted: unquoted, zsh reads `[peBli]` as a glob class and aborts the whole line with `no matches found` (git matches the quoted pathspec literally). The page exists only after Task 22's write and export; Task 21's proof builds it on the `fu-post` snapshot and checks the header, the two links and the sitemap (4,349 → 4,350).

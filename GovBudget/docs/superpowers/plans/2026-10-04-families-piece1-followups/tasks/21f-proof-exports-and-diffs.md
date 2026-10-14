@@ -9,7 +9,7 @@
 
 **Interfaces:**
 Consumes: Task 21d's `.proofs/fu-pre`, the A worktree and `$L/shas.txt`; Task 21e's rehearsed `.proofs/fu-post`, its revert file `$L/s194-fu-post-revert.json` and fu-pre's pre-write pins `$L/pg-pins-pre-scratch.json`; Task 7's `s194_chem_demil.py --dry-run | --apply --revert-file F | --revert --revert-file F | --check` (README decision 1); Task 21a's `snapshot_pins.py` and `lake_parity.py`; Task 21c's four rule files; Task 21b's `fact_delta.py` and `years_shard_proof.py`; Task 2's `govbudget proof diff A B [--control --write-noise FILE | --noise-from FILE] [--expect RULES] [--report FILE]` (last line `proof diff: EQUAL|DIFFERENT`, or `PASS|FAIL` with `--expect`; noise file schema 2, written only for an EQUAL control); the run-dir convention `cp -c -R <snap> <run>` + `. <snap>/env.sh <run>`.
-Produces (kept for Tasks 21g–22e): `$L/s194-fu-pre-revert.json` (the fu-pre rehearsal's revert file; Task 22b Step 3 compares the live file's `before` rows with it), `parity-pg-pre-post.txt`, `pg-pins-pre-reverted.json`, `parity-abort-fu-pre.txt` (the abort path's lake half, rehearsed); the four exports' `site/` trees; `$L/noise-fu.json` (the control's reorder classes; Task 22c's release-state diff reads it); `$L/p2-diff.txt`, `p2-diff-report.json`, `p2-fact-delta.json`, `p2b-report.json`, `p1-diff.txt`, `p1-diff-report.json`, `p1-fact-delta.json` (its `citations.new_in_b` is WAVE_D, the wave's citation delta Task 22c reconciles), `p1-content.txt`.
+Produces (kept for Tasks 21g–22e): `$L/export-times.txt` (each export's start and end, for Task 21i), `$L/s194-fu-pre-revert.json` (the fu-pre rehearsal's revert file; Task 22b Step 3 compares the live file's `before` rows with it), `parity-pg-pre-post.txt`, `pg-pins-pre-reverted.json`, `parity-abort-fu-pre.txt` (the abort path's lake half, rehearsed); the four exports' `site/` trees; `$L/noise-fu.json` (the control's reorder classes; Task 22c's release-state diff reads it); `$L/p2-diff.txt`, `p2-diff-report.json`, `p2-fact-delta.json`, `p2b-report.json`, `p1-diff.txt`, `p1-diff-report.json`, `p1-fact-delta.json` (its `citations.new_in_b` is WAVE_D, the wave's citation delta Task 22c reconciles), `p1-content.txt`.
 
 Measured for this task (2026-10-13, read-only, the live export of 2026-10-04 that the snapshots copy as `site/`): 143,841 citations; `json/budget-pdf-receipts/` 256 v1 shards and `v2/` 4,096; `json/program_details/` 2,562 sidecars, none named `0390DOM`; piece 1's four exports ran 13–17 minutes each (piece-1 Task 23 timing note); the fact_delta and P2b expectations below are Task 21b's measurements, the P1 content values Task 21c's. Live Postgres (read-only): account 0390D holds 354 `budget_lines` rows (217 P-1, 137 R-1), 350 after #194's write; `budget_lines_id_seq` `last_value` 581,318.
 
@@ -36,7 +36,8 @@ The clones' DuckDB views read their parent's `parquet/` (`fu-pre` or `fu-post`);
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families-fu-a/GovBudget && source scripts/era/env.sh || exit 1
 P="${GOVBUDGET_PROOFS:?}" && L="$P/fu-logs"
-(. "$P/fu-pre/env.sh" "$P/fu-pre-A" && uv run --project . python -m govbudget export-site) > "$L/export-pre-A.log" 2>&1; echo "exit=$?"; tail -2 "$L/export-pre-A.log"
+echo "fu-pre-A start $(date +%Y-%m-%dT%H:%M:%S)" >> "$L/export-times.txt"
+(. "$P/fu-pre/env.sh" "$P/fu-pre-A" && uv run --project . python -m govbudget export-site) > "$L/export-pre-A.log" 2>&1; rc=$?; echo "fu-pre-A end $(date +%Y-%m-%dT%H:%M:%S) exit=$rc" >> "$L/export-times.txt"; echo "exit=$rc"; tail -2 "$L/export-pre-A.log"
 ```
 Expected: `exit=0`; `budget PDF receipts: <c>/<n> complete, … audit -> …/.proofs/fu-pre-A/site/json/budget_pdf_receipts_audit.json` and `export-site: <d> datasets, <N_pre> citations, … -> …/.proofs/fu-pre-A/site`. `<N_pre>` is 143,841 plus one per SAM.gov registration the hourly job stored after the 2026-10-04 export (the lake held 164 SAM entities on 2026-10-13 against 149 published; each published registration carries one derived citation).
 
@@ -45,13 +46,14 @@ Expected: `exit=0`; `budget PDF receipts: <c>/<n> complete, … audit -> …/.pr
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 P="${GOVBUDGET_PROOFS:?}" && L="$P/fu-logs"
-(. "$P/fu-pre/env.sh" "$P/fu-pre-B" && uv run --project . python -m govbudget export-site) > "$L/export-pre-B.log" 2>&1; echo "exit=$?"; tail -2 "$L/export-pre-B.log"
+echo "fu-pre-B start $(date +%Y-%m-%dT%H:%M:%S)" >> "$L/export-times.txt"
+(. "$P/fu-pre/env.sh" "$P/fu-pre-B" && uv run --project . python -m govbudget export-site) > "$L/export-pre-B.log" 2>&1; rc=$?; echo "fu-pre-B end $(date +%Y-%m-%dT%H:%M:%S) exit=$rc" >> "$L/export-times.txt"; echo "exit=$rc"; tail -2 "$L/export-pre-B.log"
 ```
 Expected: `exit=0` and the same two lines for `fu-pre-B`, with the same `<N_pre>` (P2: no fact moves). B must export the pre-write warehouse — 17-column map, no `p1_route_safe_codes` table, the 16 route-unsafe rows still in the lake (design §7 re-pairing). If it raises instead, a task of this wave made the exporter depend on the write (G5 notes, contract issue 2): stop and report.
 
 - [ ] **Step 4: Rehearse the write on fu-pre (scratch Postgres write; README decision 2)**
 
-Both fu-pre exports have run (Steps 2–3), so writing fu-pre's database now disturbs no export. The sequence is the one fu-post (Task 21e Steps 2–3) and live (Task 22b Steps 1 and 3) run: one `--dry-run`, then one `--apply` with its revert file.
+Both fu-pre exports have run (Steps 2–3), so writing fu-pre's database now disturbs no export. The sequence is the one fu-post (Task 21e Steps 2–3) and live (Task 22b Step 3, after the owner's go-ahead) run: one `--dry-run`, then one `--apply` with its revert file.
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
@@ -101,9 +103,10 @@ Expected: `GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.p
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 P="${GOVBUDGET_PROOFS:?}" && L="$P/fu-logs"
-for r in fu-post-B fu-post-B2; do (. "$P/fu-post/env.sh" "$P/$r" && uv run --project . python -m govbudget export-site) > "$L/export-$r.log" 2>&1; echo "$r exit=$?"; tail -1 "$L/export-$r.log"; done
+for r in fu-post-B fu-post-B2; do echo "$r start $(date +%Y-%m-%dT%H:%M:%S)" >> "$L/export-times.txt"; (. "$P/fu-post/env.sh" "$P/$r" && uv run --project . python -m govbudget export-site) > "$L/export-$r.log" 2>&1; rc=$?; echo "$r end $(date +%Y-%m-%dT%H:%M:%S) exit=$rc" >> "$L/export-times.txt"; echo "$r exit=$rc"; tail -1 "$L/export-$r.log"; done
+cat "$L/export-times.txt"
 ```
-Expected: `fu-post-B exit=0`, `fu-post-B2 exit=0`, each `export-site: <d> datasets, <N_post> citations, …` with the same `<N_post>`, above `<N_pre>`.
+Expected: `fu-post-B exit=0`, `fu-post-B2 exit=0`, each `export-site: <d> datasets, <N_post> citations, …` with the same `<N_post>`, above `<N_pre>`; then `export-times.txt`, one `<run> start <time>` and one `<run> end <time> exit=<rc>` line per export run (Steps 2, 3 and this one append to it; after a re-run, the proof note takes each export's last pair).
 
 - [ ] **Step 8: The control — B@fu-post against B2@fu-post**
 

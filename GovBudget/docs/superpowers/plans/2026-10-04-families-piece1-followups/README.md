@@ -59,7 +59,8 @@
 - **F-15 window (G3-C1).** From Task 20a/20c until Tasks 21g/21h re-pin, exactly four tests fail:
   - `tests/test_f15_era_identity.py::{test_golden_rebuild_from_fixtures_is_byte_identical, test_fresh_state_with_decade_era_map_receipts_keeps_every_byte, test_allowed_formula_competitor_changes_exactly_one_cell}`;
   - the vitest "committed baseline … is present, well-formed and of this schema".
-- **Gate 20 window (G1-2).** From Task 15 on, `npm run verify` fails gate 20 on a pre-split (schema 1) `years_matrix.json`. The live `data/site` holds one until Task 22c's export. Run the full verify only on Task 21h's B@fu-post build and Task 22d's release build. Site builds between Tasks 14 and 22 still work, because merge, the island and `prepare-assets.mjs` tolerate a schema-1 core.
+- **Gate 20 window (G1-2).** From Task 15 on, `npm run verify` fails gate 20 on a pre-split (schema 1) `years_matrix.json`. From Task 14 on, the same build also fails gate 13 (linkgraph) leg i (`dead client fetch target /json/years_matrix/decade.json`): Task 14's island adds the two shard fetch targets, which only a schema-2 export ships. The live `data/site` holds a schema-1 core until Task 22c's export. Run the full verify only on Task 21h's B@fu-post build and Task 22d's release build. Site builds between Tasks 14 and 22 still work, because merge, the island and `prepare-assets.mjs` tolerate a schema-1 core.
+- **Gate 5 window (Task 24 → Task 26a Step 4).** From Task 24 on, `verify-phase5b1` (its new gate 5, the printed-in check) and so `verify-phase5`, like `verify-jbook-narratives` itself, fail on the live `data/site` by design: release 1's export cites each narrative in its attached volume, not in the volume that prints it, until release 2's export (Task 26a Step 4). Task 24 Step 7's red run of `verify-jbook-narratives` is the only planned live run in the window. Until that export, run these gates only on the fu2 clones (Tasks 25b and 25c); Task 26a Step 6 and Task 26b Step 1 are their first live runs.
 - **Seed-ahead-of-warehouse window (Task 10 → Task 22b).**
   - `era-map check --strict` fails between Task 10's `propose` and its `ratify`.
   - From the ratify on, verify-era-map leg b reports `O&M|0390D||2017-2023` as a stale build.
@@ -76,7 +77,7 @@
 | 10 | None live. It commits the B7 seed row and the research files. `tmp/era-review/B7.{html,json}` is git-ignored. No dbt build. | — |
 | 21d–21h | Scratch only. Snapshots `fu-pre` and `fu-post` (databases `govbudget_proof_fu_pre`, `govbudget_proof_fu_post`) and their clones. On fu-post (Task 21e): `s194_chem_demil.py --dry-run`, then `--apply --revert-file`, `jbooks export-facts` and the single selective dbt build. On fu-pre, after its two exports (Task 21f Steps 4–5): the `--dry-run`/`--apply`/`--revert`/`--revert` rehearsal (decision 2). On `.proofs/fu-abort`, a clone of fu-post (Task 21f Step 6, removed there): abort step A2 rehearsed. | — |
 | 22a | Snapshot `fu-rel` (`govbudget_proof_fu_rel`). The copy of production's export at `.proofs/fu-release-pre-site`. | — |
-| 22b ★ | Live Postgres: `s194_chem_demil.py --dry-run`, then `--apply --revert-file "$GOVBUDGET_PROOFS/fu-release-s194-pre-image.json"`. Live lake: `jbooks export-facts`, then one `dbt build --select p1_route_safe_codes p1_era_code_decisions stg_budget_lines+`. | A1: `s194_chem_demil.py --revert --revert-file <same file>`. A2: from the A worktree (`.claude/worktrees/families-fu-a`, the deployed code), `jbooks export-facts` and `dbt build --select p1_era_code_decisions stg_budget_lines+`, then `drop table main.p1_route_safe_codes` (spec §8 abort step 2), then `lake_parity.py` against fu-pre. A3: restore `data/site` from `.proofs/fu-release-pre-site`. After a deploy: the owner first, then LAUNCH.md's rollback, then A1–A3 (Tasks 22b, 22d). |
+| 22b ★ | Step 1's `--check` is read-only. After the owner's go-ahead (Step 2), live Postgres: `s194_chem_demil.py --dry-run` (Step 3's first block; it rolls back, its only trace four spent id-sequence values), then `--apply --revert-file "$GOVBUDGET_PROOFS/fu-release-s194-pre-image.json"`. Live lake: `jbooks export-facts`, then one `dbt build --select p1_route_safe_codes p1_era_code_decisions stg_budget_lines+`. | A1: `s194_chem_demil.py --revert --revert-file <same file>`. A2: from the A worktree (`.claude/worktrees/families-fu-a`, the deployed code), `jbooks export-facts` and `dbt build --select p1_era_code_decisions stg_budget_lines+`, then `drop table main.p1_route_safe_codes` (spec §8 abort step 2), then `lake_parity.py` against fu-pre. A3: restore `data/site` from `.proofs/fu-release-pre-site`. After a deploy: the owner first, then LAUNCH.md's rollback, then A1–A3 (Tasks 22b, 22d). |
 | 22c | The release export of the live `data/site`, between :21 and :45, with the SAM mtime check, fingerprinted. | A3 |
 | 22d ★ | `deploy.sh`: R2 `pdfs`, `data`, `workbooks`, `citations`, then Vercel. The `site/public/llms.txt` commit. | LAUNCH.md rollback, owner first, then Task 22b's A1–A3 |
 | 22e ★ | The main checkout: `git merge --ff-only origin/main` and `dbt parse` (Step 8), after the publish go-ahead. The ROADMAP stamp commit. | Minute guard :25–:10; on a refused fast-forward, stop and report |
@@ -148,7 +149,7 @@
 | 2026-10-02 / earlier | Still binding: R-DEC-ERA-SAME / -HISTORY / -EXCLUDE with batches B1–B6. Publish the smaller true number (2026-08-07). The era table on /downloads/ shows counts only. `p1_era_line_map` reads "tier pending" on /data/. | piece-1 spec and README; ROADMAP |
 
 **Still needs the owner during execution (★):**
-- **Task 22b Step 2:** a go-ahead before the live Postgres write. The plan adds this one (G5-7); §8 has none here.
+- **Task 22b Step 2:** a go-ahead before the live Postgres write, and before its dry run (Step 1 runs only the read-only `--check`). The plan adds this one (G5-7); §8 has none here.
 - **Task 22d Step 5:** the deploy go-ahead. It names the moved totals (§4.7), Q15 (told 524 → 1,056 and +9.3% → about −2.5%; the measured figures from `p2b-report.json`, 1,063 and −2.61% in the 2026-10-13 simulation) and `SAM_D`.
 - **After a release-1 deploy, on any failure:** the owner decides whether to roll back; on a yes, LAUNCH.md's rollback, then Task 22b's abort path A1–A3 (Tasks 22b, 22d; spec §8).
 - **Task 22e Step 6:** the go-ahead to publish. It also tells the owner that #198 stays PARTIAL on four items and that Q23 is filed for piece 2.
@@ -455,6 +456,12 @@ Order: 1 first; 2a → 2b → 2c; 4a → 4b → 4c. Tasks 3, 4 and 5 are indepen
 - **G4-9.** The untracked eval-run file; see Commits.
 - **G4-10.** Line hints. §6.3's accurate S1b comment is at `p1_loader.py:198-201`, and the stale one at `:183-186`. §6.7's "13 call sites" are today 3 production calls and 3 test calls, of which 2 rely on the default: `tests/jbooks/test_export_lineage.py::_emit` and `tests/test_program_member_enrichment.py:140`.
 - **G4-11.** One test cluster serves many sessions; see Tests never touch the real database.
+- **G4-12. Tool-error streams (accepted as drafted; pre-flight ruling 2026-10-13).** Decision 18 fixes the exit codes, not the stream, and the three hand-written wrappers keep their own scope and stream, each pinned by its task's tests:
+  - `cmd_proof` (Task 2a) catches any exception and prints `proof <action>: ERROR — <message>` on **stderr** (it strips a message's own `proof <action>: ` prefix);
+  - `cmd_link_coverage` (Task 5) catches any exception and prints `link-coverage: ERROR — <message>` on **stderr**;
+  - `cmd_verify_era_map` (Task 9c) catches `ValueError` only and prints `verify-era-map: ERROR — <message>` on **stdout**, as its last line.
+
+  A shared `_tool_error(tool, exc)` helper is a follow-up candidate, not this wave's.
 
 **Shared state.** None live. Local writes:
 - `site/node_modules` and `site/out` (Task 1, git-ignored);
@@ -574,7 +581,7 @@ The task numbers are spec Appendix A's. A split task has lettered parts, and a d
 | 5 | [tasks/05-link-coverage-fails-closed.md](tasks/05-link-coverage-fails-closed.md) | link-coverage fails closed (#200) | G4 | 1 | |
 | 6 | [tasks/06-route-safe-seed-and-loader.md](tasks/06-route-safe-seed-and-loader.md) | Route-safe seed, loader alias and the R-1 restatement rule (#194) | G2 | 3, 4a | |
 | 7 | [tasks/07-s194-chem-demil-write-script.md](tasks/07-s194-chem-demil-write-script.md) | The Chem Demil write script `s194_chem_demil.py` (`--check` / `--dry-run` / `--apply` / `--revert`); retire `clean_junk_pe_bli.py` (#194) | G2 | 3, 6 | |
-| 8 | [tasks/08-map-alias.md](tasks/08-map-alias.md) | Map alias — `p1_era_line_map.program_key` from the route-safe seed, `era_map` load/classify alias, UNSAFE narrowed to (0390D, RDT&E) (#194) | G2 | 4a, 6 | |
+| 8 | [tasks/08-map-alias.md](tasks/08-map-alias.md) | Map alias — `p1_era_line_map.program_key` from the route-safe seed, `era_map` load/classify alias, UNSAFE narrowed to (0390D, RDT&E) (#194) | G2 | 4a, 4b, 6 | |
 | 9a | [tasks/09a-map-decided-on.md](tasks/09a-map-decided-on.md) | `decided_on` on `p1_era_line_map`, proved by verify-era-map leg b (#206 T6) | G3 | 4, 6, 8 | |
 | 9b | [tasks/09b-era-regex-and-collision-pins.md](tasks/09b-era-regex-and-collision-pins.md) | One full era-key regex at every site, both collision pins, the unplanted era legs (#203) | G3 | 9a | |
 | 9c | [tasks/09c-verify-era-map-cli-and-leg-tests.md](tasks/09c-verify-era-map-cli-and-leg-tests.md) | verify-era-map exits 2 on a bad `--legs`; leg a and leg b failure branches tested (#203) | G3 | 9b | |
@@ -620,7 +627,7 @@ The task numbers are spec Appendix A's. A split task has lettered parts, and a d
 - **Hardening.** Then 2a → 2b → 2c, 4a → 4b → 4c, and 3 and 5. Tasks 3, 4 and 5 are independent of one another.
 - **Chem Demil and the map.**
   - 6 runs after 3 and 4a, then 7.
-  - 8 runs after 4a and 6, then 9a → 9b → 9c.
+  - 8 runs after 4a, 4b and 6 (it re-pins 4b's ONE-build line and test, O-3), then 9a → 9b → 9c.
   - 10 runs after 4b, 4c, 8 and 9, then 11.
   - 12 runs after 6 and 8.
 

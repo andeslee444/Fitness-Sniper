@@ -19,8 +19,9 @@ Create `docs/superpowers/reviews/fu-release1-proof.md`, filling every `<…>` fr
 # Families piece-1 follow-ups — release-1 proof (Task 21)
 
 Spec: docs/superpowers/specs/2026-10-04-families-piece1-followups-design.md §7, §8.
-Code: A = `<A sha>` (`git merge-base main HEAD`; its src/, dbt/, data-seeds/ and scripts/ equal the
-deployed 916ae88e), B = `<B sha>` [shas.txt]. Snapshots: `.proofs/fu-pre` (scratch database
+Code: A = `<A sha>` (`git merge-base main HEAD`; its src/, dbt/, data-seeds/, scripts/ and site/ equal
+the deployed `<deployed sha>`, production's `/.build-meta.json` `git_head` when Task 21d Step 3 ran),
+B = `<B sha>` [shas.txt, lines 1–3]. Snapshots: `.proofs/fu-pre` (scratch database
 govbudget_proof_fu_pre) and `.proofs/fu-post` (govbudget_proof_fu_post), taken back to back
 <created_at fu-pre> and <created_at fu-post> [snapshot-shas.json].
 
@@ -38,7 +39,7 @@ fu-post, equals fu-pre's lake. The single selective dbt build passed (W2). The c
 P2b (/years/) and P1 (lake) pass their rule lists and their fact-level checks; the F-15 history moves
 only in F015E0's note; every Python gate, link coverage and `npm run verify` pass on B@fu-post.
 
-### Snapshots [snapshot-shas.json, pins-fu-pre-fu-post.txt, snapshot-fu-*.log]
+### Snapshots [snapshot-shas.json, pins-fu-pre-fu-post.txt, snapshot-fu-*.log, snapshot-times.txt]
 
 | | fu-pre | fu-post |
 |---|---|---|
@@ -47,17 +48,23 @@ only in F015E0's note; every Python gate, link coverage and `npm run verify` pas
 | site / raw_docs digest | <sha> / <sha> | same |
 | Postgres | 18 tables; budget_lines 159,903 rows, md5 <md5> | same |
 | dump sha256 (not a pin) | <sha> | <sha> |
-| duration | <mm:ss> | <mm:ss> |
+| duration [snapshot-times.txt] | <mm:ss> (fu-post start − fu-pre start) | <mm:ss> (fu-post end − fu-post start) |
 
 `snapshot_pins.py compare`: EQUAL. The live lake before the write [prewrite-live.txt]: 159,903
 budget_lines rows, 16 route-unsafe (PB2024 O&M 5 / RDT&E 5, PB2025 O&M 3 / RDT&E 3), no 0390DOM, a
 17-column map, no p1_route_safe_codes; `era-map check --strict` 0 undecided, 0 stale.
 
-### W1 [w1-pytest.log, w1-vitest.log, w1-ruff.txt]
+### W1 [w1-pytest.log, w1-vitest.log, w1-ruff.txt, w1-pytest-after-repin.log, site-vitest.log]
 
-pytest <passed> passed, <skipped> skipped, 0 failed; vitest <files> files / <tests> tests; pyflakes
-(`uvx --offline ruff check --isolated --select F,E9`) on the <k> touched modules: no finding beyond
-A's (cli.py <h>/<a>, export_site.py <h>/<a>).
+As run before the snapshots (Task 21d Step 6), inside the declared F-15 window: pytest <passed>
+passed, <skipped> skipped, 3 failed; vitest <files> files / <tests> tests, 1 failed. The 3 + 1 are
+exactly the window's four (the three `tests/test_f15_era_identity.py` goldens and the vitest
+"committed baseline … is present, well-formed and of this schema"), and nothing else failed
+[w1-pytest.log, w1-vitest.log]. Green after the re-pins: the full pytest suite <passed + 3> passed,
+<skipped> skipped, 0 failed after Task 21g's F-15 re-pin [w1-pytest-after-repin.log]; vitest
+<files> files / <tests> tests, 0 failed after Task 21h's page-snapshot re-pin [site-vitest.log].
+pyflakes (`uvx --offline ruff check --isolated --select F,E9`) on the <k> touched modules: no
+finding beyond A's (cli.py <h>/<a>, export_site.py <h>/<a>) [w1-ruff.txt].
 
 ### Rehearsed writes on fu-post and fu-pre [pg-pins-*.json, s194-post-*.log, s194-pre-*.log, rehearsal-0390d-apply.txt, parity-pg-pre-post.txt, parity-abort-fu-pre.txt]
 
@@ -74,10 +81,11 @@ A's (cli.py <h>/<a>, export_site.py <h>/<a>).
 | `dbt build --select p1_route_safe_codes p1_era_code_decisions stg_budget_lines+` | PASS=<n> WARN=<w> ERROR=0; map built before the program table, conservation after both [dbt-build-fu-post.log, dbt-order-fu-post.txt] |
 | rebuilt warehouse | map 18 columns, decided_on 14th; 0390D map rows: B7 same_program 0390DOM 7, RDT&E exclude_route_unsafe 7; era-map check 0/0; 0 views read the live lake [postbuild-fu-post.txt] |
 
-### Exports [export-*.log]
+### Exports [export-*.log, export-times.txt]
 
 A@fu-pre <N_pre> citations; B@fu-pre <N_pre>; B@fu-post and B2@fu-post <N_post>. Export times
-<mm> / <mm> / <mm> / <mm> minutes. dbt test nodes: A 196, B <n> [dbt-tests.txt].
+<mm> / <mm> / <mm> / <mm> minutes (each export's last start/end pair in export-times.txt). dbt
+test nodes: A 196, B <n> [dbt-tests.txt].
 
 ### Control [control-diff.txt]
 

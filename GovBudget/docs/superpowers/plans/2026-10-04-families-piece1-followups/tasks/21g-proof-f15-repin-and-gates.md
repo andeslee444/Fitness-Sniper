@@ -10,7 +10,7 @@
 
 **Interfaces:**
 Consumes: Task 20's F015E0 note (`src/govbudget/f15_funding_history.py` `PROGRAM_NOTES["F015E0"]["note"]` beginning `This exhibit [the PB2026 F-15EX AP (F015EX) P-40] does not include`) and its hardened `scripts/era/capture_f15_fixtures.py --site-dir --duckdb --out-dir --expect-sha256` (refuses unless the shipped history's sha256 equals `--expect-sha256`; writes `history.json`, `history.sha256`, `builder_inputs.json.gz` atomically after its checks); `govbudget.f15_funding_history` `_json_bytes`, `build_history`, `build_program_matrix` (as `tests/test_f15_era_identity.py` uses them); Task 11's `verify-era-map` legs a–h; `verify-phase5e`, `verify-lineage`, `verify-phase5b1`; Task 5's `govbudget link-coverage --site-dir DIR --baseline FILE` against `data/research/link_coverage/baseline.json`; Task 21f's exports.
-Produces: the re-pinned F-15 fixtures (the pin Task 22c's release-state check and `verify-era-map` leg f read); logs `$L/p3-hermetic.txt`, `p3-capture.json`, `gate-*.log`, `link-coverage-fu-post-B.txt`.
+Produces: the re-pinned F-15 fixtures (the pin Task 22c's release-state check and `verify-era-map` leg f read); logs `$L/p3-hermetic.txt`, `p3-capture.json`, `gate-*.log`, `link-coverage-fu-post-B.txt`, `w1-pytest-after-repin.log` (Step 7, the green W1 Task 21i cites).
 
 Measured for this task (2026-10-13, read-only): `tests/fixtures/f15/history.sha256` is `c59ccf4f06c73db7fb47b0c505c178fc3e530c9993cf5ef95c311e66eeb2f2ee`, equal to the live export's `json/f15_funding_history.json`; in the pinned history, program `P-1:3010F:AF:F015E0` carries `note` "This exhibit does not include the eight aircraft in Lot 1 which were funded outside this exhibit in FY 2020 (two test aircraft …)" and `note_fact_id` `e7d5bcfb4a30f458`; the golden test rebuilds the history as `build_program_matrix(build_history(source_rows, series, retrieved_at, current_fact_ids)[0], previews, existing_citations=registry, retrieved_at)` over `builder_inputs.json.gz`, and the release export of 2026-10-04 reproduced the pin byte for byte although its `built_at` differed from the fixture's `retrieved_at` (the history bytes do not embed the export's run time).
 
@@ -119,3 +119,15 @@ Expected: `exit=0`; the summary line (budget figures 100.00% source-linked; the 
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families && git add GovBudget/tests/fixtures/f15/history.json GovBudget/tests/fixtures/f15/history.sha256 GovBudget/tests/fixtures/f15/builder_inputs.json.gz GovBudget/tests/fixtures/f15/README.md && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "test(f15): re-pin the F-15 history after the F015E0 gloss (#206 T9, Q17) from the follow-ups proof export B@fu-post" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 Expected: the commit, `4 files changed` (the three fixtures and the README).
+
+- [ ] **Step 7: The full pytest suite after the re-pin (W1, green)**
+
+Task 21d Step 6's W1 ran inside the F-15 window (3 failed by design). The re-pin closes the Python half of it, so the whole suite runs once more on the committed re-pin, on the throwaway cluster; Task 21i cites this log for the green W1:
+
+```bash
+cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
+L="${GOVBUDGET_PROOFS:?}/fu-logs"
+"$GOVBUDGET_PG_BIN/pg_isready" -h 127.0.0.1 -p 55432
+GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest -q > "$L/w1-pytest-after-repin.log" 2>&1; echo "pytest exit=$?"; tail -1 "$L/w1-pytest-after-repin.log"; grep -cE '^(FAILED|ERROR) ' "$L/w1-pytest-after-repin.log"; tail -1 "$L/w1-pytest.log"
+```
+Expected: `127.0.0.1:55432 - accepting connections`; `pytest exit=0` and a last line `<n + 3> passed, <s> skipped …` with no `failed` or `error`; `0`; then W1's line from Task 21d Step 6 (`3 failed, <n> passed, <s> skipped …`) for comparison: the same suite, the three goldens now passing. A failure here is a finding on the proof's code: stop and fix it in the task that owns it before Task 21h.

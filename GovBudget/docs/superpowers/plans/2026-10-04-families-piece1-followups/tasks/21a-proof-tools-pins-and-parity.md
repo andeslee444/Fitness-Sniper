@@ -679,7 +679,7 @@ MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM
 L="${GOVBUDGET_PROOFS:?}/fu-logs" && mkdir -p "$L/liveroot-twin" && ln -sfn "$GOVBUDGET_DATA/duckdb" "$L/liveroot-twin/duckdb" && ln -sfn "$GOVBUDGET_DATA/parquet" "$L/liveroot-twin/parquet"
 uv run --project . python scripts/fu/lake_parity.py --a "$GOVBUDGET_DATA" --b "$L/liveroot-twin" --relation stg_budget_lines --relation fct_budget_lines --relation fct_decade_series --relation fct_book_diff --relation p1_era_code_decisions --relation p1_era_line_map --relation fct_program_decade_series --relation fct_budget_trajectory --parquet jbooks/budget_lines.parquet --work "$L/parity-smoke" > "$L/parity-smoke.txt" 2>&1; echo "exit=$?"; cat "$L/parity-smoke.txt"; rm -rf "${L:?}/parity-smoke" "${L:?}/liveroot-twin"
 ```
-Expected: `exit=0`, nine lines ending `— equal`, with the row counts measured above (159,903 / 159,903 / 59,179 / 18,412 / 1,253 / 6,927 / 57,886 / 1,988 / 159,903, unless an earlier task of this wave legitimately moved one — none of Tasks 1–20 writes the live lake), and `lake-parity: EQUAL`. Keep `parity-smoke.txt`: Task 22b compares the post-write counts with it.
+Expected: `exit=0`, nine lines ending `— equal`, with the row counts measured above (159,903 / 159,903 / 59,179 / 18,412 / 1,253 / 6,927 / 57,886 / 1,988 / 159,903, unless an earlier task of this wave legitimately moved one — none of Tasks 1–20 writes the live lake), and `lake-parity: EQUAL`. Keep `parity-smoke.txt`: Task 22b Step 6 compares the live post-write counts with its column A (`stg_budget_lines`, `fct_budget_lines` and the jbooks parquet −4; the era seed and map unchanged).
 
 - [ ] **Step 8: Commit**
 

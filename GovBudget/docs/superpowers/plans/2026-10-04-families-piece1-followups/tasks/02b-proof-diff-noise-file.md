@@ -7,7 +7,7 @@
 **Files:**
 - Modify: `src/govbudget/proof.py` — new helpers after `_numeric_text` (anchor on `    return value if math.isfinite(value) else None`); `_leaf_equiv`, `_group_cell` and `_text_order` (their `json.loads` of a string leaf); `NOISE_FILE_SCHEMA`, `_classes_sha256`, `noise_file`, `write_noise_file`, `load_noise_classes` (about lines 1215–1305)
 - Modify: `src/govbudget/cli.py` — the `--noise-from` and `--write-noise` help strings of `proof diff` (anchor on `prf_reorder.add_argument("--noise-from"`)
-- Test: `tests/test_proof.py` — `test_load_noise_classes_validates_shape` (about line 853), `test_noise_file_records_verdict_trees_and_a_content_hash` (about line 1182), `test_noise_from_refuses_classes_that_are_not_fid_generalised` (about line 1389), and a new section appended at the end
+- Test: `tests/test_proof.py` — `test_load_noise_classes_validates_shape` (about line 853), `test_noise_file_records_verdict_trees_and_a_content_hash` (about line 1182), `test_noise_from_refuses_classes_that_are_not_fid_generalised` (about line 1389), the `classes_sha256` case of `test_noise_from_refuses_a_file_without_an_equal_verdict`'s parameters (about line 1223), and a new section appended at the end
 - Test: `tests/test_era_fact_stability.py` — `test_cli_reads_a_noise_file` (about line 166), which hand-builds a noise file
 
 **Interfaces:**
@@ -15,13 +15,13 @@ Consumes: Task 2a's `proof.py` and `cmd_proof`.
 Produces (Task 21's controls and judged diffs, Task 2c's `fact_stability.py`):
 - `proof.NOISE_FILE_SCHEMA == 2`. A noise file holds `schema_version`, `verdict`, `a`, `b`, `a_tree_sha256`, `b_tree_sha256` (each `proof._tree_digest(<tree>)["sha256"]`), `pointer_generalisation`, `classes_sha256`, `classes`.
 - `proof._classes_sha256(classes: list, pointer_generalisation: str | None) -> str` = sha256 of `_canon({"classes": classes, "pointer_generalisation": pointer_generalisation})`.
-- `proof.load_noise_classes(path)` refuses any `schema_version` but 2 (`… is noise-file schema 1, not 2 …`); every pre-wave `.proofs` noise file is therefore refused, and Task 21 writes fresh ones.
+- `proof.load_noise_classes(path)` refuses any `schema_version` but 2 (`… is noise-file schema 1, not 2 …`). The schema check runs before the `classes_sha256` check, so a genuine piece-1 file (schema 1, its hash over the classes alone) is refused with the schema message, never as an edited file (pre-flight ruling, 2026-10-13); every pre-wave `.proofs` noise file is therefore refused, and Task 21 writes fresh ones.
 - `proof.write_noise_file(path, report)`: when `noise_file` refuses, an existing file at `path` is deleted and the `ValueError` says `the older <path> was removed`.
 - A JSON-in-string leaf whose numbers overflow a double keeps them as text: `"[1e400]"` vs `"[1e500]"` is `changed`.
 
 Measured for this task (2026-10-13): `tests/test_proof.py` 152 passed after Task 2a; `tests/test_era_fact_stability.py` 17 passed. `json.loads("[1e400]") == json.loads("[1e500]")` is `True` in Python 3.12 (both `[inf]`), which is why the two strings compare as identical JSON-in-string today. The live `.proofs` holds no noise file (only `testpg/` and `testpg.log`), so the schema bump strands nothing in use.
 
-- [ ] **Step 1: Write the failing tests and update the four that build or read a noise file by hand**
+- [ ] **Step 1: Write the failing tests and update the five that build or read a noise file by hand**
 
 In `tests/test_proof.py`, replace:
 
@@ -88,6 +88,20 @@ with:
     edit(doc)
     doc["classes_sha256"] = proof._classes_sha256(doc["classes"], doc.get("pointer_generalisation"))
     noise.write_text(json.dumps(doc))
+```
+
+In `tests/test_proof.py` (`test_noise_from_refuses_a_file_without_an_equal_verdict`'s "edited after the control" case, which hand-builds a file with no `schema_version`: the schema check now runs before the hash check, so the case needs a schema-2 header to keep testing the hash), replace:
+
+```python
+    ({"verdict": "EQUAL", "a": "A", "b": "B", "classes": _ROWS_CLASS,
+      "classes_sha256": "0" * 64}, "classes_sha256"),          # edited after the control
+```
+
+with:
+
+```python
+    ({"schema_version": 2, "verdict": "EQUAL", "a": "A", "b": "B", "classes": _ROWS_CLASS,
+      "classes_sha256": "0" * 64}, "classes_sha256"),          # edited after the control
 ```
 
 In `tests/test_era_fact_stability.py`, replace:
@@ -166,6 +180,25 @@ def test_a_schema_1_noise_file_is_refused(tmp_path, capsys):
         proof.load_noise_classes(noise)
 
 
+def test_a_genuine_piece_1_noise_file_is_refused_for_its_schema(tmp_path, capsys):
+    # A piece-1 (schema 1) file has no tree digests and hashes the classes
+    # alone. The schema check runs before the hash check, so it is refused
+    # for its schema, not reported as edited after its control run.
+    noise = _control_noise_file(tmp_path, {FID_1: _derived(["a", "b"])},
+                                {FID_1: _derived(["b", "a"])})
+    capsys.readouterr()
+    doc = json.loads(noise.read_text())
+    doc["schema_version"] = 1
+    doc.pop("a_tree_sha256", None)
+    doc.pop("b_tree_sha256", None)
+    doc["classes_sha256"] = hashlib.sha256(
+        json.dumps(doc["classes"], sort_keys=True, ensure_ascii=False,
+                   separators=(",", ":")).encode("utf-8")).hexdigest()
+    noise.write_text(json.dumps(doc))
+    with pytest.raises(ValueError, match="noise-file schema 1, not 2"):
+        proof.load_noise_classes(noise)
+
+
 def test_noise_from_help_names_the_fid_rule(capsys):
     with pytest.raises(SystemExit) as exc:
         cli.main(["proof", "diff", "--help"])
@@ -180,7 +213,7 @@ def test_noise_from_help_names_the_fid_rule(capsys):
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh && GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . pytest tests/test_proof.py tests/test_era_fact_stability.py -q 2>&1 | tail -3
 ```
 
-Expected: `11 failed, 163 passed` (157 + 17 = 174 tests). The failures: the 5 new tests (`'equivalent' == 'changed'`; the old file still exists; `schema_version` is 1 twice; the help text lacks `{fid}`), and the 6 updated callers of `_classes_sha256` or the noise-file layout — `test_load_noise_classes_validates_shape`, `test_noise_file_records_verdict_trees_and_a_content_hash`, the 3 `test_noise_from_refuses_classes_that_are_not_fid_generalised` cases and `test_cli_reads_a_noise_file` (`TypeError: _classes_sha256() takes 1 positional argument but 2 were given`, or the layout assertion).
+Expected: `12 failed, 163 passed` (158 + 17 = 175 tests). The failures: the 6 new tests (`'equivalent' == 'changed'`; the old file still exists; `assert 1 == 2` on `schema_version`; `DID NOT RAISE` twice, for the relabelled and for the genuine schema-1 file, because HEAD checks no schema; the help text lacks `{fid}`), and the 6 updated callers of `_classes_sha256` or the noise-file layout — `test_load_noise_classes_validates_shape`, `test_noise_file_records_verdict_trees_and_a_content_hash`, the 3 `test_noise_from_refuses_classes_that_are_not_fid_generalised` cases and `test_cli_reads_a_noise_file` (`TypeError: _classes_sha256() takes 1 positional argument but 2 were given`, or the layout assertion).
 
 - [ ] **Step 3: Keep non-finite JSON-in-string numbers as text**
 
@@ -379,15 +412,17 @@ In `load_noise_classes`, replace:
 with:
 
 ```python
-    if data.get("classes_sha256") != _classes_sha256(classes, data.get("pointer_generalisation")):
-        raise ValueError(f"proof diff --noise-from: {path}'s classes do not match its"
-                         f" classes_sha256 — edited after the control run?")
+    # The schema first: a schema-1 file hashes the classes alone, so the hash
+    # check below would misreport it as edited after its control run.
     if data.get("schema_version") != NOISE_FILE_SCHEMA:
         raise ValueError(
             f"proof diff --noise-from: {path} is noise-file schema"
             f" {data.get('schema_version')!r}, not {NOISE_FILE_SCHEMA} — written before"
             f" the ROADMAP #199 hardening; re-run the --control"
         )
+    if data.get("classes_sha256") != _classes_sha256(classes, data.get("pointer_generalisation")):
+        raise ValueError(f"proof diff --noise-from: {path}'s classes do not match its"
+                         f" classes_sha256 — edited after the control run?")
     if data.get("pointer_generalisation") != NOISE_POINTER_GENERALISATION:
 ```
 
@@ -446,7 +481,7 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 uvx --offline ruff check --isolated --select F,E9 src/govbudget/proof.py | tail -1
 ```
 
-Expected: `181 passed` (157 + 17 + 7); `All checks passed!`.
+Expected: `182 passed` (158 + 17 + 7); `All checks passed!`.
 
 - [ ] **Step 7: Commit**
 

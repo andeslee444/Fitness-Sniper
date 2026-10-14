@@ -303,7 +303,7 @@ Expected: `main`, a fast-forward to the pushed sha, only ` M CLAUDE.md`, then `d
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families && git fetch govbudget && git subtree split --prefix=GovBudget -b publish-fu1 && SPLIT=$(git rev-parse publish-fu1) && echo "SPLIT=${SPLIT}" && (git merge-base --is-ancestor govbudget/main "${SPLIT}" && echo "fast-forward" || echo "needs merge")
 ```
-Expected: the split sha and `needs merge` (`govbudget/main` `40b1cb4a` is a merge commit the monorepo lacks). On `fast-forward`, skip Step 10 and park the split itself: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families && git branch publish-fu1-merge publish-fu1`.
+Expected: the split sha and `needs merge` (`govbudget/main` `40b1cb4a` is a merge commit the monorepo lacks). On `fast-forward`, skip Step 10 and park the split itself: `cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families && git branch publish-fu1-merge publish-fu1`. If the split stops with `fatal: branch 'publish-fu1' is not an ancestor of commit …`, a previous attempt left a stale `publish-fu1`: inspect it (`git log -1 publish-fu1`), `git branch -D publish-fu1`, and re-run this block. (A leftover that is an ancestor of the new split is moved forward in place: `Updated branch 'publish-fu1'`, which is fine.)
 
 - [ ] **Step 10: Confirm fiscalreceipts holds nothing the monorepo lacks, then merge**
 

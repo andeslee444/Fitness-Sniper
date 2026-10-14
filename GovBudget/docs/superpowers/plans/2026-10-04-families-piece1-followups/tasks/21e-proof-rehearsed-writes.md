@@ -39,7 +39,7 @@ uv run --project . python scripts/era/s194_chem_demil.py --check --dsn "$POST_DS
 uv run --project . python scripts/era/s194_chem_demil.py --dry-run --dsn "$POST_DSN" > "$L/s194-post-dryrun.log" 2>&1; echo "dry-run exit=$?"; tail -2 "$L/s194-post-dryrun.log"
 uv run --project . python scripts/fu/snapshot_pins.py pg --dsn "$POST_DSN" --out "$L/pg-pins-post-dryrun.json" && uv run --project . python scripts/fu/snapshot_pins.py pg-compare "$L/pg-pins-post-0.json" "$L/pg-pins-post-dryrun.json"
 ```
-Expected: `check exit=0`, `check: CLEAN, the only differences are #194's (re-key 8, insert 4, delete 8)`; `dry-run exit=0`, `apply: re-keyed 8, deleted 8, inserted 4; untouched rows 159887 (digest equal); route-unsafe pe_bli left 0` and `apply: dry run, every check passed: ROLLED BACK`; `pg-pins: EQUAL` (the dry run left nothing but four spent sequence values, which no pin reads). The dry run is part of the rehearsed sequence: Task 21f Step 4 on fu-pre and Task 22b Step 1 on live each run one before their `--apply`, so the three inserts draw the same ids.
+Expected: `check exit=0`, `check: CLEAN, the only differences are #194's (re-key 8, insert 4, delete 8)`; `dry-run exit=0`, `apply: re-keyed 8, deleted 8, inserted 4; untouched rows 159887 (digest equal); route-unsafe pe_bli left 0` and `apply: dry run, every check passed: ROLLED BACK`; `pg-pins: EQUAL` (the dry run left nothing but four spent sequence values, which no pin reads). The dry run is part of the rehearsed sequence: Task 21f Step 4 on fu-pre and Task 22b Step 3 on live (after the owner's go-ahead) each run one before their `--apply`, so the three inserts draw the same ids.
 
 - [ ] **Step 3: Apply on fu-post (scratch Postgres write), keeping the revert file**
 
