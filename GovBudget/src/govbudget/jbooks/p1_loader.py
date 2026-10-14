@@ -100,6 +100,15 @@ class EraKeyConflict(ValueError):
     would silently merge them, so the parse refuses."""
 
 
+class P1KeyConflict(ValueError):
+    """Two parsed groups that differ only in a title (account title, budget
+    activity title or line title) share one budget_lines upsert key
+    (exhibit, fiscal_year, account, organization, budget_activity, pe_bli,
+    amount_type; exhibit and fiscal year are fixed per parse). Both would
+    upsert into one row and the last write would win, so the parse refuses
+    (ROADMAP #202)."""
+
+
 def _slug(header: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", header.lower()).strip("_")
 
@@ -140,7 +149,8 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
     activity, BLI) grain.
 
     Raises EraKeyConflict when an era key prints more than one code, title
-    or budget activity across its Add rows.
+    or budget activity across its Add rows, and P1KeyConflict when two
+    groups would upsert into one budget_lines row (ROADMAP #202).
     """
     wb = load_workbook(xlsx_path, read_only=True, data_only=True)
     sheet = wb[f"Exhibit {exhibit}"] if f"Exhibit {exhibit}" in wb.sheetnames else wb[wb.sheetnames[0]]
@@ -180,10 +190,14 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
     # PB2017–PB2023 P-1R workbooks have no Add/Non-Add column: nothing to filter.
     add_col = next((j for j, h in headers.items() if h == "Add/Non-Add"), None)
 
-    # key matches the DB unique constraint grain:
-    # (account, account_title, organization, ba, ba_title, bli, title)
-    # line_number is intentionally excluded so all cost-type sub-rows for the same
-    # BLI aggregate into a single bucket before insert (avoiding last-write-wins collision).
+    # Grouping key: (account, account_title, organization, ba, ba_title, bli,
+    # title). It is NOT the DB upsert key, which holds no title: (exhibit,
+    # fiscal_year, account, organization, budget_activity, pe_bli,
+    # amount_type). The P1KeyConflict tripwire after the loop refuses two
+    # groups that would upsert into one row (ROADMAP #202). line_number is
+    # intentionally excluded so all cost-type sub-rows for the same BLI
+    # aggregate into a single bucket before insert (avoiding last-write-wins
+    # collision).
     sums: dict[tuple, dict[str, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
     cells: dict[tuple, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
     codes: dict[tuple, str | None] = {}
@@ -262,6 +276,32 @@ def parse_p1_rollup(xlsx_path: Path, *, exhibit: str, fiscal_year: int) -> P1Par
         raise EraKeyConflict(
             f"{xlsx_path.name} ({exhibit} PB{fiscal_year}): {len(conflicts)} era"
             f" key(s) print more than one (code, title, budget activity): {detail}"
+        )
+
+    # ROADMAP #202: the grouping key holds three titles the upsert key does
+    # not, so two groups can share one upsert key and the last write would
+    # win. 0 cases in the 20 P-1/P-1R workbooks (measured 2026-10-13); the
+    # key WITHOUT amount_type has one (PB2026 3022F/F/03/SFV000, two titles
+    # on disjoint amount columns, nothing lost), so amount_type belongs in it.
+    upsert_owner: dict[tuple, tuple] = {}
+    key_clashes: dict[tuple, set[tuple]] = defaultdict(set)
+    for key, amounts in sums.items():
+        account, _a_title, organization, ba, _ba_title, pe_bli, _title = key
+        for amount_type in amounts:
+            upsert = (account, organization, ba, pe_bli, amount_type)
+            first = upsert_owner.setdefault(upsert, key)
+            if first != key:
+                key_clashes[upsert] |= {first, key}
+    if key_clashes:
+        detail = "; ".join(
+            f"{'/'.join('' if p is None else str(p) for p in upsert)}: titles"
+            f" {sorted({(g[1], g[4], g[6]) for g in groups}, key=repr)}"
+            for upsert, groups in sorted(key_clashes.items(), key=lambda kv: repr(kv[0]))[:5]
+        )
+        raise P1KeyConflict(
+            f"{xlsx_path.name} ({exhibit} PB{fiscal_year}): {len(key_clashes)} upsert"
+            " key(s) (account, organization, budget activity, pe_bli, amount_type) hold"
+            f" more than one (account title, budget activity title, title): {detail}"
         )
 
     if skipped_invalid:

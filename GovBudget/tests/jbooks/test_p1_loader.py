@@ -3,7 +3,9 @@ from decimal import Decimal
 import psycopg
 from openpyxl import Workbook
 
-from govbudget.jbooks.p1_loader import load_p1_rollup
+import pytest
+
+from govbudget.jbooks.p1_loader import P1KeyConflict, load_p1_rollup, parse_p1_rollup
 
 P1_HEADERS = [
     "Account", "Account Title", "Organization", "Budget Activity",
@@ -399,3 +401,58 @@ def test_p1r_loader_era_without_add_non_add_column(pg_dsn, tmp_path, doc_id):
             " where exhibit='P-1R' and pe_bli='23'"
         ).fetchone()
     assert row == ("fy_2018", Decimal("21000"))
+
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP #202 (follow-ups spec 2026-10-04 §6.3): the upsert-key tripwire and
+# a real modern P-1 shape
+# ---------------------------------------------------------------------------
+
+def _sfv_row(title, fy24, fy25, fy26):
+    """The live PB2026 Space Force shape (3022F / F / 03 / SFV000)."""
+    return ["3022F", "Procurement, Space Force", "F", "03", "Ground Vehicular Equipment",
+            "12", "1", "Ground", "SFV000", title, "A", "Weapon System Cost", "Add",
+            "", fy24, "", fy25, "", fy26, "U"]
+
+
+def _modern_xlsx(tmp_path, rows):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Exhibit P-1"
+    ws.append(P1_HEADERS)
+    for r in rows:
+        ws.append(r)
+    p = tmp_path / "p1_display.xlsx"
+    wb.save(p)
+    return p
+
+
+def test_modern_p1_rows_carry_their_budget_line_item_as_code(tmp_path):
+    """A modern P-1 (Budget Line Item + Add/Non-Add) keeps the printed BLI as
+    line_item_code; only era P-1 workbooks key rows by line number."""
+    parsed = parse_p1_rollup(make_p1_xlsx(tmp_path), exhibit="P-1", fiscal_year=2026)
+    assert parsed.era_line_keying is False
+    assert len(parsed.rows) == 3
+    assert {(r.pe_bli, r.line_item_code) for r in parsed.rows} == {("7001SA1000", "7001SA1000")}
+
+
+def test_two_titles_on_one_upsert_key_raise(tmp_path):
+    rows = [_sfv_row("USSF Vehicles", 100, "", ""),
+            _sfv_row("USSF Replacement Vehicles", 7, "", "")]
+    with pytest.raises(P1KeyConflict, match=r"1 upsert key\(s\).*3022F/F/03/SFV000/fy_2024_actuals"):
+        parse_p1_rollup(_modern_xlsx(tmp_path, rows), exhibit="P-1", fiscal_year=2026)
+
+
+def test_two_titles_on_disjoint_amount_columns_load_both(tmp_path):
+    # The live PB2026 case: one title per amount column, so no upsert key is
+    # written twice and nothing is lost. The four-part key without
+    # amount_type would wrongly refuse this workbook.
+    rows = [_sfv_row("USSF Vehicles", 100, 90, ""),
+            _sfv_row("USSF Replacement Vehicles", "", "", 80)]
+    parsed = parse_p1_rollup(_modern_xlsx(tmp_path, rows), exhibit="P-1", fiscal_year=2026)
+    assert sorted((r.title, r.amount_type, r.amount_thousands) for r in parsed.rows) == [
+        ("USSF Replacement Vehicles", "fy_2026_disc_request", Decimal("80")),
+        ("USSF Vehicles", "fy_2024_actuals", Decimal("100")),
+        ("USSF Vehicles", "fy_2025_enacted", Decimal("90")),
+    ]

@@ -17,6 +17,7 @@ from openpyxl import Workbook
 
 from govbudget.jbooks.p1_loader import (
     EraKeyConflict,
+    P1KeyConflict,
     P1Parse,
     P1Row,
     load_p1_rollup,
@@ -242,3 +243,16 @@ def test_update_branch_sets_line_item_code_on_an_existing_row(pg_dsn, tmp_path, 
             "select distinct line_item_code from budget_lines").fetchall()
     assert ids_after == ids_before  # updated in place, nothing inserted
     assert codes == [("0577",)]
+
+
+
+def test_two_classified_titles_in_one_account_and_budget_activity_raise(tmp_path):
+    """ROADMAP #202: two Classified Programs rows with different titles in
+    one (account, budget activity) share the upsert key (organization '',
+    code 9999999999); the S1 script caught it, `jbooks load-rollups` kept
+    the last. The parse now refuses."""
+    other = _row(OPAF, "", "04", "Other Base Maintenance and Support Equip", "",
+                 "9999999999", "Classified Programs (Space)", "", "Add", 5, 6)
+    with pytest.raises(P1KeyConflict, match=r"3080F//04/9999999999/fy_2019_base_oco"):
+        parse_p1_rollup(make_era_xlsx(tmp_path, [CLASSIFIED, other]),
+                        exhibit="P-1", fiscal_year=2021)
