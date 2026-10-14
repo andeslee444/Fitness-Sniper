@@ -96,7 +96,18 @@ DOCS = [
 ]
 
 
-def _lake(lake=None, seed=None, docs=None) -> duckdb.DuckDBPyConnection:
+def _route_safe_seed() -> tuple[tuple[str, ...], list[dict]]:
+    """(columns, rows) of the committed dbt/seeds/p1_route_safe_codes.csv (#194).
+    Imported here, not at the top, so Task 9's import edits stay untouched."""
+    import csv
+
+    from govbudget.jbooks.route_safe_codes import SEED_COLUMNS, default_seed_path
+
+    with open(default_seed_path(), newline="", encoding="utf-8") as fh:
+        return SEED_COLUMNS, list(csv.DictReader(fh))
+
+
+def _lake(lake=None, seed=None, docs=None, route_safe=None) -> duckdb.DuckDBPyConnection:
     con = duckdb.connect()
     con.execute(
         "create table stg_budget_lines (exhibit varchar, fiscal_year integer,"
@@ -132,6 +143,12 @@ def _lake(lake=None, seed=None, docs=None) -> duckdb.DuckDBPyConnection:
             f"insert into p1_era_code_decisions values ({', '.join('?' * len(SEED_COLUMNS))})",
             [row[c] for c in SEED_COLUMNS],
         )
+    cols, committed = _route_safe_seed()
+    con.execute("create table p1_route_safe_codes ("
+                + ", ".join(f"{c} varchar" for c in cols) + ")")
+    for row in (committed if route_safe is None else route_safe):
+        con.execute(f"insert into p1_route_safe_codes values ({', '.join('?' * len(cols))})",
+                    [row[c] for c in cols])
     con.execute("create table p1_era_line_map as " + render_dbt_sql(MODEL))
     return con
 
@@ -206,6 +223,40 @@ def test_an_edition_outside_the_range_is_not_covered():
     m = _map(_lake(seed=seed))
     assert m[(2019, "3010F-AF-L25")]["keys_sha_ok"] is True
     assert m[(2020, "3010F-AF-L25")]["decision"] == "undecided"
+
+
+# #194: 0390D's era O&M chain (owner batch B7) prints 'O&M', which a web
+# address cannot carry; its program key is the seeded page key 0390DOM.
+OM_KEY = (2019, "0390D-ARMY-L1", "01", "Chem Demilitarization - O&M")
+OM_LAKE = [("P-1", 2019, "0390D", "ARMY", "01", "0390D-ARMY-L1",
+            "Chem Demilitarization - O&M", "fy_2017_actuals", 119985.0, "271", "O&M", "O1156")]
+
+
+def _om_seed(decision="same_program"):
+    return _seed() + [_seed_row(
+        decision_id="O&M|0390D||2019-2019", line_item_code="O&M", account="0390D",
+        first_edition="2019", last_edition="2019", decision=decision, n_keys="1",
+        keys_sha256=keys_sha256([OM_KEY]), ruling="R-DEC-ERA-B7")]
+
+
+def test_an_aliased_code_takes_its_route_safe_page_key():
+    m = _map(_lake(lake=LAKE + OM_LAKE, seed=_om_seed()))
+    om = m[(2019, "0390D-ARMY-L1")]
+    assert (om["line_item_code"], om["program_key"], om["decision"], om["keys_sha_ok"]) == (
+        "O&M", "0390DOM", "same_program", True)
+    # every other code keeps its printed code as program_key
+    assert m[(2019, "3010F-AF-L25")]["program_key"] == "F01500"
+
+
+def test_without_the_seed_row_the_printed_code_would_be_the_key():
+    om = _map(_lake(lake=LAKE + OM_LAKE, seed=_om_seed(), route_safe=[]))[(2019, "0390D-ARMY-L1")]
+    assert om["program_key"] == "O&M"
+
+
+def test_an_excluded_aliased_code_carries_no_program_key():
+    om = _map(_lake(lake=LAKE + OM_LAKE, seed=_om_seed("exclude_route_unsafe")))[
+        (2019, "0390D-ARMY-L1")]
+    assert om["program_key"] is None
 
 
 def test_exclusions_carry_no_program_key():

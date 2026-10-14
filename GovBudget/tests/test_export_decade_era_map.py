@@ -618,3 +618,40 @@ def test_pin_on_the_unused_axis_is_ignored(tmp_path):
     assert pages["1506N"] != pages["1611N"]
     assert side[z1506] == ("PB2019 FY2017 actuals", pages["1506N"])
     assert side[z1611] == ("PB2019 FY2017 actuals", pages["1611N"])
+
+
+# ---------------------------------------------------------------------------
+# #194 (families piece-1 follow-ups design §4.5): an era chain whose printed
+# code a web address cannot carry joins the page of its route-safe key
+# (dbt/seeds/p1_route_safe_codes.csv: 0390D 'O&M' -> 0390DOM, owner batch B7).
+# ---------------------------------------------------------------------------
+
+OM_LAKE = [("P-1", "2019", "0390D", "Chemical Agents and Munitions Destruction, Defense",
+            "ARMY", "01", "Operation and maintenance", "0390D-ARMY-L1",
+            "Chem Demilitarization - O&M", "fy_2017_actuals", "119985", "7",
+            "Exhibit P-1", "O1156")]
+OM_MAP = [(2019, "0390D", "ARMY", "01", "0390D-ARMY-L1", "O&M", "0390DOM", None, None,
+           "same_program")]
+OM_ACT = wb("ARMY", "01", "0390D-ARMY-L1", "fy_2017_actuals", account="0390D")
+OM_GRAIN = ("0390DOM", 2017, 2019, "actuals", 119985.0, "fy_2017_actuals", None, None,
+            1, OM_ACT, "era_line_map")
+
+
+def test_an_aliased_era_chain_publishes_its_page_key(tmp_path):
+    db = _make_warehouse(tmp_path, grains=NATIVE_GRAINS + ERA_GRAINS + [OM_GRAIN],
+                         extra_lake=OM_LAKE, extra_map=OM_MAP)
+    bl_rows, cit_rows, grains, _side, era_fids = _build(db, scope=SCOPE | {"0390DOM"})
+    cit = {r[0]: r for r in cit_rows}
+    bl = {r[0]: r for r in bl_rows}
+    assert cit[OM_ACT][24] == "0390DOM"           # the citation names the page key
+    assert bl[OM_ACT][8] == "0390D-ARMY-L1"       # the lake identity stays the era key
+    assert OM_ACT in era_fids
+    assert ("0390DOM", 2017, 2019) in {(g[0], g[1], g[2]) for g in grains}
+
+
+def test_a_program_key_that_is_neither_the_code_nor_its_page_key_raises(tmp_path):
+    bad = [(2019, "0390D", "ARMY", "01", "0390D-ARMY-L1", "O&M", "0390DOMX", None, None,
+            "same_program")]
+    db = _make_warehouse(tmp_path, extra_lake=OM_LAKE, extra_map=bad)
+    with pytest.raises(ValueError, match="names program_key '0390DOMX'.*here '0390DOM'"):
+        _build(db)

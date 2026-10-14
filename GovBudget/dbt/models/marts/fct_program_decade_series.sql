@@ -7,9 +7,12 @@
 -- Among the rows pages read — map_basis 'native' and 'era_line_map' — the
 -- five columns without map_basis are unique: exactly fct_decade_series'
 -- uniqueness key with pe_bli renamed program_key
--- (assert_program_decade_grain_unique.sql). program_key is ALWAYS the bare
--- printed code; account/organization are non-NULL only for the 13 PB2026
--- collision codes, exactly as in fct_decade_series. No suffixed key exists.
+-- (assert_program_decade_grain_unique.sql). program_key is ALWAYS the
+-- printed code, or for a code a web address cannot carry its owner-approved
+-- page key (p1_era_line_map.program_key; #194: 0390DOM, the pe_bli its
+-- PB2024–PB2026 native rows carry); account/organization are non-NULL only
+-- for the 13 PB2026 collision codes, exactly as in fct_decade_series. No
+-- suffixed key exists.
 --
 -- What changes against fct_decade_series, and nothing else:
 --   * an era row (pe_bli '{account}-{org}-L{line}') enters ONLY when its map

@@ -12,7 +12,7 @@ The world (editions 2022–2023 era, 2026 modern):
   20|0300D|DSS       R2 (DSS has no page)      → review, pre-fill DCSA
   20|0300D|DHRA      A1, collision, no page    → review, pre-fill history_only
   FY2017CR|2031A|    CR                        → EXCLUDE placeholder
-  O&M|0390D|         UNSAFE                    → EXCLUDE route-unsafe
+  RDT&E|0390D|       UNSAFE (no page key, #194) → EXCLUDE route-unsafe
   5600D15603|2035A|  H, drift-free             → HISTORY + successor 5731D15610
   F015E0|3010F|      H, drift-free             → HISTORY, no successor
   50|0300D|          R1, no era-side amounts    → review, blank reused-code
@@ -63,7 +63,7 @@ ERA = [
     (2022, "0300D", "DTRA", "21", "20", "Vehicles", "30", None),
     (2023, "0300D", "DHRA", "22", "20", "Personnel Administration", "5", None),
     (2022, "2031A", "ARMY", "99", "FY2017CR", "FY 2017 CR Adjustment", None, None),
-    (2023, "0390D", "CBDP", "2", "O&M", "Operation & Maintenance", "60", None),
+    (2023, "0390D", "CBDP", "2", "RDT&E", "Chem Demilitarization - RDT&E", "60", None),
     (2022, "2035A", "ARMY", "7", "5600D15603", "Joint Light Tactical Vehicle", "3000", None),
     (2023, "2035A", "ARMY", "7", "5600D15603", "JOINT LIGHT TACTICAL VEHICLE", "1000", None),
     (2022, "3010F", "AF", "3", "F015E0", "F-15e", "600", None),

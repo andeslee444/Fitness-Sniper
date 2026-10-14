@@ -17,6 +17,7 @@ from govbudget.jbooks import era_map
 from govbudget.jbooks.era_map import Chain, EraKey, ModernLine, search_successors
 from govbudget.jbooks.p1_loader import EraKeyConflict
 from jbooks import era_map_fixtures
+from govbudget.jbooks.route_safe_codes import UnsafeBudgetLineCode
 from jbooks.era_map_fixtures import (
     JLTV_SENTENCE,
     make_lake,
@@ -75,6 +76,76 @@ def test_load_inputs_modern_collisions_and_pages(tmp_path):
     assert lines[("ATA000", "3010F", "F")].actuals_k == Decimal("250")
     assert lines[("3010", "1810N", "N")].actuals_k == Decimal("20")
     assert lines[("20", "0300D", "DCSA")].actuals_k == Decimal("45")
+
+
+# #194: PB2024-26 rows of the aliased O&M line, before the Chem Demil write
+# (keyed by the printed code) and after it (keyed by the page key 0390DOM),
+# and the R-1 restatement RDT&E (no modern identity at all).
+ALIAS_ROWS = [
+    ("P-1", "2025", "0390D", "Acct", "A", "01", "BA", "O&M", "Chem Demilitarization - O&M",
+     "fy_2023_actuals", "84612", "26", "Exhibit P-1", "O1190", "O&M"),
+    ("P-1", "2026", "0390D", "Acct", "A", "01", "BA", "0390DOM", "Chem Demilitarization - O&M",
+     "fy_2024_actuals", "87404", "26", "Exhibit P-1", "O303", "O&M"),
+    ("P-1", "2025", "0390D", "Acct", "A", "02", "BA", "RDT&E", "Chem Demilitarization - RDT&E",
+     "fy_2023_actuals", "975206", "26", "Exhibit P-1", "O1191", "RDT&E"),
+]
+ERA_OM = ("P-1", "2023", "0390D", "Acct", "ARMY", "01", "BA", "0390D-ARMY-L1",
+          "Chem Demilitarization - O&M", "fy_2021_actuals", "104501", "23", "Exhibit P-1",
+          "O1132", "O&M")
+
+
+def test_load_inputs_reads_an_aliased_line_under_its_printed_code(tmp_path):
+    inputs = era_map.load_inputs(make_lake(tmp_path, extra_era=ALIAS_ROWS))
+    chem = sorted((m.edition, m.code) for m in inputs.modern if m.account == "0390D")
+    assert chem == [(2025, "O&M"), (2026, "O&M")]
+
+
+def test_load_inputs_refuses_an_unknown_route_unsafe_line(tmp_path):
+    bad = ALIAS_ROWS[0][:7] + ("A/B",) + ALIAS_ROWS[0][8:]
+    with pytest.raises(UnsafeBudgetLineCode, match="'A/B' under 0390D"):
+        era_map.load_inputs(make_lake(tmp_path, extra_era=[bad]))
+
+
+def test_propose_rules_an_aliased_chain_like_any_code(tmp_path):
+    """No seed row yet: the O&M chain is A1 and R-DEC-ERA-SAME applies, so
+    p1_era_line_map gives it program_key 0390DOM through the route-safe seed."""
+    db = make_lake(tmp_path / "lake", extra_era=ALIAS_ROWS[1:2] + [ERA_OM])
+    seed = tmp_path / "seeds" / "p1_era_code_decisions.csv"
+    era_map.propose(duckdb_path=db, raw_docs_dir=make_raw_docs(tmp_path),
+                    out_dir=tmp_path / "out", seed_path=seed, decided_on=ON)
+    got = {r["decision_id"]: r for r in rows(seed)}
+    om = got["O&M|0390D||2023-2023"]
+    assert (om["decision"], om["ruling"], om["proposed_rule"]) == (
+        "same_program", "R-DEC-ERA-SAME", "A1")
+    assert got["RDT&E|0390D||2023-2023"]["decision"] == "exclude_route_unsafe"
+
+
+def test_propose_sends_a_re_ruled_chain_to_review_not_into_the_seed(tmp_path):
+    """Design §4.5 and Q25, through Task 4a's guard: the seed still says
+    exclude_route_unsafe for the O&M chain (R-DEC-ERA-EXCLUDE, 2026-10-02);
+    with its page key the chain classes A1, so propose sends it to review.csv
+    proposed same_program and drops the old class row — never R-DEC-ERA-SAME
+    over a seeded ruling in silence. Task 10 ratifies it as owner batch B7."""
+    db = make_lake(tmp_path / "lake", extra_era=ALIAS_ROWS[1:2] + [ERA_OM])
+    raw = make_raw_docs(tmp_path)
+    seed = tmp_path / "seeds" / "p1_era_code_decisions.csv"
+    era_map.propose(duckdb_path=db, raw_docs_dir=raw, out_dir=tmp_path / "out",
+                    seed_path=seed, decided_on=ON)
+    rows_now = rows(seed)
+    for r in rows_now:
+        if r["decision_id"] == "O&M|0390D||2023-2023":
+            r.update(decision="exclude_route_unsafe", ruling="R-DEC-ERA-EXCLUDE",
+                     proposed_rule="UNSAFE")
+    era_map.write_seed(seed, rows_now)
+    era_map.propose(duckdb_path=db, raw_docs_dir=raw, out_dir=tmp_path / "out",
+                    seed_path=seed, decided_on=ON)
+    held = {r["chain_id"]: r for r in rows(tmp_path / "out" / "review.csv")}["O&M|0390D|"]
+    assert held["proposed_decision"] == "same_program"
+    assert held["reason"] == (
+        "A1: class result same_program (R-DEC-ERA-SAME) differs from the seeded"
+        " exclude_route_unsafe (R-DEC-ERA-EXCLUDE, 2026-10-02) — confirm or keep the"
+        " seeded decision; no silent overturn")
+    assert not any(r["decision_id"].startswith("O&M|0390D|") for r in rows(seed))
 
 
 def test_missing_line_item_code_column_is_a_clear_precondition(tmp_path):
@@ -392,7 +463,7 @@ def test_propose_seed_rows(tmp_path):
     assert set(got) == {
         "3010|1611N||2023-2023", "5600D15603|2035A||2022-2023",
         "ATA000|3010F||2022-2023", "F015E0|3010F||2022-2023",
-        "FY2017CR|2031A||2022-2022", "O&M|0390D||2023-2023",
+        "FY2017CR|2031A||2022-2022", "RDT&E|0390D||2023-2023",
         "20|0300D|DTRA|2022-2022"}
     assert (got["3010|1611N||2023-2023"]["program_account"],
             got["3010|1611N||2023-2023"]["program_org"]) == ("1611N", "N")

@@ -3100,9 +3100,11 @@ def cmd_era_map(args) -> None:
         # map-only build fails assert_program_decade_conservation until the
         # program table is rebuilt; one invocation builds the seed, the map
         # and the program table in DAG order and tests after all three.
+        # Since #194 (follow-ups Task 8) p1_era_line_map reads the seed
+        # p1_route_safe_codes, so the one build loads that seed too.
         print("era-map ratify: next, ONE build: uv run --project . dbt build --project-dir dbt"
-              " --profiles-dir dbt --select p1_era_code_decisions p1_era_line_map"
-              " fct_program_decade_series (a map-only build fails"
+              " --profiles-dir dbt --select p1_route_safe_codes p1_era_code_decisions"
+              " p1_era_line_map fct_program_decade_series (a map-only build fails"
               " assert_program_decade_conservation)")
     elif args.era_map_action == "check":
         res = era_map.check(duckdb_path=config.DUCKDB_PATH, seed_path=seed_path)

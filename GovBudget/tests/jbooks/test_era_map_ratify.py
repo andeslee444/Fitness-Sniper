@@ -449,6 +449,6 @@ def test_cli_ratify_names_the_one_build_that_keeps_conservation(cli_world, capsy
     assert out[0].startswith("era-map ratify: 5 decision row(s) added as R-DEC-ERA-B1")
     assert out[1] == (
         "era-map ratify: next, ONE build: uv run --project . dbt build --project-dir dbt"
-        " --profiles-dir dbt --select p1_era_code_decisions p1_era_line_map"
-        " fct_program_decade_series (a map-only build fails"
+        " --profiles-dir dbt --select p1_route_safe_codes p1_era_code_decisions"
+        " p1_era_line_map fct_program_decade_series (a map-only build fails"
         " assert_program_decade_conservation)")

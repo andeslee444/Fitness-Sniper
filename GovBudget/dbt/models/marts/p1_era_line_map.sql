@@ -26,12 +26,15 @@
 -- A key no row covers is decision='undecided' and never reaches
 -- fct_program_decade_series.
 --
--- program_key is the bare printed code, set only for the two decisions that
+-- program_key is the printed code, set only for the two decisions that
 -- carry points (same_program, history_only); NULL for every exclusion and
--- for undecided keys. program_account/program_org are the seed's pins (the
--- PB2026 account/organization whose page the points join); they are set
--- only for chains on one of the 13 PB2026 collision codes
--- (assert_p1_era_map_collision_pinned.sql).
+-- for undecided keys. A printed code a web address cannot carry takes its
+-- owner-approved page key from dbt/seeds/p1_route_safe_codes.csv instead
+-- (#194: 0390D's 'O&M' -> 0390DOM, the pe_bli its PB2024–PB2026 rows carry);
+-- line_item_code keeps the printed code. program_account/program_org are
+-- the seed's pins (the PB2026 account/organization whose page the points
+-- join); they are set only for chains on one of the 13 PB2026 collision
+-- codes (assert_p1_era_map_collision_pinned.sql).
 --
 -- keys_sha_ok is the drift guard: the seed stores keys_sha256, the sha256 of
 -- the sorted 'edition|era_key|budget_activity|filed_title' lines the owner
@@ -162,7 +165,8 @@ select
     b.era_key,
     b.line_item_code,
     b.filed_title,
-    case when b.decision in ('same_program', 'history_only') then b.line_item_code end as program_key,
+    case when b.decision in ('same_program', 'history_only')
+         then coalesce(rs.page_key, b.line_item_code) end as program_key,
     b.program_account,
     b.program_org,
     coalesce(b.decision, 'undecided') as decision,
@@ -180,3 +184,6 @@ left join {{ source('lake', 'jbook_documents') }} doc
 left join key_cells kc
   on kc.edition = b.edition
  and kc.era_key = b.era_key
+left join {{ ref('p1_route_safe_codes') }} rs
+  on rs.account = b.account
+ and rs.line_item_code = b.line_item_code

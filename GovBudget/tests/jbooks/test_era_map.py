@@ -27,6 +27,7 @@ from govbudget.jbooks.era_map import (
     normalize_title,
     org_split_codes,
 )
+from govbudget.jbooks.route_safe_codes import UnsafeBudgetLineCode
 
 D = Decimal
 
@@ -148,9 +149,33 @@ def test_cr_placeholder_is_cr_not_h():
 
 
 def test_route_unsafe_code_is_unsafe_even_when_modern_prints_it():
-    k = ek(2019, "0390D", "CBDP", 2, "O&M", "Operation & Maintenance")
-    modern = [ml(2024, "O&M", "0390D", "CBDP", "Operation & Maintenance")]
+    # #194: the one unaliased route-unsafe pair (0390D's RDT&E, an R-1
+    # restatement with no page key) stays UNSAFE.
+    k = ek(2019, "0390D", "ARMY", 2, "RDT&E", "Chem Demilitarization - RDT&E")
+    modern = [ml(2024, "RDT&E", "0390D", "A", "Chem Demilitarization - RDT&E")]
+    assert era_map.UNSAFE_UNALIASED == frozenset({("0390D", "RDT&E")})
     assert classes([k], modern) == {(2019, k.era_key): "UNSAFE"}
+
+
+def test_an_aliased_code_classifies_like_any_code():
+    # #194: 0390D's O&M has the page key 0390DOM (dbt/seeds/
+    # p1_route_safe_codes.csv), so its chain is A1 when PB2024-26 prints it
+    # under the same title — never UNSAFE again.
+    k = ek(2019, "0390D", "ARMY", 1, "O&M", "Chem Demilitarization - O&M")
+    modern = [ml(2024, "O&M", "0390D", "A", "Chem Demilitarization - O&M")]
+    assert classes([k], modern) == {(2019, k.era_key): "A1"}
+    assert classes([k], []) == {(2019, k.era_key): "H"}
+    # without the seed's pair the same code would raise
+    with pytest.raises(UnsafeBudgetLineCode, match="0390D-ARMY-L1"):
+        classify_keys([k], modern, collision_codes=NONE, route_safe=frozenset())
+
+
+@pytest.mark.parametrize("account, code", [("0390D", "PROC&X"), ("2035A", "O&M"),
+                                           ("3010F", "A/B")])
+def test_any_other_route_unsafe_code_raises(account, code):
+    k = ek(2019, account, "ARMY", 7, code, "Some Line")
+    with pytest.raises(UnsafeBudgetLineCode, match=f"under {account}"):
+        classes([k], [])
 
 
 def test_r3_beats_a1_when_code_spans_accounts_in_the_edition():

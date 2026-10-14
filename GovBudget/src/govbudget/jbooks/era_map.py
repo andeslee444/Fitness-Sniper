@@ -44,6 +44,12 @@ from pathlib import Path
 
 from govbudget.jbooks.collision_keys import require_resolved
 from govbudget.jbooks.era_keys import EraKeyConflict, is_era_procurement_key
+from govbudget.jbooks.route_safe_codes import (
+    P1_R1_RESTATEMENTS,
+    UnsafeBudgetLineCode,
+    is_route_safe_code,
+    load_route_safe_codes,
+)
 
 # ---------------------------------------------------------------------------
 # Vocabulary (binding: the seed, the dbt map and verify-era-map read these)
@@ -100,10 +106,17 @@ CLASS_RULINGS_DECIDED_ON = date(2026, 10, 2)
 BATCH_RE = re.compile(r"^B[1-9][0-9]*$")
 CHAIN_TITLE_SEP = " | "
 
+# The one (account, code) pair that stays UNSAFE (#194, owner Q1 (a) and Q4,
+# 2026-10-04): 0390D's RDT&E line restates R-1 program elements and gets no
+# page key, so its era chain keeps exclude_route_unsafe. A route-unsafe code
+# with a seeded page key (dbt/seeds/p1_route_safe_codes.csv: O&M -> 0390DOM)
+# classifies like any code; any other route-unsafe code raises
+# UnsafeBudgetLineCode. is_route_safe_code is route_safe_codes' (the same
+# character set as export_site.is_route_safe_pe).
+UNSAFE_UNALIASED = frozenset(P1_R1_RESTATEMENTS)
+
 _TITLE_MARKERS = re.compile(r"\((?:myp|mip|space|multiyear|ap|ap-cy)\)")
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
-# export_site.is_route_safe_pe's character set (a page slug must survive a URL).
-_ROUTE_UNSAFE_CHARS = frozenset("&#/?%")
 
 
 # ---------------------------------------------------------------------------
@@ -198,10 +211,6 @@ def keys_sha256(lines: Iterable[tuple[int, str, str | None, str | None]]) -> str
     return hashlib.sha256("\n".join(rendered).encode("utf-8")).hexdigest()
 
 
-def is_route_safe_code(code: str) -> bool:
-    return not (set(code) & _ROUTE_UNSAFE_CHARS or any(c.isspace() for c in code))
-
-
 def org_split_codes(era: Iterable[EraKey]) -> frozenset[str]:
     """Codes printed by more than one organization inside one edition's account."""
     orgs: dict[tuple[int, str, str], set[str]] = defaultdict(set)
@@ -254,8 +263,12 @@ class _ModernIdent:
 class _Context:
     """Everything classification and review context derive from (era, modern)."""
 
-    def __init__(self, era: Sequence[EraKey], modern: Sequence[ModernLine]):
+    def __init__(self, era: Sequence[EraKey], modern: Sequence[ModernLine],
+                 route_safe: Iterable[tuple[str, str]] | None = None):
         self.era = list(era)
+        # (account, printed code) pairs with a seeded page key (#194)
+        self.route_safe = frozenset(
+            load_route_safe_codes() if route_safe is None else route_safe)
         self.split = org_split_codes(self.era)
         self.idx: dict[tuple[str, str, str], _ModernIdent] = {}
         self.modern_codes: set[str] = set()
@@ -336,8 +349,13 @@ class _Context:
         code = k.line_item_code
         if code in CR_CODES:
             return "CR"
-        if not is_route_safe_code(code):
-            return "UNSAFE"
+        if not is_route_safe_code(code) and (k.account, code) not in self.route_safe:
+            if (k.account, code) in UNSAFE_UNALIASED:
+                return "UNSAFE"
+            raise UnsafeBudgetLineCode(
+                f"era key {k.era_key} (PB{k.edition}) prints {code!r} under"
+                f" {k.account}: not route-safe, no page key in"
+                " dbt/seeds/p1_route_safe_codes.csv and not UNSAFE_UNALIASED")
         mi = self.idx.get(self.ident(k))
         if mi is not None:
             if (len(self.accounts_in_edition[(k.edition, code)]) > 1
@@ -358,11 +376,16 @@ class _Context:
 def classify_keys(
     era: Sequence[EraKey], modern: Sequence[ModernLine], *,
     collision_codes: frozenset[str],
+    route_safe: Iterable[tuple[str, str]] | None = None,
 ) -> dict[tuple[int, str], str]:
     """{(edition, era_key): class} under CLASS_ORDER (§5.1; first match wins):
 
     CR      code is a FY2017CR/FY2018CR continuing-resolution placeholder;
-    UNSAFE  code is not route-safe ('O&M', 'RDT&E' in 0390D);
+    UNSAFE  code is not route-safe and has no seeded page key: exactly
+            UNSAFE_UNALIASED, 0390D's 'RDT&E' (#194; 'O&M' has the page key
+            0390DOM and classifies like any code, route_safe defaulting to
+            dbt/seeds/p1_route_safe_codes.csv). Any other route-unsafe code
+            raises UnsafeBudgetLineCode;
     R3      (code, account[, org]) exists in PB2024–26, the code spans accounts
             inside this era edition, and it is not a PB2026 collision code;
     A1      (code, account[, org]) exists in PB2024–26 and the normalized
@@ -378,7 +401,7 @@ def classify_keys(
 
     [, org] applies to org-split codes only (organization compared after
     ERA_ORG_TO_MODERN)."""
-    ctx = _Context(era, modern)
+    ctx = _Context(era, modern, route_safe)
     return {(k.edition, k.era_key): ctx.classify(k, collision_codes) for k in ctx.era}
 
 
@@ -868,14 +891,28 @@ def load_inputs(duckdb_path: Path) -> LakeInputs:
     org_split = {r[0] for r in grains if r[2] is not None}
     amounts = {(pe, acct, org, int(ed), kind): _dec(amt)
                for pe, acct, org, ed, kind, amt in grains}
+    # #194: a PB2024–26 row keyed by a seeded page key (0390DOM) is the line
+    # its printed code names (O&M), the code its era chain prints; before the
+    # Chem Demil write the same rows are keyed by the printed code itself.
+    # The R-1 restatement (RDT&E) is no modern identity; any other
+    # route-unsafe pe_bli in the lake raises.
+    route_safe = load_route_safe_codes()
+    printed = {(c.account, c.page_key): c.line_item_code for c in route_safe.values()}
     modern: set[ModernLine] = set()
     for ed, account, org, _ba, pe, title, _code, _doc, _cells in rows:
-        if ed < 2024 or pe == "9999999999" or not is_route_safe_code(pe):
+        if ed < 2024 or pe == "9999999999":
             continue
+        code = printed.get((account, pe), pe)
+        if not is_route_safe_code(code) and (account, code) not in route_safe:
+            if (account, code) in UNSAFE_UNALIASED:
+                continue
+            raise UnsafeBudgetLineCode(
+                f"era-map: PB{ed} P-1 row {pe!r} under {account} is not route-safe and"
+                " has no page key in dbt/seeds/p1_route_safe_codes.csv")
         gk = (pe, account if pe in acct_split else None,
               org if pe in org_split else None, ed)
         modern.add(ModernLine(
-            edition=ed, code=pe, account=account, organization=org, title=title,
+            edition=ed, code=code, account=account, organization=org, title=title,
             actuals_k=amounts.get(gk + ("actuals",)),
             enacted_k=amounts.get(gk + ("enacted",)),
         ))

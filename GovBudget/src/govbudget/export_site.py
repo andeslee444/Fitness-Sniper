@@ -7142,9 +7142,10 @@ def _build_decade_citation_rows(
     fct_program_decade_series. Its map_basis='native' rows equal
     fct_decade_series row for row and take exactly the pre-piece path below,
     so native output is byte-identical. Its map_basis='era_line_map' rows are
-    PB2017-PB2023 P-1 lines summed under their bare printed code through
-    same_program decisions; 'era_history_only' rows are data only and never
-    become points (R-DEC-FAM-ERAONLY). fct_decade_series present while the
+    PB2017-PB2023 P-1 lines summed under their program key (the printed
+    code, or its route-safe page key, #194) through same_program decisions;
+    'era_history_only' rows are data only and never become points
+    (R-DEC-FAM-ERAONLY). fct_decade_series present while the
     program table is missing RAISES: there is no silent fallback.
 
     Returns (decade_bl_rows, decade_cit_rows, decade_grains, decade_side_meta,
@@ -7303,7 +7304,8 @@ def _build_decade_citation_rows(
                 " and its tests against the current fct_decade_series."
             )
         # program_key is the PAGE key: exactly fct_decade_series.pe_bli on
-        # native rows, the bare printed code on era rows. account /
+        # native rows, the printed code on era rows (or its route-safe page
+        # key from dbt/seeds/p1_route_safe_codes.csv, #194). account /
         # organization follow fct_decade_series' convention (non-NULL only
         # on the 13 PB2026 collision codes; on an era row they are the
         # PINNED program_account / program_org).
@@ -7351,14 +7353,18 @@ def _build_decade_citation_rows(
                     " rows but p1_era_line_map is missing; era source rows are"
                     " matched only through the reviewed map"
                 ) from None
+            from govbudget.jbooks.route_safe_codes import page_key as _page_key
+
             for (m_ed, m_acct, m_org, m_ba, m_key, m_code, m_prog,
                  m_pin_acct, m_pin_org) in map_rows:
-                if m_code != m_prog:
+                want_prog = _page_key(m_acct, m_code) or m_code
+                if m_prog != want_prog:
                     raise ValueError(
                         f"decade: p1_era_line_map row PB{m_ed} {m_key} prints"
                         f" {m_code!r} but names program_key {m_prog!r}; the"
-                        " program key is always the bare printed code (spec"
-                        " §4.5), and era citations publish that code as pe_bli"
+                        " program key is the printed code, or its page key in"
+                        " dbt/seeds/p1_route_safe_codes.csv (#194), here"
+                        f" {want_prog!r}, and era citations publish it as pe_bli"
                     )
                 era_map[(m_ed, m_acct, m_org, m_ba, m_key)] = (
                     m_prog, m_pin_acct or None, m_pin_org or None,
@@ -7554,7 +7560,8 @@ def _build_decade_citation_rows(
             # grain. The workbook fact id and the budget_lines_decade row use
             # it, so every era fact id F-15 already published is reproduced,
             # never re-minted; the citation's pe_bli below is the grain's
-            # program key, i.e. the code printed at the cited cell (column I).
+            # program key, i.e. the code printed at the cited cell (column I),
+            # or that code's route-safe page key (#194: O&M -> 0390DOM).
             (exhibit, ed_year, row_account, account_title, organization,
              budget_activity, ba_title, row_pe_bli, title, _at,
              amount_thousands, sha256, source_sheet, source_cells,
