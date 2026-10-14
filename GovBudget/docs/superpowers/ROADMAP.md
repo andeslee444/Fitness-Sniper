@@ -1017,6 +1017,14 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
   (`scripts/clean_junk_pe_bli.py`, fy2026-scoped so the FY2017–2023 hyphenated
   era keys `0300D-CBDP-L70` are never in range). A route-safety filter that
   masks bad data from the UI is belt; rejecting it at ingest is braces.
+  *Correction (owner, 2026-10-04, #194 design Q9; nothing above reworded):* the
+  two "labels" were 0390D's real Chem Demilitarization O&M and RDT&E lines, the
+  only rows the guard ever caught (two in each PB2024–PB2026 P-1), and the
+  cleanup deleted PB2026's 8 real rows. The guard and `scripts/clean_junk_pe_bli.py`
+  are retired: the loader keys O&M by its owner-approved route-safe key `0390DOM`,
+  checks the RDT&E line against the R-1 program elements it restates (0708081D +
+  0708083D) and leaves it out, and raises on any other route-unsafe code;
+  `scripts/era/s194_chem_demil.py` is the one writer of the stored rows.
 - **A tail-scan window sized for the common case false-negatives the valid tail
   (audit-fix 2026-07-05).** `is_complete_pdf` scanned only the last 2KB for
   `%%EOF`; a valid PDF whose final `%%EOF` sits past 2KB (trailing metadata,
