@@ -26,6 +26,7 @@ from pathlib import Path
 import duckdb
 import httpx
 import pytest
+import yaml
 
 from govbudget.dossiers.research import (
     GENERIC_TITLE_TOKENS,
@@ -45,6 +46,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CATEGORIES_CSV = REPO_ROOT / "data-seeds" / "program_categories.csv"
 ALIASES_CSV = REPO_ROOT / "data-seeds" / "search_aliases.csv"
 PROGRAM_ALIASES_CSV = REPO_ROOT / "dbt" / "seeds" / "program_aliases.csv"
+SEARCH_EVAL_YAML = REPO_ROOT / "evals" / "search_eval.yaml"
 LIVE_DUCKDB = REPO_ROOT / "data" / "duckdb" / "govbudget.duckdb"
 NARRATIVES_PARQUET = REPO_ROOT / "data" / "site" / "data" / "jbook_narratives.parquet"
 
@@ -595,6 +597,34 @@ class TestSearchAliasesCsv:
                 wrong.append(f"{row['term']} -> {pe}, program_aliases says {sorted(members)}")
         assert checked == ["JADC2", "JASSM", "C2BMC", "C-130J"]
         assert wrong == []
+
+    def test_alias_eval_cases_expect_the_seeds_target_url(self):
+        """ROADMAP #197 (fix round 1): evals/search_eval.yaml, which site gate 5
+        runs, pinned JASSM to 0603000D8Z, the very routing #197 corrects, and
+        nothing compared the eval with this seed, so the eval asserted the bug
+        and would have failed silently once the seed moved (gate 5 prints
+        failed cases only below 90%). Every eval case whose note starts
+        'Alias:' and whose query is a term in this seed must expect exactly
+        that term's target_url. Aliases that are not in this seed (JSF, from
+        program_aliases) are out of scope here."""
+        seed = {r["term"].lower(): r["target_url"] for r in _read_csv(ALIASES_CSV)}
+        cases = yaml.safe_load(SEARCH_EVAL_YAML.read_text(encoding="utf-8"))["cases"]
+        checked, wrong = [], []
+        for case in cases:
+            if not case.get("note", "").startswith("Alias:"):
+                continue
+            target = seed.get(case["query"].lower())
+            if target is None:
+                continue
+            checked.append(case["query"])
+            if case.get("expect_url_top3") != target:
+                wrong.append(
+                    f"{case['query']!r} expects {case.get('expect_url_top3')},"
+                    f" search_aliases.csv says {target}"
+                )
+        assert wrong == []
+        # the two terms #197 moved must stay covered by an eval case
+        assert {"JASSM", "C-130J"} <= set(checked)
 
     @pytest.mark.skipif(
         not NARRATIVES_PARQUET.exists(), reason="narratives sidecar not present"

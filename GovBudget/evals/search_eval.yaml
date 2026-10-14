@@ -124,9 +124,14 @@ cases:
 
   # ── Alias cases (data-seeds/search_aliases.csv — Task 7a) ──────────────────
   - query: "JASSM"
-    expect_url_top3: "/program/0603000D8Z/"
+    expect_url_top3: "/program/0207325F/"
     tier: quick
-    note: "Alias: JASSM → Joint Munitions Advanced Technology (term absent from program title; cited via LDA filing)"
+    note: "Alias: JASSM → AF RDT&E Joint Air-to-Surface Standoff Missile PE (0207325F; the PE title carries the acronym, as dbt/seeds/program_aliases.csv has routed it since #55). #197 CORRECTION: this case pinned 0603000D8Z, Joint Munitions Advanced Technology, on an LDA filing's wording"
+
+  - query: "C-130J"
+    expect_url_top3: "/program/0401132F/"
+    tier: quick
+    note: "Alias: C-130J → C-130J Program (0401132F, the baseline airlifter; program_aliases since #55). #197 CORRECTION: the seed pointed at 2012C130J, the AC/MC-130J gunship and special-operations variants; Ghostrider below keeps 2012C130J"
 
   - query: "Golden Dome"
     expect_url_top3: "/program/0603892C/"
