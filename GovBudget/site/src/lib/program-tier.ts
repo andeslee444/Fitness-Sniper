@@ -417,7 +417,9 @@ export function rollupProgramRow(
     // deliberately not a service code: it has no agency page and no overlay,
     // which is the correct outcome for a line with no declared service.
     org: details.service_org || "DoD",
-    exhibit_family: deriveExhibitFamily(details.budget_lines),
+    // #194: a route-safe alias page names its own family (its seed row's
+    // "om" for /program/0390DOM/, whose P-1 rows would derive "procurement").
+    exhibit_family: details.exhibit_family ?? deriveExhibitFamily(details.budget_lines),
     fully_reconciled: false,
     // Rollup tier renders the "Summary figures (R-1/P-1)" badge, never a
     // reconciliation verdict — there is no R-2/P-40 detail behind this row

@@ -103,7 +103,7 @@ import { ProgramEvidencePath, ProgramWayfinding } from "@/components/program-way
 import programStyles from "@/components/program-wayfinding.module.css";
 import { ProgramSources } from "@/components/program-sources";
 import { programSourceEntries } from "@/lib/source-document";
-import { metaTitle } from "@/lib/copy";
+import { metaTitle, peBliKind } from "@/lib/copy";
 
 // ── SSG config ────────────────────────────────────────────────────────────────
 
@@ -764,6 +764,8 @@ export default async function ProgramPage({
           orgHasPage={getAgencies().some((a) => a.org === program.org)}
           tier={tier}
           accountSplit={accountSplit}
+          printedCode={details.printed_code ?? null}
+          restatedLines={details.restated_lines ?? []}
         />
       </div>
 
@@ -791,7 +793,7 @@ export default async function ProgramPage({
         <AnswerStrip program={program} summary={summary} whatItIs={whatItIs} />
       </ProgramSection>
 
-      <ProgramWayfinding code={program.pe_bli} isProcurement={program.exhibit_family === "procurement"} />
+      <ProgramWayfinding code={details.printed_code ?? program.pe_bli} isProcurement={peBliKind(program.exhibit_family) === "BLI"} />
       <ProgramEvidencePath />
 
       <ProgramFamilyEntry programSlug={program.slug} />

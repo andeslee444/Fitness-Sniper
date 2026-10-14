@@ -138,6 +138,19 @@ def metadata_for_row(sheet, row: int, exhibit: str) -> dict:
             "cost_type": str(sheet[f"K{row}"].value), "row_label": str(sheet[f"L{row}"].value)}
 
 
+def program_code_matches(cited, row: dict) -> bool:
+    """A workbook citation's pe_bli names the row's printed code, or that
+    code's route-safe page key under the row's account (#194:
+    dbt/seeds/p1_route_safe_codes.csv, 0390D 'O&M' -> 0390DOM). A citation
+    without a pe_bli matches any row."""
+    if not cited:
+        return True
+    from govbudget.jbooks.route_safe_codes import page_key
+
+    cited = str(cited)
+    return cited == row["code"] or cited == page_key(row["account"], row["code"])
+
+
 def matched_amount(page: dict, y: float, column: dict, value: float) -> dict | None:
     words = [w for w in close_line(page["words"], y) if abs(w["x1"] - column["edge"]) <= 6 and amount(w["text"]) is not None]
     if not words and value == 0:
@@ -347,7 +360,7 @@ def export_program_pdf_receipts(*, site_dir: Path, manifest: Path, cache_dir: Pa
                     value = float(address.value or 0)
                     values.append(Decimal(str(value)))
                     row = metadata_for_row(sheet, address.row, exhibit)
-                    if citation.get("pe_bli") and str(citation["pe_bli"]) != row["code"]:
+                    if not program_code_matches(citation.get("pe_bli"), row):
                         raise ValueError(f"Source program code differs: {fact}/{cell}")
                     header = str(sheet.cell(2, address.column).value)
                     matches = []

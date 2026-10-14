@@ -72,9 +72,14 @@ export function peBliLabel(kind: PeBliKind, code: string): string {
   return `${kind} ${code}`;
 }
 
-/** Procurement lines are BLIs; everything else is a program element. */
+/**
+ * Procurement lines are BLIs; everything else is a program element. #194:
+ * the one "om" page (/program/0390DOM/) is a P-1 line too, so its code is a
+ * BLI while its badge reads "O&M".
+ */
 export function peBliKind(exhibitFamily: string | null): PeBliKind {
-  return (exhibitFamily ?? "").toLowerCase() === "procurement" ? "BLI" : "PE";
+  const family = (exhibitFamily ?? "").toLowerCase();
+  return family === "procurement" || family === "om" ? "BLI" : "PE";
 }
 
 /** "FY2026" — sentences. */
@@ -454,6 +459,12 @@ export const COPY = {
     lineageFamilyH3: "Program family funding line",
     lineageMapLink: "Lineage map →",
     rollupBadgeTitle: "Summary figures from the R-1/P-1 workbooks: this line carries no R-2/P-40 J-book detail. The Purpose note states why.",
+    /** #194, owner Q5: a route-safe alias page says why its address is not the printed code. */
+    printedCodeNote: (printed: string, key: string) =>
+      `The P-1 prints this line's code as ${printed}; its address uses ${key} because a web address cannot carry “${(/[&#/?%\s]/.exec(printed) ?? [""])[0]}”.`,
+    /** #194, owner Q1 (a): the restated P-1 line, around its code-linked program elements. */
+    restatedLineLead: (title: string) => `The P-1's ${title} line restates R-1 program elements `,
+    restatedLineTail: ", whose pages carry those dollars.",
     oversightLink: (orgShort: string) => `GAO record for ${orgShort} →`,
     oversightLinkTitle: (code: string) => `GAO high-risk areas and improper-payment exposure for ${code}`,
     jbookTail: "Not yet crosswalked to USAspending awards.",

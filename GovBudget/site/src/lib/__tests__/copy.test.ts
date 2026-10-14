@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { count, countWord, callout, stamp, eyebrow, metaTitle, exhibitTitle, identityLine, emptyState, COPY, SHORTCUTS, fundingNote } from "@/lib/copy";
+import { count, countWord, callout, stamp, eyebrow, metaTitle, exhibitTitle, identityLine, emptyState, COPY, SHORTCUTS, fundingNote, peBliKind, documentForBasis } from "@/lib/copy";
 describe("copy smoke", () => {
   it("formats", () => {
     expect(count(1938, "defense budget line")).toBe("1,938 defense budget lines");
@@ -18,5 +18,25 @@ describe("copy smoke", () => {
     expect(COPY.home.h1({ programs: 1938, companies: 200, agencies: 24 })).toBe("1,938 defense budget lines, each with its source.");
     expect(SHORTCUTS.map((s) => s.label)).toEqual(["Overview", "Budget & history", "Program detail", "Contracts & influence", "Oversight", "Sources"]);
     expect(COPY.program.empty.trajectory("BLI 2013")).toBe("No FY2024–FY2026 series for this line. The FY2026 R-1 and P-1 workbooks carry no row for BLI 2013. Missing coverage is not zero spending.");
+  });
+});
+
+describe("#194 route-safe alias page copy (owner Q5)", () => {
+  it("names an om line a BLI read from the P-1, with an O&M badge", () => {
+    expect(peBliKind("om")).toBe("BLI");
+    expect(peBliKind("procurement")).toBe("BLI");
+    expect(peBliKind("rdte")).toBe("PE");
+    expect(documentForBasis("toa", "om")).toBe("P-1");
+    const row = { pe_bli: "0390DOM", title: "Chem Demilitarization - O&M", org: "A", exhibit_family: "om" };
+    expect(identityLine(row)).toBe("Army · BLI 0390DOM · O&M");
+    expect(metaTitle(row)).toBe("Chem Demilitarization - O&M (BLI 0390DOM) · Army");
+  });
+
+  it("says why the address is not the printed code, and names the restated line", () => {
+    expect(COPY.program.printedCodeNote("O&M", "0390DOM")).toBe(
+      "The P-1 prints this line's code as O&M; its address uses 0390DOM because a web address cannot carry “&”.");
+    expect(COPY.program.restatedLineLead("Chem Demilitarization - RDT&E")).toBe(
+      "The P-1's Chem Demilitarization - RDT&E line restates R-1 program elements ");
+    expect(COPY.program.restatedLineTail).toBe(", whose pages carry those dollars.");
   });
 });

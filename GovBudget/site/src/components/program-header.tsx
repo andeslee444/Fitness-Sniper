@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
-import type { HeroCategory, ProgramRow } from "@/lib/data";
+import { COPY, peBliKind } from "@/lib/copy";
+import type { HeroCategory, ProgramRow, RestatedLine } from "@/lib/data";
 import { serviceOrgName } from "@/lib/program-tier";
 import { CategoryHero } from "@/components/hero";
 import styles from "./program-wayfinding.module.css";
@@ -66,6 +67,15 @@ interface ProgramHeaderProps {
    * emits, and recomputes this same predicate from programs.json.
    */
   accountSplit?: boolean;
+  /**
+   * #194 (owner Q2, Q5): the code the P-1 prints when this page's key is its
+   * route-safe page key (the sidecar's printed_code: "O&M" on
+   * /program/0390DOM/). The header shows it in place of the key and says why
+   * the address differs. Absent on every other page.
+   */
+  printedCode?: string | null;
+  /** #194 (owner Q1 (a)): the sidecar's restated_lines, named under the code. */
+  restatedLines?: readonly RestatedLine[];
 }
 
 /**
@@ -137,9 +147,12 @@ export function ProgramHeader({
   orgHasPage = true,
   tier = "full",
   accountSplit = false,
+  printedCode = null,
+  restatedLines = [],
 }: ProgramHeaderProps) {
   const { title, org, exhibit_family, reconciled_in_scope, pe_bli, account, account_title } =
     program;
+  const kind = peBliKind(exhibit_family);
 
   return (
     <div className={`${styles.header} ${category || illustration ? styles.headerWithPlate : ""}`}>
@@ -268,16 +281,33 @@ export function ProgramHeader({
           ·
         </span>
         <Link
-          href={`/glossary/#${exhibit_family === "procurement" ? "bli" : "pe"}`}
-          data-glossary-term={exhibit_family === "procurement" ? "bli" : "pe"}
+          href={`/glossary/#${kind.toLowerCase()}`}
+          data-glossary-term={kind.toLowerCase()}
           className="text-xs text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground"
         >
-          {exhibit_family === "procurement" ? "BLI" : "PE"}
+          {kind}
         </Link>
-        <code className="t-id bg-muted px-1.5 py-0.5 rounded">
-          {pe_bli}
+        <code className="t-id bg-muted px-1.5 py-0.5 rounded" data-printed-code={printedCode ? "" : undefined}>
+          {printedCode ?? pe_bli}
         </code>
       </div>
+      {printedCode && (
+        <p className={styles.account} data-printed-code-note>
+          {COPY.program.printedCodeNote(printedCode, pe_bli)}
+        </p>
+      )}
+      {printedCode && restatedLines.map((line) => (
+        <p key={line.line_item_code} className={styles.account} data-restated-line={line.line_item_code}>
+          {COPY.program.restatedLineLead(line.title)}
+          {line.program_elements.map((pe, i) => (
+            <span key={pe}>
+              {i === 0 ? "" : i === line.program_elements.length - 1 ? " and " : ", "}
+              <Link href={`/program/${pe}/`} className="text-primary hover:underline"><code>{pe}</code></Link>
+            </span>
+          ))}
+          {COPY.program.restatedLineTail}
+        </p>
+      ))}
       {program.account_title && (
         <p className={styles.account}>{program.account_title}{program.account ? <> · <code>{program.account}</code></> : null}</p>
       )}

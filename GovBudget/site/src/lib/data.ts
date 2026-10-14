@@ -1549,12 +1549,35 @@ export interface ProgramDetails {
   trajectory?: ProgramTrajectory | null;
   trajectory_fact_ids?: ProgramTrajectoryFactIds | null;
   /**
-   * ROADMAP #28 (decade tier only): R-1 vs P-1 majority across the page's
-   * OWN older-edition workbook rows. The rollup tier derives this from
+   * ROADMAP #28 (decade tier): R-1 vs P-1 majority across the page's OWN
+   * older-edition workbook rows. The rollup tier derives this from
    * `budget_lines` (deriveExhibitFamily); a decade page's budget_lines array
    * is empty by construction, so the exporter computes it and ships it.
+   * #194: a rollup page keyed by a route-safe page key carries its seed
+   * row's family too ("om" on /program/0390DOM/), and rollupProgramRow
+   * prefers it to the derived one.
    */
   exhibit_family?: string | null;
+  /**
+   * #194 (owner Q2, Q5): present only on a page keyed by a route-safe page
+   * key (dbt/seeds/p1_route_safe_codes.csv): the budget line code the P-1
+   * prints ("O&M" on /program/0390DOM/), which a web address cannot carry.
+   * The header shows it in place of the key.
+   */
+  printed_code?: string;
+  /**
+   * #194 (owner Q1 (a)): on that page, the P-1 lines of the same account
+   * that restate R-1 program elements and so get no page of their own
+   * (route_safe_codes.P1_R1_RESTATEMENTS).
+   */
+  restated_lines?: RestatedLine[];
+}
+
+/** A P-1 line that prints the same dollars as R-1 program elements (#194). */
+export interface RestatedLine {
+  line_item_code: string;
+  title: string;
+  program_elements: string[];
 }
 
 const _programDetails = new Map<string, ProgramDetails>();

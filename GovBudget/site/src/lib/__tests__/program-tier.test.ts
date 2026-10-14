@@ -200,6 +200,16 @@ describe("rollupProgramRow", () => {
     expect(row.project_count).toBe(0);
   });
 
+  it("prefers the sidecar's own exhibit_family on a route-safe alias page (#194)", () => {
+    // /program/0390DOM/: P-1 rows would derive "procurement"; its seed row
+    // says "om", and the badge reads "O&M".
+    const p1 = rollupDetails().budget_lines.map((bl) => ({ ...bl, exhibit: "P-1" }));
+    expect(rollupProgramRow("0390DOM", rollupDetails({ budget_lines: p1 })).exhibit_family)
+      .toBe("procurement");
+    expect(rollupProgramRow("0390DOM", rollupDetails({ budget_lines: p1, exhibit_family: "om" }))
+      .exhibit_family).toBe("om");
+  });
+
   it("falls back to the PE code when the sidecar has no title", () => {
     const row = rollupProgramRow("000042", rollupDetails({ title: undefined }));
     expect(row.title).toBe("000042");

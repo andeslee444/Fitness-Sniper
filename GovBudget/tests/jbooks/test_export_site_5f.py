@@ -353,6 +353,35 @@ def test_rollup_sidecar_without_trajectory_is_honest(pg_dsn, tmp_path):
     assert rollup["trajectory_fact_ids"] is None
 
 
+def test_route_safe_alias_sidecar_names_its_printed_code(pg_dsn, tmp_path):
+    """#194 (design §4.6, owner Q5): the rollup sidecar of 0390DOM, a P-1
+    line printed as 'O&M', carries printed_code, the seed's exhibit_family
+    and the restated RDT&E line; an ordinary rollup sidecar carries none."""
+    doc_id, sha = _seed_jbook_doc(pg_dsn, pdf_path=FIXTURE_PDF)
+    _seed_budget_line(pg_dsn, doc_id, sha)
+    _seed_rollup_budget_line(pg_dsn, doc_id)
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        con.execute(
+            "insert into budget_lines (exhibit, fiscal_year, account, account_title,"
+            " organization, budget_activity, budget_activity_title, pe_bli, title,"
+            " amount_type, amount_thousands, source_document_id, source_sheet,"
+            " source_cells, line_item_code) values ('P-1', 2026, '0390D',"
+            " 'Chemical Agents and Munitions Destruction, Defense', 'A', '01',"
+            " 'Operation and maintenance', '0390DOM', 'Chem Demilitarization - O&M',"
+            " 'fy_2024_actuals', 87404, %s, 'Exhibit P-1', ARRAY['O303'], 'O&M')",
+            (doc_id,))
+    build_provenance_pages(pg_dsn)
+    site = _export(pg_dsn, tmp_path, extend_duckdb=_rollup_marts)
+    om = json.loads((site / "json" / "program_details" / "0390DOM.json").read_text())
+    assert om["tier"] == "rollup"
+    assert (om["printed_code"], om["exhibit_family"]) == ("O&M", "om")
+    assert om["restated_lines"] == [{
+        "line_item_code": "RDT&E", "title": "Chem Demilitarization - RDT&E",
+        "program_elements": ["0708081D", "0708083D"]}]
+    other = json.loads((site / "json" / "program_details" / f"{_PE}.json").read_text())
+    assert not {"printed_code", "restated_lines", "exhibit_family"} & set(other)
+
+
 def test_full_tier_sidecar_shape_unchanged(pg_dsn, tmp_path):
     """Existing (programs.json) sidecars keep their exact pre-5F key set —
     byte-stability of the 462 depends on it. (PM Sprint 1 adds exactly ONE

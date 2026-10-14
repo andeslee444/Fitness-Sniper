@@ -1778,12 +1778,18 @@ _DATASET_SCOPES: dict[str, str] = {
     # printed-code pe_bli only for same_program lines.
     # Final review T5: the map holds era keys only, so the 50 era Classified
     # Programs lines S1b loaded under 9999999999 are not in it.
+    # #194 (owner Q3, 2026-10-04): line_item_code is the code printed on the
+    # line and program_key the pe_bli its era citations carry; they differ
+    # only for 0390D's O&M line, whose program key is its route-safe page key
+    # 0390DOM (dbt/seeds/p1_route_safe_codes.csv), so the scope names both.
     "p1_era_line_map": (
         "One row per era-keyed PB2017–PB2023 P-1 display line (the Classified"
         " Programs lines, loaded under 9999999999, are not in the map):"
         " era_key (its pe_bli in budget_lines_decade), line_item_code (the"
-        " budget line code printed on it, the pe_bli a same_program line's era"
-        " citations carry) and the dated owner decision that joins it to a"
+        " budget line code printed on it), program_key (the pe_bli a"
+        " same_program line's era citations carry; the printed code except"
+        " 0390DOM for 0390D's O&M line, whose \"&\" cannot appear in a web"
+        " address) and the dated owner decision that joins it to a"
         " program page or to history only, or excludes it. Only a same_program"
         " line whose code has a program page, or an F-15 family-history line,"
         " has those rows and citations. Every row is a decision; none carries"
@@ -6981,6 +6987,27 @@ def is_route_safe_pe(pe_bli: str) -> bool:
     writer's local copy — a handful of Army R-1/P-1 workbook lines mis-parse
     the appropriation label into the pe_bli slot, and '&' breaks routing.)"""
     return not (set(pe_bli) & set("&#/?%") or any(c.isspace() for c in pe_bli))
+
+
+def _route_safe_page_fields(pe_bli: str) -> dict:
+    """#194 (families piece-1 follow-ups design §4.6; owner Q1 (a), Q2, Q5).
+
+    The extra sidecar fields of a page keyed by a route-safe page key
+    (dbt/seeds/p1_route_safe_codes.csv): the code the P-1 prints, the
+    exhibit family the seed row gives, and the P-1 lines of the same account
+    that restate R-1 program elements (route_safe_codes.P1_R1_RESTATEMENTS),
+    which the page names because they get no page of their own. {} for
+    every other page."""
+    from govbudget.jbooks.route_safe_codes import by_page_key, restated_lines
+
+    alias = by_page_key().get(pe_bli)
+    if alias is None:
+        return {}
+    fields = {"printed_code": alias.line_item_code, "exhibit_family": alias.exhibit_family}
+    restated = restated_lines(alias.account)
+    if restated:
+        fields["restated_lines"] = restated
+    return fields
 
 
 def decade_only_page_pes(duckdb_path) -> tuple[list[str], dict[str, int]]:
@@ -13661,6 +13688,8 @@ def _write_all_sidecars(
             "trajectory": traj,
             "trajectory_fact_ids": _trajectory_fact_ids(pe_bli, traj),
         }
+        # #194: /program/0390DOM/ names the code its P-1 prints (O&M).
+        obj.update(_route_safe_page_fields(pe_bli))
         if pe_bli in decade_series_by_pe:
             obj["decade_series"] = decade_series_by_pe[pe_bli]
             if pe_bli in rva_by_pe:

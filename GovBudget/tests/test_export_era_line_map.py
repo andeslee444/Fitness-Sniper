@@ -59,8 +59,11 @@ def test_scope_names_both_meanings_of_pe_bli_and_carries_no_money():
     scope = _DATASET_SCOPES["p1_era_line_map"]
     assert scope.startswith("One row per era-keyed PB2017–PB2023 P-1 display line")
     assert "era_key (its pe_bli in budget_lines_decade)" in scope
-    assert ("line_item_code (the budget line code printed on it, the pe_bli a same_program"
-            " line's era citations carry)") in scope
+    # #194 (owner Q3, 2026-10-04): the printed code and the pe_bli era
+    # citations carry part only for 0390D's O&M line (program key 0390DOM).
+    assert ("line_item_code (the budget line code printed on it), program_key (the pe_bli"
+            " a same_program line's era citations carry; the printed code except 0390DOM"
+            " for 0390D's O&M line, whose \"&\" cannot appear in a web address)") in scope
     assert scope.endswith("Every row is a decision; none carries an amount.")
 
 

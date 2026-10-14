@@ -3315,7 +3315,13 @@ function runWhoGetsItLeg({ errors, notes, sidecars }) {
  *  − 1,994 that already have a page − 1,214 era keys − 8 all-zero − 2
  *  route-unsafe). A drop means either the predicate broke or the corpus
  *  changed — RE-MEASURE and re-derive this number, never lower it to
- *  whatever the build produced. */
+ *  whatever the build produced.
+ *  #194 (families piece-1 follow-ups): the 2 route-unsafe keys were 0390D's
+ *  stale PB2024–PB2025 'O&M' and 'RDT&E' rows (re-measured 2026-10-13 with
+ *  export_site.decade_only_page_pes: the same census). The Chem Demil write
+ *  re-keys O&M to 0390DOM, which has a PB2026 page, and deletes RDT&E, so the
+ *  census becomes 3,770 − 1,995 − 1,214 − 8 − 0 = 553; the release proof
+ *  re-measures it. */
 const MIN_DECADE_ONLY_PAGES = 553;
 
 /** The stable hook a decade page must carry. */

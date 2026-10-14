@@ -8,6 +8,7 @@ import pytest
 from govbudget.program_pdf_receipts import (
     attach_additive_receipts,
     metadata_for_row,
+    program_code_matches,
     source_identity,
 )
 
@@ -199,3 +200,18 @@ def test_nested_inputs_cannot_count_the_same_workbook_cell_twice():
     attach_additive_receipts(citations, receipts)
     assert SUBTOTAL in receipts
     assert TOTAL not in receipts
+
+
+@pytest.mark.parametrize(("cited", "account", "code", "matches"), [
+    ("F015EX", "3010F", "F015EX", True),
+    (None, "3010F", "F015EX", True),
+    ("", "3010F", "F015EX", True),
+    ("F015E0", "3010F", "F015EX", False),
+    # #194: a 0390DOM citation names the row that prints O&M under 0390D
+    ("0390DOM", "0390D", "O&M", True),
+    ("O&M", "0390D", "O&M", True),
+    ("0390DOM", "2035A", "O&M", False),
+    ("0390DOM", "0390D", "RDT&E", False),
+])
+def test_a_citation_names_the_printed_code_or_its_route_safe_key(cited, account, code, matches):
+    assert program_code_matches(cited, {"account": account, "code": code}) is matches
