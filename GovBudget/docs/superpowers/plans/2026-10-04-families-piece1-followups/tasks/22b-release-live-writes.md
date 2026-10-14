@@ -66,9 +66,9 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 L="${GOVBUDGET_PROOFS:?}/fu-logs" && echo "GOVBUDGET_DATA=$GOVBUDGET_DATA"
 uv run --project . python -m govbudget jbooks export-facts > "$L/export-facts-live.log" 2>&1; echo "export-facts exit=$?"
-uv run --project . python -c "import duckdb,sys; c=duckdb.connect(); p=sys.argv[1]; print(c.execute(f\"select count(*) from read_parquet('{p}')\").fetchone()[0], c.execute(f\"select pe_bli, line_item_code, fiscal_year, count(*) from read_parquet('{p}') where account = '0390D' and exhibit = 'P-1' and fiscal_year >= 2024 group by all order by all\").fetchall())" "$GOVBUDGET_DATA/parquet/jbooks/budget_lines.parquet"
+uv run --project . python -c "import duckdb,sys; c=duckdb.connect(); p=sys.argv[1]; print(c.execute(f\"select count(*) from read_parquet('{p}')\").fetchone()[0], c.execute(f\"select pe_bli, line_item_code, cast(fiscal_year as integer), count(*) from read_parquet('{p}') where account = '0390D' and exhibit = 'P-1' and cast(fiscal_year as integer) >= 2024 group by all order by all\").fetchall())" "$GOVBUDGET_DATA/parquet/jbooks/budget_lines.parquet"
 ```
-Expected: `GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data`, `export-facts exit=0`, then `159899 [('0390DOM', 'O&M', 2024, 5), ('0390DOM', 'O&M', 2025, 3), ('0390DOM', 'O&M', 2026, 4), ('FY2024CR', 'FY2024CR', 2025, 1)]` — Task 21e Step 4's line. A failure: take the abort path.
+Expected: `GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data`, `export-facts exit=0`, then `159899 [('0390DOM', 'O&M', 2024, 5), ('0390DOM', 'O&M', 2025, 3), ('0390DOM', 'O&M', 2026, 4), ('FY2024CR', 'FY2024CR', 2025, 1)]` — Task 21e Step 4's line, from the same query (`fiscal_year` is VARCHAR in this parquet, so the query casts it in the select and the `where`). A failure: take the abort path.
 
 - [ ] **Step 5: The single selective dbt build on the live lake (SHARED LAKE WRITE)**
 
@@ -78,7 +78,7 @@ The same invocation Task 21e Step 5 rehearsed (map, then program table, then the
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 L="${GOVBUDGET_PROOFS:?}/fu-logs" && echo "GOVBUDGET_DUCKDB=$GOVBUDGET_DUCKDB"
-uv run --project . dbt build --project-dir dbt --profiles-dir dbt --select p1_route_safe_codes p1_era_code_decisions stg_budget_lines+ > "$L/dbt-build-live.log" 2>&1; echo "dbt build exit=$?"; tail -1 "$L/dbt-build-live.log"
+uv run --project . dbt build --project-dir dbt --profiles-dir dbt --select p1_route_safe_codes p1_era_code_decisions stg_budget_lines+ > "$L/dbt-build-live.log" 2>&1; echo "dbt build exit=$?"; grep -E 'Done\. PASS' "$L/dbt-build-live.log"
 uv run --project . python - dbt/target/run_results.json <<'PY' | tee "$L/dbt-order-live.txt"
 import json, sys
 results = {r["unique_id"].split(".")[-1] if r["unique_id"].startswith("model.") else r["unique_id"].split(".")[2]: r
@@ -92,11 +92,11 @@ print("conservation ran after the program table:", p[1] <= c[0])
 print("statuses:", {k: results[k]["status"] for k in ("p1_era_line_map", "fct_program_decade_series", "assert_program_decade_conservation")})
 PY
 ```
-Expected: `GOVBUDGET_DUCKDB=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb`; `dbt build exit=0`; `Done. PASS=<n> WARN=<w> ERROR=0 SKIP=0 …` with the same `<n>` as Task 21e Step 5; the two order lines `True` and statuses `success`/`success`/`pass`. If Task 21e needed the two extra builds of its Step 5, run them now the same way (`--select fct_program_decade_series`, then `--select p1_era_line_map`, each with this block's guard). A dbt failure that is not that case: take the abort path (a lock error means another session holds the DuckDB file: wait for it, then re-run this step; nothing was written).
+Expected: `GOVBUDGET_DUCKDB=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb`; `dbt build exit=0`; the grep's dbt Done line, `Done. PASS=<n> WARN=<w> ERROR=0 SKIP=0 …`, with the same `<n>` as Task 21e Step 5 (the grep, not `tail -1`: dbt prints its deprecation summary after the Done line); the two order lines `True` and statuses `success`/`success`/`pass`. The order check reads `dbt/target/run_results.json` in this block, right after this block's own dbt build, with no pytest run in between: a pytest run (`test_dbt_build`) rewrites the worktree's `dbt/target/` (Task 21d), and the check would then read another build's results. If Task 21e needed the two extra builds of its Step 5, run them now the same way (`--select fct_program_decade_series`, then `--select p1_era_line_map`, each with this block's guard). A dbt failure that is not that case: take the abort path (a lock error means another session holds the DuckDB file: wait for it, then re-run this step; nothing was written).
 
 - [ ] **Step 6: The live lake equals fu-post**
 
-Read-only on both lakes:
+Read-only on both lakes. This step's comparison, like A2's below, compares the lakes' content with `lake_parity.py`, never their files' sha256s: `jbooks export-facts` rewrites `budget_line_awards`, `detail_narratives`, `details` and `documents` with identical rows but different bytes (Task 21e's Step 4 run found it on fu-post, 2026-10-14), so a sha comparison would report differences that are not there.
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
@@ -166,10 +166,10 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 MIN=$(date +%M); if [ "$MIN" -ge 12 ] && [ "$MIN" -le 22 ]; then echo "WAIT: SAM window (minute $MIN)"; exit 0; fi
 L="${GOVBUDGET_PROOFS:?}/fu-logs" && echo "GOVBUDGET_DATA=$GOVBUDGET_DATA | GOVBUDGET_DUCKDB=$GOVBUDGET_DUCKDB | code $(git log -1 --format=%h)"
 uv run --project . python -m govbudget jbooks export-facts > "$L/export-facts-live-revert.log" 2>&1; echo "export-facts (deployed code) exit=$?"
-uv run --project . dbt build --project-dir dbt --profiles-dir dbt --select p1_era_code_decisions stg_budget_lines+ > "$L/dbt-build-live-revert.log" 2>&1; echo "dbt build (deployed code) exit=$?"; tail -1 "$L/dbt-build-live-revert.log"
+uv run --project . dbt build --project-dir dbt --profiles-dir dbt --select p1_era_code_decisions stg_budget_lines+ > "$L/dbt-build-live-revert.log" 2>&1; echo "dbt build (deployed code) exit=$?"; grep -E 'Done\. PASS' "$L/dbt-build-live-revert.log"
 uv run --project . python -c "import duckdb,os; c=duckdb.connect(os.environ['GOVBUDGET_DUCKDB']); c.execute('drop table if exists main.p1_route_safe_codes'); print('route-safe relation left:', c.execute(\"select count(*) from duckdb_tables() where table_name = 'p1_route_safe_codes'\").fetchone()[0]); c.close()"
 ```
-Expected: `GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data | GOVBUDGET_DUCKDB=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb | code <A short sha>`; `export-facts (deployed code) exit=0`; `dbt build (deployed code) exit=0` and `Done. PASS=<n> … ERROR=0 …` with the `<n>` of Task 21f Step 6's rehearsal; `route-safe relation left: 0`. Then prove the lake is back:
+Expected: `GOVBUDGET_DATA=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data | GOVBUDGET_DUCKDB=/Users/andeslee/Documents/Cursor-Projects/GovBudget/data/duckdb/govbudget.duckdb | code <A short sha>`; `export-facts (deployed code) exit=0`; `dbt build (deployed code) exit=0` and the grep's dbt Done line, `Done. PASS=<n> … ERROR=0 …`, with the `<n>` of Task 21f Step 6's rehearsal; `route-safe relation left: 0`. Then prove the lake is back:
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
