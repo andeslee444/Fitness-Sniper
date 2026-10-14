@@ -4868,6 +4868,28 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   every total that sums 0390D. Source: `src/govbudget/jbooks/p1_loader.py`
   (`_is_valid_pe_bli` and the section-header skip in `load_p1_rollup`).
   Effort: days.
+  *Correction (2026-10-04, families piece-1 follow-ups design Q7; nothing
+  above reworded).* (a) "None of it reaches `budget_lines`" holds for PB2026
+  only. Postgres and the lake still hold the PB2024 and PB2025 rows, 16 in
+  all (PB2024 ids 349016–349025, PB2025 ids 47733–47738); they reach
+  `fct_budget_lines` and the decade tables, though no page or published
+  total. PB2026's 8 rows were deleted on 2026-07-05 by
+  `scripts/clean_junk_pe_bli.py` (481bba08). (b) The money no page shows is
+  the O&M line's only. "Chem Demilitarization - RDT&E" restates R-1 program
+  elements 0708081D + 0708083D to the thousand in every edition (PB2026:
+  1,002,560 / 754,762 / 210,039 / 210,039), so its dollars are already on those
+  two pages. The O&M line's own figures are $87.4M of FY2024 actuals (87,404
+  thousand in PB2026), not $1.09B, and $801.6M of FY2015–FY2021 actuals on its
+  era chain (801,553 thousand), not $5.83B; the era RDT&E chain carries the
+  other 5,030,464 thousand. Measured read-only 2026-10-04 (follow-ups design
+  §4.1) and re-measured 2026-10-13 in Postgres `budget_lines`, the lake's
+  `budget_lines.parquet` and `fct_decade_series`.
+  *Owner (2026-10-04, follow-ups design Q1, Q4).* The RDT&E line gets no page
+  and is recorded as an R-1 restatement; its era chain keeps
+  `exclude_route_unsafe`, with this note that the line also restates R-1
+  PEs. The O&M line loads under the route-safe key `0390DOM` with a page, and
+  its era chain joins that page as owner batch B7
+  (`docs/superpowers/specs/2026-10-04-families-piece1-followups-design.md` §4).
   **Status:** open (2026-10-02).
 
 - **#195 The JLTV continuation sentence is cited to a book that does not
@@ -5040,6 +5062,38 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   `site/src/app/methodology/page.tsx`, `site/src/app/about/page.tsx`,
   `site/src/components/era-map-table.tsx`, `src/govbudget/f15_funding_history.py`,
   `src/govbudget/verify_era_map.py`. Effort: days.
+  **Status:** open (2026-10-04).
+
+- **#207 Org-split rows get no decade cells on /years/, and /programs/ shows
+  "—" for them.** `_emit_years_matrix` (`src/govbudget/export_site.py`) builds
+  a row's decade lookup key with `_acct_key`, which keeps the account, so an
+  organization-split code's row looks for `('20', '0300D', 'DCSA')`, while its
+  decade grains are stored with no account, `('20', None, 'DCSA')`. Seven rows
+  lose every decade cell: 20-DCSA, 20-DTRA, 30-DMACT, 30-DTRA, 30-OSD, 500-DHRA
+  and 500-DLA (63 modern points today, 147 era points more once #193 lifts the
+  era fence). /programs/ then shows "—" for FY24 and FY26 on 20-DCSA, whose own
+  page cites FY2024 actuals 2,135 (fid `128936791c3d0741`). Found by the
+  families piece-1 follow-ups design (2026-10-04, §3.5); re-measured read-only
+  2026-10-13 in `data/site/json/years_matrix.json` (the seven rows carry only
+  their PB2026 cells) and `data/site/json/program_details/20-DCSA.json`. Fix:
+  key the account on `is_account_split`, as `export_site.py` already does for
+  ROADMAP #45, inside #193's work; the /years/ sidecar-parity gate leg proves
+  it. Source: `src/govbudget/export_site.py` (`_acct_key` in
+  `_emit_years_matrix`). Effort: hours.
+  **Status:** open (2026-10-04).
+
+- **#208 /agency/[org]/ looks decade cells up by the bare `pe_bli`, so its
+  split-key rows show "—".** `getProgramDecadeCells` keys the cells by
+  `slug ?? pe_bli`, but `site/src/app/agency/[org]/page.tsx` (lines 91, 92,
+  115, 361, 364, 367) calls `decadeCells.get(p.pe_bli)`. The 27 rows whose
+  page slug is not their `pe_bli` (the ten account-collision codes' twenty
+  slugs, e.g. 1350-WPN and 1350-PANMC on /agency/N/, and the seven org-split
+  slugs of #207) render "—" for FY24 and sort as empty on FY26. Found by the
+  families piece-1 follow-ups design (2026-10-04, §3.5); re-measured
+  read-only 2026-10-13 (`data/site/json/programs.json`: 1,938 rows, 27 with a
+  slug that differs from `pe_bli`). Fix: look up by `slug ?? pe_bli`, inside
+  #193's island work. Source: `site/src/app/agency/[org]/page.tsx`,
+  `site/src/lib/data.ts` (`getProgramDecadeCells`). Effort: hours.
   **Status:** open (2026-10-04).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now

@@ -280,6 +280,20 @@ edition. ROADMAP #194 files loading them under a route-safe key.
 The owner kept the exclusion with the corrected figure recorded ("Keep excluded,
 record $5.8B").
 
+*Correction (2026-10-04, families piece-1 follow-ups design Q7 and Q4; nothing above
+reworded).* Two statements in the 2026-10-02 correction do not hold. (a) PB2024 and
+PB2025 do not drop the lines: Postgres and the lake hold their 16 rows (PB2024 10,
+PB2025 6); only PB2026's 8 rows are gone, deleted on 2026-07-05 by
+`scripts/clean_junk_pe_bli.py`. (b) Of the $5,832,017 thousand, only the O&M chain's
+801,553 thousand (FY2015–FY2021 actuals) is money no page shows. The RDT&E line
+restates R-1 program elements 0708081D + 0708083D to the thousand, so its 5,030,464
+thousand is already on those two pages. The owner then decided (2026-10-04): the O&M
+line gets the route-safe page `0390DOM` and its era chain joins that page as owner
+batch B7; the RDT&E line gets no page, is recorded as an R-1 restatement, and its era
+chain keeps `exclude_route_unsafe`. See
+[2026-10-04-families-piece1-followups-design.md](2026-10-04-families-piece1-followups-design.md)
+§2.2 and §4.
+
 ### 5.3 Individual decisions (Claude pre-fills, owner approves)
 
 About 120–125 chains: those containing R1/R2/R3 keys (95), A2 chains without R keys

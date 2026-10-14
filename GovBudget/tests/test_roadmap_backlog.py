@@ -254,3 +254,22 @@ def test_the_families_piece_1_follow_ups_are_filed_once_and_open(subject):
     assert body.rstrip().endswith("**Status:** open (2026-10-02)."), (
         f"#{num} does not end with its open-status line"
     )
+
+
+# Families piece-1 follow-ups (docs/superpowers/specs/2026-10-04-families-piece1-
+# followups-design.md §3.5) file two adjacent defects in Task 1 and close them in
+# release 1 (Tasks 13, 14, 22), so only the filing is pinned here, never the open
+# state. Asserted by subject phrase; each phrase sits on one line of its entry.
+FOLLOW_UPS_2026_10_04 = [
+    "Org-split rows get no decade cells",
+    "looks decade cells up by the bare",
+]
+
+
+@pytest.mark.parametrize("subject", FOLLOW_UPS_2026_10_04)
+def test_the_follow_ups_adjacent_defects_are_filed_once(subject):
+    hits = [(num, body) for num, body in entries() if subject in body]
+    assert len(hits) == 1, f"{subject!r} filed {len(hits)} times, want 1"
+    num, body = hits[0]
+    assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
+    assert POINTER_RE.search(body), f"#{num} names no source path"
