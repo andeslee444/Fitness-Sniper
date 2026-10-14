@@ -42,7 +42,7 @@ lake_keys as (
     from {{ ref('stg_budget_lines') }}
     where exhibit = 'P-1'
       and fiscal_year between 2017 and 2023
-      and regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L')
+      and regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L[0-9][0-9A-Za-z-]*$')
 ),
 
 map_keys as (

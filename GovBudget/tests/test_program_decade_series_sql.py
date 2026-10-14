@@ -248,7 +248,7 @@ def test_native_rows_are_fct_decade_series_rows():
     line = con.execute(
         "select pe_bli, account, organization, fy, edition_year, amount, amount_type,"
         " n_source_rows, source_fact_id from fct_decade_series"
-        " where not regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L') order by all"
+        " where not regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L[0-9][0-9A-Za-z-]*$') order by all"
     ).fetchall()
     assert native == line and len(native) == 6
 

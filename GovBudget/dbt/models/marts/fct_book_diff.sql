@@ -70,7 +70,7 @@ with series as (
     select *
     from {{ ref('fct_decade_series') }}
     -- Binding (ii): no era procurement keys ever cross editions.
-    where not regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L')
+    where not regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L[0-9][0-9A-Za-z-]*$')
 ),
 
 requests as (

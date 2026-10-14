@@ -7250,7 +7250,7 @@ def _build_decade_citation_rows(
             "         edition_year as ed, amount_type_kind, amount,"
             "         amount_type, n_source_rows, source_fact_id"
             "  from fct_decade_series"
-            "  where not regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L')"
+            "  where not regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L[0-9][0-9A-Za-z-]*$')"
             "), native as ("
             "  select program_key as k, account as a, organization as o, fy,"
             "         edition_year as ed, amount_type_kind, amount,"

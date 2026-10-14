@@ -71,6 +71,12 @@ class TestEraKeyAnchor:
         for v in ("0601101E", "7001SA1000", "70", "013005", "0300D", None, ""):
             assert era_key_anchor(v) is None
 
+    def test_a_trailing_newline_is_not_an_era_key(self):
+        # ROADMAP #203: `$` matched before a final newline; `\Z` does not.
+        assert is_era_procurement_key("0300D-DEFW-L1\n") is False
+        assert era_key_anchor("0300D-DEFW-L1\n") is None
+        assert is_era_procurement_key("0300D-DEFW-L1") is True
+
 
 # ---------------------------------------------------------------------------
 # Permanent collision guard against the LIVE warehouse

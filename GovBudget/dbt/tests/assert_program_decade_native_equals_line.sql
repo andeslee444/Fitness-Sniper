@@ -13,7 +13,7 @@
 with line as (
     select *
     from {{ ref('fct_decade_series') }}
-    where not regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L')
+    where not regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L[0-9][0-9A-Za-z-]*$')
 ),
 native as (
     select *

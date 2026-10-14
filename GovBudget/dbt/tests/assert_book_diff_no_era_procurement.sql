@@ -7,5 +7,5 @@
 -- identity and must not diff.
 select pe_bli, from_edition, to_edition, diff_kind
 from {{ ref('fct_book_diff') }}
-where regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L')
+where regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L[0-9][0-9A-Za-z-]*$')
    or pe_bli = '9999999999'

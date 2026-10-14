@@ -124,7 +124,7 @@ detail as (
       and b.pe_bli <> '9999999999'
       and (
           m.era_key is not null
-          or not (b.exhibit = 'P-1' and regexp_matches(b.pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L'))
+          or not (b.exhibit = 'P-1' and regexp_matches(b.pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L[0-9][0-9A-Za-z-]*$'))
       )
 ),
 

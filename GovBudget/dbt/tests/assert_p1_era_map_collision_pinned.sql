@@ -1,14 +1,16 @@
 -- Every carried era key on a PB2026 collision code is pinned to ONE side of
--- the collision (families piece 1, spec §4.3, §4.5 and §7).
+-- the collision (families piece 1, spec §4.3, §4.5 and §7; plan binding
+-- decision 5: the seed sets BOTH pins — ROADMAP #203, follow-ups Task 9).
 --
 -- fct_program_decade_series splits a collision code's grain by account (10
 -- codes) or organization ('20', '30', '500') exactly like fct_decade_series,
 -- and for an era row it takes the seed's program_account / program_org, never
 -- the era row's own values. So for every key whose decision carries points:
---   * on an account-collision code, program_account must be set — and, for
---     same_program, be an account PB2026 reports under that code (the page
---     the points join); a history_only pin only has to be set;
---   * on an organization-collision code, the same for program_org;
+--   * on an account- or organization-collision code, program_account AND
+--     program_org must both be set — and, for same_program, name a line
+--     PB2026 prints under that code (the page the points join; the same test
+--     `era-map ratify` applies before a batch is written); a history_only
+--     pair only has to be set;
 --   * on any other code, both pins must be blank (they would be ignored).
 -- The two anchors below are fct_decade_series.sql's collision_pes /
 -- org_collision_pes, re-derived from staging (this test checks the map
@@ -47,11 +49,12 @@ org_collision_pes as (
         having count(distinct organization) > 1
     )
 ),
-pb2026_accounts as (
-    select distinct pe_bli, account from collision_slots
-),
-pb2026_orgs as (
-    select distinct pe_bli, organization from org_collision_slots
+pb2026_lines as (
+    select distinct pe_bli, account, organization
+    from {{ ref('stg_budget_lines') }}
+    where fiscal_year = 2026
+      and title is not null
+      and pe_bli <> '9999999999'
 ),
 carried as (
     select edition, era_key, line_item_code, decision, program_account, program_org
@@ -60,30 +63,34 @@ carried as (
 )
 
 select
-    'account-collision code without a usable account pin' as failure,
+    'account-collision code without a usable pin pair' as failure,
     c.edition, c.era_key, c.line_item_code, c.decision, c.program_account, c.program_org
 from carried c
 join collision_pes cp
   on cp.pe_bli = c.line_item_code
-left join pb2026_accounts a
-  on a.pe_bli = c.line_item_code
- and a.account = c.program_account
+left join pb2026_lines l
+  on l.pe_bli = c.line_item_code
+ and l.account = c.program_account
+ and l.organization = c.program_org
 where c.program_account is null
-   or (c.decision = 'same_program' and a.pe_bli is null)
+   or c.program_org is null
+   or (c.decision = 'same_program' and l.pe_bli is null)
 
 union all
 
 select
-    'organization-collision code without a usable organization pin',
+    'organization-collision code without a usable pin pair',
     c.edition, c.era_key, c.line_item_code, c.decision, c.program_account, c.program_org
 from carried c
 join org_collision_pes ocp
   on ocp.pe_bli = c.line_item_code
-left join pb2026_orgs o
-  on o.pe_bli = c.line_item_code
- and o.organization = c.program_org
-where c.program_org is null
-   or (c.decision = 'same_program' and o.pe_bli is null)
+left join pb2026_lines l
+  on l.pe_bli = c.line_item_code
+ and l.account = c.program_account
+ and l.organization = c.program_org
+where c.program_account is null
+   or c.program_org is null
+   or (c.decision = 'same_program' and l.pe_bli is null)
 
 union all
 

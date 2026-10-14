@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 
 import duckdb
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -42,18 +43,23 @@ def ensure_lake_columns(path: Path, columns: tuple[str, ...]) -> None:
     P-1 key. Idempotent — a column the fixture already writes is left alone.
     """
     con = duckdb.connect()
+    tmp = path.with_name(path.stem + ".tmp.parquet")
     try:
         have = {r[0] for r in con.execute(
             f"describe select * from read_parquet('{path}')").fetchall()}
         missing = [c for c in columns if c not in have]
         if not missing:
             return
-        tmp = path.with_name(path.stem + ".tmp.parquet")
         extra = ", ".join(f"null::varchar as {c}" for c in missing)
-        con.execute(
-            f"copy (select *, {extra} from read_parquet('{path}'))"
-            f" to '{tmp}' (format parquet)"
-        )
+        try:
+            con.execute(
+                f"copy (select *, {extra} from read_parquet('{path}'))"
+                f" to '{tmp}' (format parquet)"
+            )
+        except BaseException:
+            # ROADMAP #203: never leave a partial budget_lines.tmp.parquet.
+            tmp.unlink(missing_ok=True)
+            raise
     finally:
         con.close()
     tmp.replace(path)
@@ -1275,3 +1281,29 @@ def test_high_only_index_is_withheld_over_zero_dollars_or_one_positive_family():
 
     # Net negative dollars, two positive-share families.
     assert rows["NEG"][1:] == (None, None, 2, 2, 3, -350.0), rows["NEG"]
+
+
+def test_ensure_lake_columns_leaves_no_temp_file_when_the_copy_fails(tmp_path, monkeypatch):
+    """ROADMAP #203: a COPY that fails after it began writing left
+    budget_lines.tmp.parquet beside the fixture parquet."""
+    path = tmp_path / "budget_lines.parquet"
+    duckdb.sql(f"copy (select 1 as a) to '{path}' (format parquet)")
+    real_connect = duckdb.connect
+
+    class FailingCopy:
+        def __init__(self):
+            self._con = real_connect()
+
+        def execute(self, sql, *args):
+            if sql.lstrip().lower().startswith("copy"):
+                (tmp_path / "budget_lines.tmp.parquet").write_bytes(b"partial")
+                raise duckdb.IOException("disk full")
+            return self._con.execute(sql, *args)
+
+        def close(self):
+            self._con.close()
+
+    monkeypatch.setattr(duckdb, "connect", FailingCopy)
+    with pytest.raises(duckdb.IOException, match="disk full"):
+        ensure_lake_columns(path, ("line_item_code",))
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["budget_lines.parquet"]

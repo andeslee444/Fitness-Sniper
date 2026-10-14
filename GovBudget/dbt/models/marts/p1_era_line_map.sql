@@ -76,7 +76,7 @@ with era_rows as (
     from {{ ref('stg_budget_lines') }}
     where exhibit = 'P-1'
       and fiscal_year between 2017 and 2023
-      and regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L')
+      and regexp_matches(pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L[0-9][0-9A-Za-z-]*$')
 ),
 
 keys as (
@@ -102,7 +102,7 @@ cell_rows as (
          unnest(string_split(c.source_cells, ',')) as u(cell)
     where c.exhibit = 'P-1'
       and cast(c.fiscal_year as integer) between 2017 and 2023
-      and regexp_matches(c.pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L')
+      and regexp_matches(c.pe_bli, '^[0-9]{4}[A-Z]-[A-Z]+-L[0-9][0-9A-Za-z-]*$')
       and trim(u.cell) <> ''
 ),
 

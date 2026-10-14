@@ -66,7 +66,11 @@ P40_AGENCY_ORGS: dict[str, str] = {
 # service designator letter ('0300D', '2031A'); org codes are the P-1
 # display's short codes; the line number is kept verbatim after 'L' —
 # including sub-line forms like WHS '46-1' (live PB2017 workbook evidence).
-_ERA_KEY_RE = re.compile(r"^(\d{4}[A-Z])-([A-Z]+)-L([0-9][0-9A-Za-z-]*)$")
+# `\Z`, not `$`: a Python `$` also matches before a final newline, which made
+# '0300D-DEFW-L1\n' an era key (ROADMAP #203). The ten SQL sites spell the
+# same pattern with an RE2 `$`, which is the end of the text;
+# tests/test_era_key_regex_sites.py holds them and this one together.
+_ERA_KEY_RE = re.compile(r"^(\d{4}[A-Z])-([A-Z]+)-L([0-9][0-9A-Za-z-]*)\Z")
 
 
 class EraKeyConflict(ValueError):

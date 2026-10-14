@@ -76,12 +76,12 @@ def _seed():
                   n_keys="3", keys_sha256=keys_sha256(F15_KEYS), ruling="R-DEC-ERA-SAME"),
         _seed_row(decision_id="20|0300D|DSS|2019-2019", line_item_code="20", account="0300D",
                   organization="DSS", first_edition="2019", last_edition="2019",
-                  decision="same_program", program_org="DCSA", n_keys="1",
+                  decision="same_program", program_account="0300D", program_org="DCSA", n_keys="1",
                   keys_sha256=keys_sha256([_key(2019, "0300D-DSS-L21", "01", "Major Equipment, DSS")]),
                   ruling="R-DEC-ERA-B1"),
         _seed_row(decision_id="20|0300D|DTRA|2019-2019", line_item_code="20", account="0300D",
                   organization="DTRA", first_edition="2019", last_edition="2019",
-                  decision="same_program", program_org="DTRA", n_keys="1",
+                  decision="same_program", program_account="0300D", program_org="DTRA", n_keys="1",
                   keys_sha256=keys_sha256([_key(2019, "0300D-DTRA-L23", "01", "Major Equipment, DTRA")]),
                   ruling="R-DEC-ERA-SAME"),
     ]
@@ -351,6 +351,24 @@ def test_complete_fails_on_a_dropped_key():
         ("lake era key missing from the map", "2019/2035A-ARMY-L5")]
 
 
+def test_complete_fails_on_a_map_key_the_lake_does_not_hold():
+    # ROADMAP #203: one of the two relational legs no test planted.
+    con = _lake()
+    con.execute("insert into p1_era_line_map select * replace ('3010F-AF-L99' as era_key)"
+                " from p1_era_line_map where era_key = '3010F-AF-L79'")
+    assert [r[:2] for r in _failures(con, "assert_p1_era_map_complete")] == [
+        ("map key not in the lake", "2019/3010F-AF-L99")]
+
+
+def test_complete_fails_on_a_map_key_without_its_workbook_sha_or_cells():
+    # ROADMAP #203: the other unplanted relational leg.
+    con = _lake()
+    con.execute("update p1_era_line_map set source_cells = null where era_key = '3010F-AF-L79'")
+    assert _failures(con, "assert_p1_era_map_complete") == [
+        ("map key without its workbook sha or cells", "2019/3010F-AF-L79", None,
+         f"{SHA_2019} <null cells>")]
+
+
 def test_complete_pins_the_corpus_counts_once_all_seven_workbooks_are_registered():
     docs = DOCS + [(str(900 + ed), str(ed) * 16, f"fy{ed}/dod/p1_display.xlsx", str(ed))
                    for ed in (2017, 2018, 2021, 2022, 2023)]
@@ -445,12 +463,59 @@ def test_collision_pinned_fails_on_a_missing_or_foreign_pin():
     seed[0]["program_account"] = "3010F"                # pin on a code that never collides
     rows = _failures(_lake(seed=seed), "assert_p1_era_map_collision_pinned")
     assert sorted((r[0], r[2]) for r in rows) == [
-        ("organization-collision code without a usable organization pin", "0300D-DSS-L21"),
-        ("organization-collision code without a usable organization pin", "0300D-DTRA-L23"),
+        ("organization-collision code without a usable pin pair", "0300D-DSS-L21"),
+        ("organization-collision code without a usable pin pair", "0300D-DTRA-L23"),
         ("pin on a code that is not a PB2026 collision code", "3010F-AF-L25"),
         ("pin on a code that is not a PB2026 collision code", "3010F-AF-L25"),
         ("pin on a code that is not a PB2026 collision code", "3010F-AF-L79"),
     ]
+
+
+def test_collision_pinned_requires_both_pins():
+    """ROADMAP #203: plan binding decision 5 — the seed sets BOTH pins on a
+    collision code (ratify refuses a row with one), but the test checked only
+    the pin the page split reads."""
+    seed = _seed()
+    seed[1]["program_account"] = None                    # DSS same_program: org pin only
+    rows = _failures(_lake(seed=seed), "assert_p1_era_map_collision_pinned")
+    assert [(r[0], r[2], r[5], r[6]) for r in rows] == [
+        ("organization-collision code without a usable pin pair", "0300D-DSS-L21", None, "DCSA")]
+    seed = _seed()
+    seed[2].update(decision="history_only", program_org=None, ruling="R-DEC-ERA-B1")
+    rows = _failures(_lake(seed=seed), "assert_p1_era_map_collision_pinned")
+    assert [(r[0], r[2]) for r in rows] == [
+        ("organization-collision code without a usable pin pair", "0300D-DTRA-L23")]
+
+
+# ROADMAP #203: no fixture row exercised the account side. PB2026 prints '0145'
+# under two Navy accounts (an account-collision code, like the ten live ones);
+# the PB2019 era key prints it under 1506N.
+ACCOUNT_LAKE = [
+    ("P-1", 2026, "1506N", "N", "01", "0145", "Training Aircraft", "fy_2026_total", 1.0, "1", "0145", "Q7"),
+    ("P-1", 2026, "1508N", "N", "01", "0145", "Training Ammunition", "fy_2026_total", 2.0, "1", "0145", "Q8"),
+    ("P-1", 2019, "1506N", "N", "01", "1506N-N-L9", "Training Aircraft", "fy_2019_total", 3.0, "271", "0145",
+     "AO900"),
+]
+
+
+def _account_seed_row(**pins):
+    return _seed_row(decision_id="0145|1506N||2019-2019", line_item_code="0145", account="1506N",
+                     first_edition="2019", last_edition="2019", decision="same_program", n_keys="1",
+                     keys_sha256=keys_sha256([_key(2019, "1506N-N-L9", "01", "Training Aircraft")]),
+                     ruling="R-DEC-ERA-B1", **pins)
+
+
+def test_collision_pinned_checks_an_account_collision_code():
+    lake = LAKE + ACCOUNT_LAKE
+    clean = _account_seed_row(program_account="1506N", program_org="N")
+    assert _failures(_lake(lake=lake, seed=_seed() + [clean]),
+                     "assert_p1_era_map_collision_pinned") == []
+    for pins in (dict(program_org="N"), dict(program_account="1506N"),
+                 dict(program_account="1611N", program_org="N")):
+        rows = _failures(_lake(lake=lake, seed=_seed() + [_account_seed_row(**pins)]),
+                         "assert_p1_era_map_collision_pinned")
+        assert [(r[0], r[2]) for r in rows] == [
+            ("account-collision code without a usable pin pair", "1506N-N-L9")], pins
 
 
 def test_collision_pinned_lets_a_history_only_chain_keep_its_own_organization():
@@ -482,6 +547,14 @@ def test_p1r_crosscheck_fails_on_a_code_the_p1_does_not_print():
     rows = _failures(_lake(lake=lake), "assert_p1_era_map_p1r_crosscheck")
     assert [r[:4] for r in rows] == [
         ("P-1R triple absent from the era map and not allow-listed", 2019, "2035A", "9999X00001")]
+
+
+def test_p1r_crosscheck_pins_the_triple_count_once_all_seven_p1r_workbooks_are_registered():
+    # ROADMAP #203: the count leg no test planted (1,650 on the real corpus).
+    docs = DOCS + [(str(910 + ed), str(ed % 10) * 64, f"fy{ed}/dod/p1r_display.xlsx", str(ed))
+                   for ed in (2017, 2018, 2020, 2021, 2022, 2023)]
+    rows = _failures(_lake(docs=docs), "assert_p1_era_map_p1r_crosscheck")
+    assert rows == [("era P-1R triple count differs from the full corpus (1,650): 1", None, None, None)]
 
 
 def test_p1r_crosscheck_allow_list_must_stay_exact_on_the_real_corpus():
