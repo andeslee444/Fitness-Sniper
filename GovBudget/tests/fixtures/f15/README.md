@@ -3,6 +3,10 @@
 Spec: `docs/superpowers/specs/2026-10-02-era-procurement-history-design.md` §8 V5,
 §9 S0, §6.2, §6.5. Captured once at S0; re-pinned only by the owner-approved F-15
 correction (S5).
+*Re-pinned 2026-10-14 (piece-1 follow-ups Task 21g, design §5.2) for the
+owner-approved F015E0 gloss "[the PB2026 F-15EX AP (F015EX) P-40]" (#206 T9, Q17):
+history sha256 d0de9e8b…, captured from the proof export B@fu-post; the page
+snapshot moved to schema 2 in Task 21h.*
 
 | File | Content | Written by |
 |---|---|---|
