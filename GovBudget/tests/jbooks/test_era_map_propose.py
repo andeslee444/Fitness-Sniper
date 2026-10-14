@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import csv
 import json
+import subprocess
+import sys
 from datetime import date
 from decimal import Decimal
 
+import duckdb
 import pytest
 
 from govbudget.jbooks import era_map
@@ -549,3 +552,151 @@ def test_propose_refuses_a_changed_org_split(tmp_path, monkeypatch):
     monkeypatch.setattr(era_map, "ORG_SPLIT_CODES", frozenset({"10", "20"}))
     with pytest.raises(RuntimeError, match="org-split codes changed"):
         run(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP #198 (follow-ups spec 2026-10-04 §6.2, §4.5, Q25)
+# ---------------------------------------------------------------------------
+
+def test_era_map_does_not_import_the_workbook_loader():
+    code = ("import sys, govbudget.jbooks.era_map as m;"
+            " print('govbudget.jbooks.p1_loader' in sys.modules, m.EraKeyConflict.__module__)")
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                         check=True).stdout.split()
+    assert out == ["False", "govbudget.jbooks.era_keys"]
+
+
+def test_p1_loader_re_exports_the_era_keys_conflict():
+    from govbudget.jbooks import era_keys, p1_loader
+
+    assert p1_loader.EraKeyConflict is era_keys.EraKeyConflict is EraKeyConflict
+
+
+# The live PB2021 shape (code 15: DISA's page, TJS's line), moved into this
+# world's PB2022: both organizations print 15 under one title in the era
+# edition and in PB2026, so both chains are A1 and class-ruled same_program.
+CLASH_15 = [
+    ("P-1", "2022", "0300D", "Acct", "DISA", "01", "BA", "0300D-DISA-L30", "Major Equipment",
+     "fy_2020_actuals", "70", "22", "Exhibit P-1", "O30", "15"),
+    ("P-1", "2022", "0300D", "Acct", "TJS", "01", "BA", "0300D-TJS-L31", "Major Equipment",
+     "fy_2020_actuals", "9", "22", "Exhibit P-1", "O31", "15"),
+    ("P-1", "2026", "0300D", "Acct", "DISA", "01", "BA", "15", "Major Equipment",
+     "fy_2024_actuals", "80", "26", "Exhibit P-1", "O9", "15"),
+    ("P-1", "2026", "0300D", "Acct", "TJS", "01", "BA", "15", "Major Equipment",
+     "fy_2024_actuals", "10", "26", "Exhibit P-1", "O10", "15"),
+]
+
+
+def test_propose_sends_two_organizations_on_one_page_to_review(tmp_path, monkeypatch):
+    monkeypatch.setattr(era_map, "ORG_SPLIT_CODES", frozenset({"15", "20"}))
+    db = make_lake(tmp_path / "lake", extra_era=CLASH_15)
+    con = duckdb.connect(str(db))
+    con.execute("insert into dim_programs values ('15', '0300D', 'DISA')")   # page 15 is DISA's
+    con.close()
+    out = tmp_path / "research" / "era_map"
+    seed = tmp_path / "seeds" / "p1_era_code_decisions.csv"
+    era_map.propose(duckdb_path=db, raw_docs_dir=make_raw_docs(tmp_path), out_dir=out,
+                    seed_path=seed, decided_on=ON)
+    assert not [r for r in rows(seed) if r["line_item_code"] == "15"]
+    review = {r["chain_id"]: r for r in rows(out / "review.csv")}
+    for cid in ("15|0300D|DISA", "15|0300D|TJS"):
+        assert review[cid]["proposed_decision"] == ""
+        assert review[cid]["reason"] == (
+            "A1: 15|0300D|DISA|2022-2022: same_program collides with 15|0300D|TJS|2022-2022"
+            " — page 15 would sum DISA and TJS in PB2022; decide history_only for the"
+            " organization whose page it is not")
+    chains = {r["chain_id"]: r for r in rows(out / "chains.csv")}
+    assert chains["15|0300D|TJS"]["left_ruling_reason"] == (
+        "one organization per page grain (rule 4(b))")
+
+
+def test_propose_never_silently_overturns_a_seeded_class_decision(tmp_path):
+    _c, out, seed = run(tmp_path)
+    seeded = rows(seed)
+    ata = next(r for r in seeded if r["line_item_code"] == "ATA000")
+    ata.update(decision="history_only", ruling="R-DEC-ERA-HISTORY")   # as an earlier lake ruled it
+    era_map.write_seed(seed, seeded)
+    db = tmp_path / "lake" / "duckdb" / "govbudget.duckdb"
+    era_map.propose(duckdb_path=db, raw_docs_dir=tmp_path / "raw_docs", out_dir=out,
+                    seed_path=seed, decided_on=ON)
+    assert not [r for r in rows(seed) if r["line_item_code"] == "ATA000"]   # Q25
+    held = {r["chain_id"]: r for r in rows(out / "review.csv")}["ATA000|3010F|"]
+    assert held["proposed_decision"] == "same_program"
+    assert held["reason"] == (
+        "A1: class result same_program (R-DEC-ERA-SAME) differs from the seeded"
+        " history_only (R-DEC-ERA-HISTORY, 2026-10-02) — confirm or keep the seeded"
+        " decision; no silent overturn")
+    chains = {r["chain_id"]: r for r in rows(out / "chains.csv")}
+    assert chains["ATA000|3010F|"]["left_ruling_reason"] == (
+        "class result differs from the seeded decision")
+    undecided = era_map.check(duckdb_path=db, seed_path=seed)["undecided"]
+    assert "ATA000|3010F|" in [u["chain_id"] for u in undecided]
+
+
+def test_propose_writes_nothing_when_a_later_output_fails(tmp_path, monkeypatch):
+    _c, out, seed = run(tmp_path)
+    era_map.write_seed(seed, [r for r in rows(seed) if r["line_item_code"] != "ATA000"])
+    before = {p.name: p.read_bytes() for p in [seed, *sorted(out.iterdir())]}
+
+    def boom(code):
+        raise RuntimeError("counts.json failed")
+
+    monkeypatch.setattr(era_map, "is_successor_searchable", boom)   # read only for counts.json
+    with pytest.raises(RuntimeError, match="counts.json failed"):
+        era_map.propose(duckdb_path=tmp_path / "lake" / "duckdb" / "govbudget.duckdb",
+                        raw_docs_dir=tmp_path / "raw_docs", out_dir=out, seed_path=seed,
+                        decided_on=ON)
+    assert {p.name: p.read_bytes() for p in [seed, *sorted(out.iterdir())]} == before
+
+
+def test_write_csv_replaces_the_file_whole_or_not_at_all(tmp_path, monkeypatch):
+    path = tmp_path / "x.csv"
+    era_map.write_csv(path, ("a",), [{"a": "1"}])
+
+    def fail(src, dst):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(era_map.os, "replace", fail)
+    with pytest.raises(OSError, match="disk full"):
+        era_map.write_csv(path, ("a",), [{"a": "2"}])
+    assert path.read_text() == "a\n1\n"
+    assert [p.name for p in tmp_path.iterdir()] == ["x.csv"]
+
+
+def test_a_literal_form_in_a_later_file_beats_an_earlier_short_form(tmp_path):
+    short = tmp_path / "fy2026" / "a" / "xml" / "U_PROCUREMENT_JB_X_ARMY_PB_2026.xml"
+    literal = tmp_path / "fy2025" / "a" / "xml" / "U_PROCUREMENT_JB_X_ARMY_PB_2025.xml"
+    for p in (short, literal):
+        p.parent.mkdir(parents=True)
+    short.write_text("<a>Budget line D15610 is a continuation of budget line D15603.</a>\n")
+    literal.write_text("<a>Line 5600D15603 continues under 5731D15610 from FY 2021.</a>\n")
+    got = search_successors([chain("5600D15603", "2035A")], raw_docs_dir=tmp_path,
+                            modern=modern(("5731D15610", "2035A")))
+    s = got["5600D15603|2035A|"]
+    assert (s["successor_code"], s["matched_form"], s["xml"]) == (
+        "5731D15610", "literal", "fy2025/a/xml/U_PROCUREMENT_JB_X_ARMY_PB_2025.xml")
+
+
+def test_a_double_quote_in_the_successor_sentence_is_escaped(tmp_path):
+    xml = tmp_path / "fy2026" / "dw" / "xml" / "U_PROCUREMENT_JB_X_DW_PB_2026.xml"
+    xml.parent.mkdir(parents=True)
+    xml.write_text('<a>Line ABC123 continues under the "DEF456" line from FY 2024.</a>\n')
+    got = search_successors([chain("ABC123", "0300D")], raw_docs_dir=tmp_path,
+                            modern=modern(("DEF456", "0300D")))
+    s = got["ABC123|0300D|"]
+    assert s["quote"] == 'Line ABC123 continues under the "DEF456" line from FY 2024.'
+    assert s["successor_evidence"].endswith(
+        'quote="Line ABC123 continues under the \\"DEF456\\" line from FY 2024."')
+
+
+def test_prefill_own_account_with_no_other_account_says_so(monkeypatch):
+    # The live GPS03C|3022F| shape: R3 because the era edition printed the
+    # code in two accounts, but PB2024-26 print it in its own account only.
+    monkeypatch.setattr(era_map, "ORG_SPLIT_CODES", frozenset())
+    era = [ek(2022, "3022F", "AF", 9, "GPS03C", "GPS III Space Segment"),
+           ek(2022, "3021F", "AF", 3, "GPS03C", "GPS III Space Segment")]
+    modern_lines = [ml(2026, "GPS03C", "3022F", "F", "GPS III Space Segment")]
+    decision, reason, pa, po = _prefill_for(era, modern_lines, chain_id="GPS03C|3022F|")
+    assert decision == "same_program"
+    assert reason == "R3: the code's own account (3022F); no other PB2024-26 account prints it"
+    assert (pa, po) == ("", "")

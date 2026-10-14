@@ -3038,7 +3038,8 @@ def cmd_era_map(args) -> None:
         counts = era_map.propose(
             duckdb_path=config.DUCKDB_PATH, raw_docs_dir=config.RAW_DOCS_DIR,
             out_dir=out_dir, seed_path=seed_path,
-            decided_on=date.fromisoformat(args.decided_on),
+            decided_on=(date.fromisoformat(args.decided_on) if args.decided_on
+                        else era_map.CLASS_RULINGS_DECIDED_ON),
         )
         print(f"era-map propose: {counts['era_keys']} era keys,"
               f" {counts['chains']} chains; rulings"
@@ -3512,9 +3513,9 @@ def main(argv=None) -> None:
              " writes data/research/era_map/ and the class-ruled seed rows",
     )
     em_prop.add_argument(
-        "--decided-on", dest="decided_on", default="2026-10-02",
-        help="decided_on for class-ruled rows (default: the rulings' approval"
-             " date, 2026-10-02)",
+        "--decided-on", dest="decided_on", default=None,
+        help="decided_on for class-ruled rows (default: era_map."
+             "CLASS_RULINGS_DECIDED_ON, the rulings' approval date)",
     )
     em_rat = em_sub.add_parser(
         "ratify", help="merge one owner-approved review batch into the seed")

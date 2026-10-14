@@ -10,7 +10,7 @@ import psycopg
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
-from govbudget.jbooks.era_keys import era_procurement_key
+from govbudget.jbooks.era_keys import EraKeyConflict, era_procurement_key
 from govbudget.jbooks.rollup_loader import norm_header
 
 logger = logging.getLogger(__name__)
@@ -91,13 +91,6 @@ class P1Parse:
     sheet_title: str
     skipped_invalid: int
     era_line_keying: bool
-
-
-class EraKeyConflict(ValueError):
-    """An era key ('{account}-{org}-L{line}') printed more than one budget
-    line code, title or budget activity across its rows. The era key is a
-    display line; if it ever carries two programs, keying by line number
-    would silently merge them, so the parse refuses."""
 
 
 class P1KeyConflict(ValueError):

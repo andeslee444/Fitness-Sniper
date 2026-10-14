@@ -31,7 +31,9 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
 import json
+import os
 import re
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
@@ -41,8 +43,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from govbudget.jbooks.collision_keys import require_resolved
-from govbudget.jbooks.era_keys import is_era_procurement_key
-from govbudget.jbooks.p1_loader import EraKeyConflict
+from govbudget.jbooks.era_keys import EraKeyConflict, is_era_procurement_key
 
 # ---------------------------------------------------------------------------
 # Vocabulary (binding: the seed, the dbt map and verify-era-map read these)
@@ -643,7 +644,8 @@ def search_successors(
     (SUCCESSOR_RE), one of the era code's forms, and exactly one other
     PB2024–26 code (preferring the era chain's own account when the sentence
     names several). The first qualifying sentence in successor_xml_files
-    order wins."""
+    order wins, except that a literal-form match beats a short-form one
+    wherever it is found (ROADMAP #198)."""
     raw_docs_dir = Path(raw_docs_dir)
     targets = {c.chain_id: c for c in chains if c.classes == frozenset({"H"})}
     if not targets:
@@ -658,7 +660,8 @@ def search_successors(
             modern_by_token[token].add((m.code, m.account))
     found: dict[str, dict] = {}
     for xml in successor_xml_files(raw_docs_dir):
-        if len(found) == len(targets):
+        if len(found) == len(targets) and all(
+                s["matched_form"] == "literal" for s in found.values()):
             break
         text = xml.read_bytes().decode("utf-8", errors="replace")
         for hit in SUCCESSOR_RE.finditer(text):
@@ -667,7 +670,12 @@ def search_successors(
             tokens = set(_CODE_TOKEN_RE.findall(sentence))
             for token in sorted(tokens):
                 for cid, form in era_forms.get(token, ()):
-                    if cid in found:
+                    prior = found.get(cid)
+                    # Literal before short, across sentences and files
+                    # (ROADMAP #198): a short-form hit stands only until a
+                    # literal one turns up.
+                    if prior is not None and (prior["matched_form"] == "literal"
+                                              or form != "literal"):
                         continue
                     ch = targets[cid]
                     own = {t for t, _f in code_forms(ch.line_item_code)}
@@ -690,7 +698,10 @@ def search_successors(
                             parts += [f"pdf={pdf.relative_to(raw_docs_dir).as_posix()}",
                                       f"pdf_sha256={_sha256_file(pdf)}",
                                       f"pdf_page={page if page is not None else ''}"]
-                    parts += [f"form={form}", f'quote="{quote}"']
+                    # ROADMAP #198: '"' and '\' inside the quote are escaped,
+                    # so the evidence string stays one key=value list.
+                    escaped = quote.replace("\\", "\\\\").replace('"', '\\"')
+                    parts += [f"form={form}", f'quote="{escaped}"']
                     found[cid] = {
                         "successor_code": code,
                         "successor_account": account,
@@ -888,14 +899,31 @@ def read_csv(path: Path) -> list[dict[str, str]]:
         return [dict(r) for r in csv.DictReader(fh)]
 
 
-def write_csv(path: Path, columns: Sequence[str], rows: Iterable[Mapping]) -> None:
+def _csv_text(columns: Sequence[str], rows: Iterable[Mapping]) -> str:
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=list(columns), lineterminator="\n",
+                       extrasaction="raise")
+    w.writeheader()
+    for r in rows:
+        w.writerow({c: r.get(c, "") for c in columns})
+    return buf.getvalue()
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write text through a temporary file beside path and os.replace, so a
+    reader never sees a half-written file (ROADMAP #198)."""
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=list(columns), lineterminator="\n",
-                           extrasaction="raise")
-        w.writeheader()
-        for r in rows:
-            w.writerow({c: r.get(c, "") for c in columns})
+    tmp = path.with_name(f".{path.name}.tmp")
+    try:
+        tmp.write_text(text, encoding="utf-8", newline="")
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def write_csv(path: Path, columns: Sequence[str], rows: Iterable[Mapping]) -> None:
+    _atomic_write_text(Path(path), _csv_text(columns, rows))
 
 
 def read_seed(seed_path: Path) -> list[dict[str, str]]:
@@ -1166,19 +1194,23 @@ def _prefill(ch: Chain, keys: Sequence[EraKey], ctx: _Context, info: dict,
         if jac >= JACCARD_MIN:
             if is_own:
                 others = sorted({a for a, o, _t in destinations if (a, o) != own})
+                # ROADMAP #198: "also printed by no other account" read as a
+                # contradiction (GPS03C|3022F|, 0182|1508N|).
+                printed = (f"also printed by {', '.join(others)}" if others
+                           else "no other PB2024-26 account prints it")
                 return ("same_program",
-                        f"{rule}: the code's own account ({dest_label}); also"
-                        f" printed by {', '.join(others) or 'no other account'}",
+                        f"{rule}: the code's own account ({dest_label}); {printed}",
                         pa, po)
             return ("same_program",
                     f"{rule}: account/organization move (modern accounts"
                     f" {', '.join(info['modern_accounts']) or 'none'})", pa, po)
         if is_own:
             others = sorted({a for a, o, _t in destinations if (a, o) != own})
+            printed = (f"also printed by {', '.join(others)}" if others
+                       else "no other PB2024-26 account prints it")
             return ("",
                     f"{rule}: the code's own account ({dest_label}) prints"
-                    f" '{dest_title}', not this line's title; also printed"
-                    f" by {', '.join(others) or 'no other account'} — confirm"
+                    f" '{dest_title}', not this line's title; {printed} — confirm"
                     " same_program by hand", pa, po)
         return ("",
                 f"{rule}: account/organization move, but the code is"
@@ -1228,7 +1260,10 @@ def propose(
     keys.csv / chains.csv / review.csv / counts.json under out_dir and the
     class-ruled rows of the seed. Owner batch rows already in the seed
     (ruling not a class ruling) are kept verbatim and their chains are
-    neither class-ruled nor re-proposed. Returns the counts dict."""
+    neither class-ruled nor re-proposed. A class result that would
+    overturn a seeded decision, or break rule 4(b), goes to review instead
+    (_hold_for_review). Nothing is written until all five outputs are
+    computed. Returns the counts dict."""
     inputs = load_inputs(Path(duckdb_path))
     split = org_split_codes(inputs.era)
     if split != ORG_SPLIT_CODES:
@@ -1284,7 +1319,10 @@ def propose(
                        ("keys_sha256", "decision", "ruling", "program_account",
                         "program_org")):
             row["decided_on"] = old["decided_on"]
-    write_seed(Path(seed_path), owner_rows + ruled)
+    ruled, held = _hold_for_review(
+        ruled, existing=existing, owner_rows=owner_rows, keys_by_chain=keys_by_chain,
+        collision_codes=inputs.collision_codes)
+    left = sorted([*left, *(by_id[cid] for cid in held)], key=lambda c: c.chain_id)
 
     ruled_ids = {chain_id(r["line_item_code"], r["account"], r["organization"]): r
                  for r in ruled}
@@ -1293,11 +1331,14 @@ def propose(
     for ch in left:
         keys = keys_by_chain[ch.chain_id]
         ci = info[ch.chain_id]
-        decision, reason, pa, po = _prefill(ch, keys, ctx, ci,
-                                            inputs.collision_codes,
-                                            inputs.modern_pages, org_editions)
-        if ch.classes == frozenset({"A1"}):
-            left_reason[ch.chain_id] = "collision code without a matching PB2026 page"
+        if ch.chain_id in held:
+            decision, reason, pa, po, left_reason[ch.chain_id] = held[ch.chain_id]
+        else:
+            decision, reason, pa, po = _prefill(ch, keys, ctx, ci,
+                                                inputs.collision_codes,
+                                                inputs.modern_pages, org_editions)
+            if ch.classes == frozenset({"A1"}):
+                left_reason[ch.chain_id] = "collision code without a matching PB2026 page"
         succ = successors.get(ch.chain_id, {})
         review.append({
             "chain_id": ch.chain_id,
@@ -1321,7 +1362,6 @@ def propose(
     review.sort(key=lambda r: (-Decimal(r["actuals_k"] or "0"), r["chain_id"]))
 
     out_dir = Path(out_dir)
-    write_csv(out_dir / "review.csv", REVIEW_COLUMNS, review)
     chain_rows = []
     for ch in chains:
         ci, succ = info[ch.chain_id], successors.get(ch.chain_id, {})
@@ -1343,7 +1383,6 @@ def propose(
             "successor_account": succ.get("successor_account", ""),
             "successor_evidence": succ.get("successor_evidence", ""),
         })
-    write_csv(out_dir / "chains.csv", CHAIN_COLUMNS, chain_rows)
     key_rows = []
     for ch in chains:
         ci = info[ch.chain_id]
@@ -1365,7 +1404,6 @@ def propose(
                 "source_cells": ",".join(k.source_cells),
             })
     key_rows.sort(key=lambda r: (int(r["edition"]), r["era_key"]))
-    write_csv(out_dir / "keys.csv", KEY_COLUMNS, key_rows)
 
     groups: dict[str, int] = defaultdict(int)
     for ch in chains:
@@ -1419,7 +1457,18 @@ def propose(
         "successors": {cid: s["successor_code"] for cid, s in sorted(successors.items())},
         "successor_coverage": successor_coverage,
     }
-    (out_dir / "counts.json").write_text(json.dumps(counts, indent=1, sort_keys=True) + "\n")
+    # ROADMAP #198: every output is computed above; only now is anything
+    # written, each file whole through a temporary file and os.replace.
+    outputs = {
+        Path(seed_path): _csv_text(SEED_COLUMNS, sorted(
+            owner_rows + ruled, key=lambda r: r["decision_id"])),
+        out_dir / "review.csv": _csv_text(REVIEW_COLUMNS, review),
+        out_dir / "chains.csv": _csv_text(CHAIN_COLUMNS, chain_rows),
+        out_dir / "keys.csv": _csv_text(KEY_COLUMNS, key_rows),
+        out_dir / "counts.json": json.dumps(counts, indent=1, sort_keys=True) + "\n",
+    }
+    for path, text in outputs.items():
+        _atomic_write_text(path, text)
     return counts
 
 
@@ -1457,6 +1506,97 @@ def _row_editions(row: Mapping[str, str],
     cid = chain_id(row["line_item_code"], row["account"], row["organization"])
     first, last = int(row["first_edition"]), int(row["last_edition"])
     return {k.edition for k in keys_by_chain.get(cid, ()) if first <= k.edition <= last}
+
+
+def _org_grain_clashes(
+    rows: Sequence[Mapping[str, str]],
+    keys_by_chain: Mapping[str, Sequence[EraKey]],
+    collision_codes: frozenset[str],
+) -> list[tuple[Mapping[str, str], Mapping[str, str], list[int]]]:
+    """Rule 4(b), one organization per page grain and edition (piece-1 spec
+    §5.3; ROADMAP #198): every pair (a, b, shared editions) of same_program
+    rows of two different organizations on one page grain (_page_grain)
+    whose chains both hold keys in a shared edition, a before b in `rows`
+    order. propose checks class-ruled rows with it, ratify batch rows."""
+    out: list[tuple[Mapping[str, str], Mapping[str, str], list[int]]] = []
+    same = [r for r in rows if r["decision"] == "same_program" and r["organization"]]
+    for i, a in enumerate(same):
+        for b in same[i + 1:]:
+            if (a["organization"] != b["organization"]
+                    and _page_grain(a, collision_codes) == _page_grain(b, collision_codes)):
+                shared = sorted(_row_editions(a, keys_by_chain)
+                                & _row_editions(b, keys_by_chain))
+                if shared:
+                    out.append((a, b, shared))
+    return out
+
+
+def _clash_message(a: Mapping[str, str], b: Mapping[str, str], shared: Sequence[int],
+                   collision_codes: frozenset[str]) -> str:
+    code, pin_a, pin_o = _page_grain(a, collision_codes)
+    page = f"{code} ({pin_a}/{pin_o})" if pin_o else code
+    return (f"{a['decision_id']}: same_program collides with {b['decision_id']} — page"
+            f" {page} would sum {a['organization']} and {b['organization']} in"
+            f" {', '.join(f'PB{e}' for e in shared)}; decide history_only for the"
+            " organization whose page it is not")
+
+
+def _hold_for_review(
+    ruled: Sequence[dict], *, existing: Sequence[Mapping[str, str]],
+    owner_rows: Sequence[Mapping[str, str]],
+    keys_by_chain: Mapping[str, Sequence[EraKey]], collision_codes: frozenset[str],
+) -> tuple[list[dict], dict[str, tuple[str, str, str, str, str]]]:
+    """The class-ruled rows propose must NOT write to the seed (ROADMAP #198;
+    follow-ups spec §4.5, §6.2, Q25), as (rows kept, {chain_id: (proposed
+    decision, reason, program_account, program_org, left_ruling_reason)}):
+
+      * no silent overturn: a chain whose class result differs (decision,
+        ruling or pins) from a class row the seed holds for it goes to
+        review, proposed as the new class result. Its old class row leaves
+        the seed with it, so the owner's batch can be ratified; until then
+        `era-map check --strict` fails on its keys (fail-closed).
+      * rule 4(b): a class-ruled same_program row that clashes with another
+        same_program row (class-ruled or owner-decided) goes to review with
+        no proposal.
+    """
+    prior: dict[str, list[Mapping[str, str]]] = defaultdict(list)
+    for r in existing:
+        if r["ruling"] in CLASS_RULINGS:
+            prior[chain_id(r["line_item_code"], r["account"], r["organization"])].append(r)
+    held: dict[str, tuple[str, str, str, str, str]] = {}
+    for row in ruled:
+        cid = chain_id(row["line_item_code"], row["account"], row["organization"])
+        moved = [o for o in prior.get(cid, ())
+                 if any(o[f] != row[f] for f in
+                        ("decision", "ruling", "program_account", "program_org"))]
+        if moved:
+            old = moved[0]
+            held[cid] = (
+                row["decision"],
+                f"{row['proposed_rule']}: class result {row['decision']} ({row['ruling']})"
+                f" differs from the seeded {old['decision']} ({old['ruling']},"
+                f" {old['decided_on']}) — confirm or keep the seeded decision;"
+                " no silent overturn",
+                row["program_account"], row["program_org"],
+                "class result differs from the seeded decision",
+            )
+
+    def cid_of(r: Mapping[str, str]) -> str:
+        return chain_id(r["line_item_code"], r["account"], r["organization"])
+
+    kept = [r for r in ruled if cid_of(r) not in held]
+    for a, b, shared in _org_grain_clashes([*owner_rows, *kept], keys_by_chain,
+                                           collision_codes):
+        for side in (a, b):
+            if side["ruling"] in CLASS_RULINGS and cid_of(side) not in held:
+                held[cid_of(side)] = (
+                    "",
+                    f"{side['proposed_rule']}: "
+                    + _clash_message(a, b, shared, collision_codes),
+                    side["program_account"], side["program_org"],
+                    "one organization per page grain (rule 4(b))",
+                )
+    return [r for r in kept if cid_of(r) not in held], held
 
 
 def ratify(

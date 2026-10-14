@@ -341,3 +341,14 @@ def test_cli_help_renders(argv, capsys):
         main(argv)
     assert exc.value.code == 0
     assert "usage: govbudget era-map" in capsys.readouterr().out
+
+
+def test_cli_propose_defaults_to_the_class_rulings_date(cli_world, capsys, monkeypatch):
+    # ROADMAP #198: the default was the literal "2026-10-02", a second copy
+    # of era_map.CLASS_RULINGS_DECIDED_ON.
+    from govbudget.cli import main
+
+    monkeypatch.setattr(era_map, "CLASS_RULINGS_DECIDED_ON", date(2027, 1, 2))
+    main(["era-map", "propose"])
+    seed = cli_world / "dbt" / "seeds" / "p1_era_code_decisions.csv"
+    assert {r["decided_on"] for r in read(seed)} == {"2027-01-02"}

@@ -69,6 +69,17 @@ P40_AGENCY_ORGS: dict[str, str] = {
 _ERA_KEY_RE = re.compile(r"^(\d{4}[A-Z])-([A-Z]+)-L([0-9][0-9A-Za-z-]*)$")
 
 
+class EraKeyConflict(ValueError):
+    """An era key ('{account}-{org}-L{line}') printed more than one budget
+    line code, title or budget activity across its rows. The era key is a
+    display line; if it ever carries two programs, keying by line number
+    would silently merge them, so the parse refuses.
+
+    Defined here, beside the key it is about, so jbooks/era_map.py (a pure
+    module) need not import the workbook loader (ROADMAP #198);
+    jbooks/p1_loader.py re-exports it."""
+
+
 def era_procurement_key(account: str, org: str, line_number: str) -> str:
     """Namespaced era procurement pe_bli: '{account}-{org}-L{line}'.
 
