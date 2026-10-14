@@ -48,17 +48,27 @@ Modes (exactly one):
               `jbooks export-facts` and a selective dbt build (the release
               task's abort path).
 
-Exit 2: a usage or precondition error (a missing or existing revert file).
+Exit 2: a usage or precondition error, before any write: an empty --dsn
+(or GOVBUDGET_PG_DSN), refused before any connection with the usage and an
+`s194: ...` line on stderr; a missing or existing revert file; a revert file
+that is not a well-formed s194 revert file; a P-1 rollup document count other
+than one per edition; a budget_lines whose columns are not ROW_COLUMNS in
+table order (checked by --apply, --dry-run and --revert under the lock).
+Those last two print `s194: <reason>`.
 A workbook the loader refuses (P1KeyConflict, UnsafeBudgetLineCode) or a
 restated line that no longer equals its R-1 (P1RestatementMismatch) prints
 `s194: REFUSED — <error>` and exits 1, before any write.
+
+Every mode's first line, once connected, names the database it reads or
+writes: `s194 --<mode>: database '<current_database()>' on host <host>:<port>`.
 
 Usage (from GovBudget/):
   uv run --project . python scripts/era/s194_chem_demil.py --check
   uv run --project . python scripts/era/s194_chem_demil.py --dry-run
   uv run --project . python scripts/era/s194_chem_demil.py --apply --revert-file FILE
   uv run --project . python scripts/era/s194_chem_demil.py --revert --revert-file FILE
-DSN: --dsn, else GOVBUDGET_PG_DSN (config.PG_DSN).
+DSN: --dsn when given (an empty one is refused, never replaced), else
+GOVBUDGET_PG_DSN (config.PG_DSN).
 """
 from __future__ import annotations
 
@@ -107,6 +117,30 @@ UNSAFE_PE_BLI_SQL = "select count(*) from budget_lines where pe_bli ~ '[&#/?%%[:
 _ROWS_SQL = f"select {', '.join(ROW_COLUMNS)} from budget_lines"
 
 
+class Precondition(Exception):
+    """A state the script will not work from (exit 2, `s194: <reason>`)."""
+
+
+def announce(con, mode: str) -> str:
+    """Print the first line of a mode: the database the connection reached
+    and where. Returns current_database()."""
+    db = con.execute("select current_database()").fetchone()[0]
+    print(f"s194 {mode}: database {db!r} on host {con.info.host}:{con.info.port}")
+    return db
+
+
+def check_columns(con) -> None:
+    """budget_lines must have exactly ROW_COLUMNS, in table order: the revert
+    file and the restore are written in those columns."""
+    cols = tuple(r[0] for r in con.execute(
+        "select column_name from information_schema.columns"
+        " where table_schema = current_schema() and table_name = 'budget_lines'"
+        " order by ordinal_position").fetchall())
+    if cols != ROW_COLUMNS:
+        raise Precondition(f"budget_lines columns {list(cols)} are not ROW_COLUMNS"
+                           f" {list(ROW_COLUMNS)}; nothing written")
+
+
 def p1_documents(con, editions) -> dict[int, tuple[int, Path, str | None]]:
     """{edition: (document id, workbook path, sha256)}: the P-1 rollup
     workbooks, by cli._jbooks_load_rollups' rule. Exactly one per edition."""
@@ -122,7 +156,7 @@ def p1_documents(con, editions) -> dict[int, tuple[int, Path, str | None]]:
         by_fy.setdefault(fy, []).append((doc_id, Path(path), sha))
     bad = {fy: len(by_fy.get(fy, [])) for fy in editions if len(by_fy.get(fy, [])) != 1}
     if bad:
-        raise SystemExit(f"s194: expected one P-1 rollup document per edition, got {bad}")
+        raise Precondition(f"expected one P-1 rollup document per edition, got {bad}")
     return {fy: by_fy[fy][0] for fy in editions}
 
 
@@ -233,6 +267,7 @@ def _parse_all(docs) -> dict[int, P1Parse]:
 def check(dsn: str, editions) -> int:
     with psycopg.connect(dsn) as con:
         con.read_only = True
+        announce(con, "--check")
         docs = p1_documents(con, editions)
         ok, _ = run_check(con, docs, _parse_all(docs))
     return 0 if ok else 1
@@ -264,13 +299,61 @@ def record_sha256(record: dict) -> str:
         json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
+REVERT_FIELDS = ("schema", "database", "written_at", "editions", "columns", "before",
+                 "rekeyed", "deleted_ids", "inserted", "untouched_digest", "rows_sha256")
+
+
+def _is_int(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def malformed(record) -> str | None:
+    """Why `record` is not a well-formed schema-REVERT_SCHEMA revert record,
+    or None. --revert asks this first, before the sha256, the scope or the
+    database, so a truncated or hand-made file is a usage error (exit 2)."""
+    if not isinstance(record, dict):
+        return f"a JSON {type(record).__name__}, not an object"
+    missing = [f for f in REVERT_FIELDS if f not in record]
+    if missing:
+        return f"no {', '.join(missing)}"
+    if record["schema"] != REVERT_SCHEMA:
+        return f"schema {record['schema']!r}"
+    if record["columns"] != list(ROW_COLUMNS):
+        return "its columns are not ROW_COLUMNS"
+    for name in ("before", "inserted"):
+        rows = record[name]
+        if not isinstance(rows, list) or not all(
+                isinstance(r, list) and len(r) == len(ROW_COLUMNS) and _is_int(r[0])
+                for r in rows):
+            return f"`{name}` is not a list of {len(ROW_COLUMNS)}-column rows"
+    if not isinstance(record["rekeyed"], dict) or not all(
+            isinstance(k, str) and k.isdigit() and isinstance(v, str)
+            for k, v in record["rekeyed"].items()):
+        return "`rekeyed` is not an object of id -> page key"
+    for name in ("deleted_ids", "editions"):
+        if not isinstance(record[name], list) or not all(_is_int(v) for v in record[name]):
+            return f"`{name}` is not a list of integers"
+    digest = record["untouched_digest"]
+    if not (isinstance(digest, list) and len(digest) == 2 and _is_int(digest[0])
+            and isinstance(digest[1], str)):
+        return "`untouched_digest` is not [row count, md5]"
+    if not (isinstance(record["database"], str) and isinstance(record["rows_sha256"], str)):
+        return "`database` or `rows_sha256` is not a string"
+    return None
+
+
 def out_of_scope(record: dict) -> list[str]:
-    """The `before` rows a revert file would restore that #194 never writes.
-    Each must be a P-1 row --apply either re-keyed (its printed code is a
-    route-safe seed alias, re-keyed to that page key) or deleted (a
-    P1_R1_RESTATEMENTS line), and the re-keyed and deleted ids must be
-    exactly the `before` rows."""
-    alias = {pair: c.page_key for pair, c in load_route_safe_codes().items()}
+    """The rows a revert file names that #194 never writes. Each `before` row
+    (the rows --revert restores) must be a P-1 row --apply either re-keyed
+    (its printed code is a route-safe seed alias, re-keyed to that page key)
+    or deleted (a P1_R1_RESTATEMENTS line), and the re-keyed and deleted ids
+    must be exactly the `before` rows. Each `inserted` row (the rows --revert
+    deletes) must be a P-1 row of one of the record's editions, keyed by a
+    route-safe page key of its account, under an id that is not a `before`
+    row's."""
+    codes = load_route_safe_codes()
+    alias = {pair: c.page_key for pair, c in codes.items()}
+    page_keys = {(account, c.page_key) for (account, _), c in codes.items()}
     col = {c: i for i, c in enumerate(ROW_COLUMNS)}
     rekeyed = {int(k): v for k, v in record["rekeyed"].items()}
     deleted = set(record["deleted_ids"])
@@ -283,16 +366,59 @@ def out_of_scope(record: dict) -> list[str]:
         if not ok:
             out.append(f"row {rid} {pair} is neither re-keyed to its page key"
                        " nor a restatement")
-    if set(rekeyed) | deleted != {row[0] for row in record["before"]}:
+    before_ids = {row[0] for row in record["before"]}
+    if set(rekeyed) | deleted != before_ids:
         out.append("the re-keyed and deleted ids are not the `before` rows")
+    seen = set()
+    for row in record["inserted"]:
+        rid, pair = row[0], (row[col["account"]], row[col["pe_bli"]])
+        why = []
+        if row[col["exhibit"]] != "P-1":
+            why.append(f"exhibit {row[col['exhibit']]!r}, not 'P-1'")
+        if pair not in page_keys:
+            why.append(f"{pair} is not a route-safe page key")
+        if row[col["fiscal_year"]] not in record["editions"]:
+            why.append(f"fiscal year {row[col['fiscal_year']]} is not among the editions"
+                       f" {record['editions']}")
+        if rid in before_ids:
+            why.append("its id is also a `before` row")
+        elif rid in seen:
+            why.append("its id repeats")
+        seen.add(rid)
+        if why:
+            out.append(f"inserted row {rid}: {'; '.join(why)}")
     return out
 
 
 def _write_json_atomic(path: Path, obj) -> None:
+    """Write `obj` to `path` durably, before the caller commits: the temp
+    file is flushed and fsynced, renamed over `path`, and the directory
+    fsynced so the rename survives a crash. On any failure neither the temp
+    file nor a half-made `path` is left behind (--apply refused an existing
+    `path`, so there is nothing of anyone else's to keep)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(obj, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(tmp, path)
+    data = (json.dumps(obj, indent=1, sort_keys=True) + "\n").encode("utf-8")
+    replaced = False
+    try:
+        with open(tmp, "wb") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+        replaced = True
+        fd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    except BaseException:
+        for leftover in (tmp, path) if replaced else (tmp,):
+            try:
+                leftover.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
 
 
 def apply(dsn: str, editions, *, dry_run: bool, revert_file: Path | None) -> int:
@@ -304,11 +430,13 @@ def apply(dsn: str, editions, *, dry_run: bool, revert_file: Path | None) -> int
             print(f"apply: {revert_file} exists; refusing to overwrite a revert file")
             return 2
     with psycopg.connect(dsn) as con:
+        announce(con, "--dry-run" if dry_run else "--apply")
         docs = p1_documents(con, editions)
         con.rollback()
     parses = _parse_all(docs)               # UnsafeBudgetLineCode propagates here
     with psycopg.connect(dsn) as con:
         con.execute("lock table budget_lines in exclusive mode")
+        check_columns(con)
         ok, plans = run_check(con, docs, parses)
         if not ok:
             con.rollback()
@@ -395,11 +523,20 @@ def revert(dsn: str, revert_file: Path) -> int:
     if not revert_file.is_file():
         print(f"revert: {revert_file} does not exist")
         return 2
-    rec = json.loads(revert_file.read_text(encoding="utf-8"))
-    if rec.get("schema") != REVERT_SCHEMA or rec.get("columns") != list(ROW_COLUMNS):
-        print(f"revert: {revert_file} is not a schema-{REVERT_SCHEMA} s194 revert file")
+    try:
+        rec = json.loads(revert_file.read_text(encoding="utf-8"))
+    except OSError as exc:
+        print(f"revert: {revert_file} could not be read ({exc}); nothing written")
         return 2
-    if rec.get("rows_sha256") != record_sha256(rec):
+    except ValueError as exc:               # not UTF-8, or not JSON (a truncated file)
+        rec, why = None, f"not JSON: {exc}"
+    else:
+        why = malformed(rec)
+    if why:
+        print(f"revert: {revert_file} is not a schema-{REVERT_SCHEMA} s194 revert file"
+              f" ({why}); nothing written")
+        return 2
+    if rec["rows_sha256"] != record_sha256(rec):
         print(f"revert: {revert_file} sha256 does not match its contents; nothing written")
         return 1
     scope = out_of_scope(rec)
@@ -414,12 +551,13 @@ def revert(dsn: str, revert_file: Path) -> int:
     rekeyed = {int(k): v for k, v in rec["rekeyed"].items()}
     deleted = rec["deleted_ids"]
     with psycopg.connect(dsn) as con:
-        db = con.execute("select current_database()").fetchone()[0]
+        db = announce(con, "--revert")
         if db != rec["database"]:
             print(f"revert: {revert_file} was written on database {rec['database']!r},"
                   f" this is {db!r}; nothing written")
             return 1
         con.execute("lock table budget_lines in exclusive mode")
+        check_columns(con)
         now = _rows_by_id(con, list(before) + list(inserted))
         pre_write = (all(now.get(i) == row for i, row in before.items())
                      and not any(i in now for i in inserted))
@@ -481,10 +619,18 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--revert", action="store_true", help="restore the pre-write rows")
     ap.add_argument("--revert-file", type=Path, default=None,
                     help="--apply writes it; --revert reads it")
-    ap.add_argument("--dsn", default=None, help="default: GOVBUDGET_PG_DSN")
+    ap.add_argument("--dsn", default=None,
+                    help="default: GOVBUDGET_PG_DSN; an empty --dsn is refused, never replaced")
     ap.add_argument("--editions", type=int, nargs="+", default=list(EDITIONS))
     args = ap.parse_args(argv)
-    dsn = args.dsn or config.PG_DSN
+    # An empty --dsn (an unset "$POST_DSN") must not fall back to
+    # GOVBUDGET_PG_DSN, the live database once scripts/era/env.sh is sourced.
+    dsn = config.PG_DSN if args.dsn is None else args.dsn
+    if not dsn.strip():
+        ap.print_usage(sys.stderr)
+        print("s194: --dsn is empty; nothing connected" if args.dsn is not None
+              else "s194: GOVBUDGET_PG_DSN is empty; nothing connected", file=sys.stderr)
+        return 2
     try:
         if args.check:
             return check(dsn, args.editions)
@@ -497,6 +643,9 @@ def main(argv: list[str] | None = None) -> int:
     except (P1KeyConflict, P1RestatementMismatch, UnsafeBudgetLineCode) as exc:
         print(f"s194: REFUSED — {type(exc).__name__}: {exc}")
         return 1
+    except Precondition as exc:
+        print(f"s194: {exc}")
+        return 2
 
 
 if __name__ == "__main__":

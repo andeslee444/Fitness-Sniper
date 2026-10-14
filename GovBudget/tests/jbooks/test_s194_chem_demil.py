@@ -13,7 +13,10 @@ import dataclasses
 import hashlib
 import importlib.util
 import json
+import os
+import stat
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import psycopg
 import pytest
@@ -364,3 +367,248 @@ def test_revert_refuses_a_file_naming_rows_outside_194s_scope(pg_dsn, prod, tmp_
             " page key nor a restatement") in out
     assert f"revert: {revert_file} names 1 row(s) outside #194's scope; nothing written" in out
     assert _snapshot(pg_dsn) == applied
+
+
+# Task 7 fix round 1 (review, 2026-10-14): the refusals that guard Task 22b's
+# live write. None of these may reach a database it was not pointed at.
+
+
+class _NoConnect(Exception):
+    pass
+
+
+def _forbid_connect(monkeypatch) -> list:
+    """Make every psycopg.connect raise; returns the DSNs it was asked for."""
+    asked = []
+
+    def refuse(dsn, *args, **kwargs):
+        asked.append(dsn)
+        raise _NoConnect(dsn)
+
+    monkeypatch.setattr(s194.psycopg, "connect", refuse)
+    return asked
+
+
+@pytest.mark.parametrize("argv", [
+    ["--check", "--dsn", ""],
+    ["--dry-run", "--dsn", " "],
+    ["--apply", "--dsn", "  ", "--revert-file", "{tmp}/r.json"],
+    ["--revert", "--dsn", "\t", "--revert-file", "{tmp}/r.json"],
+])
+def test_an_empty_dsn_is_refused_before_any_connection(monkeypatch, tmp_path, capsys, argv):
+    """An empty --dsn (say, an unset "$POST_DSN") must never fall back to
+    GOVBUDGET_PG_DSN, which is the live database once env.sh is sourced."""
+    asked = _forbid_connect(monkeypatch)
+    monkeypatch.setattr(s194.config, "PG_DSN", "postgresql://sentinel.invalid/never")
+    assert s194.main([a.replace("{tmp}", str(tmp_path)) for a in argv]) == 2
+    captured = capsys.readouterr()
+    assert "usage:" in captured.err and "s194: --dsn is empty" in captured.err
+    assert captured.out == "" and asked == [] and not (tmp_path / "r.json").exists()
+
+
+def test_an_empty_govbudget_pg_dsn_is_refused_too(monkeypatch, capsys):
+    asked = _forbid_connect(monkeypatch)
+    monkeypatch.setattr(s194.config, "PG_DSN", "  ")
+    assert s194.main(["--check"]) == 2
+    assert "s194: GOVBUDGET_PG_DSN is empty" in capsys.readouterr().err
+    assert asked == []
+
+
+def test_the_dsn_falls_back_to_govbudget_pg_dsn_only_when_omitted(monkeypatch):
+    asked = _forbid_connect(monkeypatch)
+    monkeypatch.setattr(s194.config, "PG_DSN", "postgresql://sentinel.invalid/never")
+    for argv in (["--check"], ["--check", "--dsn", "postgresql://other.invalid/x"]):
+        with pytest.raises(_NoConnect):
+            s194.main(argv)
+    assert asked == ["postgresql://sentinel.invalid/never", "postgresql://other.invalid/x"]
+
+
+def test_every_mode_first_names_the_database_and_host(pg_dsn, prod, tmp_path, capsys):
+    url = urlsplit(pg_dsn)
+    where = f"database {url.path[1:]!r} on host {url.hostname}:{url.port}"
+    revert_file = tmp_path / "revert.json"
+    for args in (["--check"], ["--dry-run"], ["--apply", "--revert-file", revert_file],
+                 ["--revert", "--revert-file", revert_file]):
+        assert _run(pg_dsn, *args) == 0
+        assert capsys.readouterr().out.splitlines()[0] == f"s194 {args[0]}: {where}"
+
+
+def test_a_p1_document_count_other_than_one_is_a_precondition_error(
+        pg_dsn, prod, tmp_path, capsys):
+    with psycopg.connect(pg_dsn) as con:
+        _register(con, 2025, "p1_display_copy.xlsx")
+    before = _snapshot(pg_dsn)
+    for args in (["--check"], ["--dry-run"], ["--apply", "--revert-file", tmp_path / "r.json"]):
+        assert _run(pg_dsn, *args) == 2
+        assert ("s194: expected one P-1 rollup document per edition, got {2025: 2}"
+                in capsys.readouterr().out)
+    assert _snapshot(pg_dsn) == before and not (tmp_path / "r.json").exists()
+
+
+def test_check_refuses_a_workbook_that_is_not_the_registered_file(pg_dsn, prod, tmp_path, capsys):
+    doc_id, path = prod[2024]
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    with psycopg.connect(pg_dsn) as con:
+        con.execute("update jbook_documents set sha256 = %s where id = %s", ("0" * 64, doc_id))
+    before = _snapshot(pg_dsn)
+    assert _run(pg_dsn, "--check") == 1
+    out = capsys.readouterr().out
+    assert f"check PB2024: workbook sha256 {actual} != jbook_documents {'0' * 64}" in out
+    assert "check: DIFFERENCES" in out
+    assert _run(pg_dsn, "--apply", "--revert-file", tmp_path / "r.json") == 1
+    assert "apply: check not clean, nothing written (ROLLED BACK)" in capsys.readouterr().out
+    assert _snapshot(pg_dsn) == before and not (tmp_path / "r.json").exists()
+
+
+def test_revert_refuses_a_changed_inserted_row(pg_dsn, prod, tmp_path, capsys):
+    revert_file = tmp_path / "revert.json"
+    assert _run(pg_dsn, "--apply", "--revert-file", revert_file) == 0
+    rid = json.loads(revert_file.read_text())["inserted"][0][0]
+    with psycopg.connect(pg_dsn) as con:
+        con.execute("update budget_lines set amount_thousands = 1 where id = %s", (rid,))
+    moved = _snapshot(pg_dsn)
+    capsys.readouterr()
+    assert _run(pg_dsn, "--revert", "--revert-file", revert_file) == 1
+    out = capsys.readouterr().out
+    assert f"PROBLEM inserted row {rid} is not as --apply wrote it" in out
+    assert "revert: the database moved since --apply (1 problem(s)); nothing written" in out
+    assert _snapshot(pg_dsn) == moved
+
+
+def test_revert_refuses_when_a_deleted_row_is_back(pg_dsn, prod, tmp_path, capsys):
+    revert_file = tmp_path / "revert.json"
+    assert _run(pg_dsn, "--apply", "--revert-file", revert_file) == 0
+    rec = json.loads(revert_file.read_text())
+    row = next(r for r in rec["before"] if r[0] in rec["deleted_ids"])
+    with psycopg.connect(pg_dsn) as con:
+        con.execute(f"insert into budget_lines ({', '.join(s194.ROW_COLUMNS)}) values"
+                    f" ({', '.join(['%s'] * len(s194.ROW_COLUMNS))})", row)
+    moved = _snapshot(pg_dsn)
+    capsys.readouterr()
+    assert _run(pg_dsn, "--revert", "--revert-file", revert_file) == 1
+    out = capsys.readouterr().out
+    assert f"PROBLEM deleted row {row[0]} is back" in out
+    # the row is also one --apply did not leave in place, so that digest moved too
+    assert "PROBLEM rows --apply did not touch changed since" in out
+    assert "revert: the database moved since --apply (2 problem(s)); nothing written" in out
+    assert _snapshot(pg_dsn) == moved
+
+
+@pytest.mark.parametrize("column, value, why", [
+    ("exhibit", "R-1", "exhibit 'R-1', not 'P-1'"),
+    ("pe_bli", "7001SA1000", "('0390D', '7001SA1000') is not a route-safe page key"),
+    ("fiscal_year", 2019, "fiscal year 2019 is not among the editions [2024, 2025, 2026]"),
+    ("id", "a before id", "its id is also a `before` row"),
+])
+def test_revert_refuses_inserted_rows_outside_194s_scope(
+        pg_dsn, prod, tmp_path, capsys, column, value, why):
+    revert_file = tmp_path / "revert.json"
+    assert _run(pg_dsn, "--apply", "--revert-file", revert_file) == 0
+    rec = json.loads(revert_file.read_text())
+    row = rec["inserted"][0]
+    if value == "a before id":
+        value = rec["before"][0][0]
+    row[s194.ROW_COLUMNS.index(column)] = value
+    rec["rows_sha256"] = s194.record_sha256(rec)   # consistent, but not #194's rows
+    revert_file.write_text(json.dumps(rec))
+    applied = _snapshot(pg_dsn)
+    capsys.readouterr()
+    assert _run(pg_dsn, "--revert", "--revert-file", revert_file) == 1
+    out = capsys.readouterr().out
+    assert f"PROBLEM inserted row {row[0]}: {why}" in out
+    assert f"revert: {revert_file} names 1 row(s) outside #194's scope; nothing written" in out
+    assert _snapshot(pg_dsn) == applied
+
+
+@pytest.fixture()
+def widen_budget_lines(pg_dsn):
+    """Adds a column to budget_lines on demand; drops it again afterwards."""
+    def widen():
+        with psycopg.connect(pg_dsn) as con:
+            con.execute("alter table budget_lines add column s194_extra text")
+    yield widen
+    with psycopg.connect(pg_dsn) as con:
+        con.execute("alter table budget_lines drop column if exists s194_extra")
+
+
+def test_apply_and_revert_refuse_a_budget_lines_of_another_shape(
+        pg_dsn, prod, tmp_path, capsys, widen_budget_lines):
+    revert_file = tmp_path / "revert.json"
+    assert _run(pg_dsn, "--apply", "--revert-file", revert_file) == 0
+    widen_budget_lines()
+    applied = _snapshot(pg_dsn)
+    capsys.readouterr()
+    for args in (["--revert", "--revert-file", revert_file], ["--dry-run"],
+                 ["--apply", "--revert-file", tmp_path / "two.json"]):
+        assert _run(pg_dsn, *args) == 2
+        out = capsys.readouterr().out
+        assert "s194: budget_lines columns" in out and "s194_extra" in out
+    assert _snapshot(pg_dsn) == applied and not (tmp_path / "two.json").exists()
+
+
+def _truncated(text, rec):
+    return text[: len(text) // 2]
+
+
+def _without(field):
+    def damage(text, rec):
+        del rec[field]
+        rec["rows_sha256"] = s194.record_sha256(rec)
+        return json.dumps(rec)
+    return damage
+
+
+def _short_before_row(text, rec):
+    rec["before"][0] = rec["before"][0][:5]
+    rec["rows_sha256"] = s194.record_sha256(rec)
+    return json.dumps(rec)
+
+
+@pytest.mark.parametrize("damage", [
+    _truncated, lambda text, rec: "{}", lambda text, rec: "[]", _without("inserted"),
+    _without("untouched_digest"), _short_before_row,
+], ids=["truncated", "empty-object", "a-list", "no-inserted", "no-digest", "short-row"])
+def test_revert_refuses_a_malformed_revert_file_before_connecting(
+        pg_dsn, prod, tmp_path, capsys, monkeypatch, damage):
+    revert_file = tmp_path / "revert.json"
+    assert _run(pg_dsn, "--apply", "--revert-file", revert_file) == 0
+    text = revert_file.read_text()
+    revert_file.write_text(damage(text, json.loads(text)))
+    capsys.readouterr()
+    asked = _forbid_connect(monkeypatch)
+    assert _run(pg_dsn, "--revert", "--revert-file", revert_file) == 2
+    assert (f"revert: {revert_file} is not a schema-1 s194 revert file ("
+            in capsys.readouterr().out)
+    assert asked == []
+
+
+def test_the_revert_file_is_fsynced_with_its_directory(pg_dsn, prod, tmp_path, monkeypatch):
+    synced = []
+    real = os.fsync
+
+    def spy(fd):
+        synced.append("dir" if stat.S_ISDIR(os.fstat(fd).st_mode) else "file")
+        return real(fd)
+
+    monkeypatch.setattr(s194.os, "fsync", spy)
+    assert _run(pg_dsn, "--apply", "--revert-file", tmp_path / "r.json") == 0
+    assert synced == ["file", "dir"]
+
+
+@pytest.mark.parametrize("failing", ["file", "dir"])
+def test_a_revert_file_that_cannot_be_made_durable_rolls_back(
+        pg_dsn, prod, tmp_path, capsys, monkeypatch, failing):
+    real = os.fsync
+
+    def flaky(fd):
+        if ("dir" if stat.S_ISDIR(os.fstat(fd).st_mode) else "file") == failing:
+            raise OSError(5, "Input/output error")
+        return real(fd)
+
+    monkeypatch.setattr(s194.os, "fsync", flaky)
+    before = _snapshot(pg_dsn)
+    revert_file = tmp_path / "r.json"
+    assert _run(pg_dsn, "--apply", "--revert-file", revert_file) == 1
+    assert f"apply: could not write {revert_file}" in capsys.readouterr().out
+    assert _snapshot(pg_dsn) == before
+    assert sorted(p.name for p in tmp_path.iterdir() if p.name.startswith("r.json")) == []
