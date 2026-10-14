@@ -443,7 +443,7 @@ models:
       - name: program_org
         description: "Seed pin for a chain on one of the 3 PB2026 organization-collision codes ('20', '30', '500'): the PB2026 organization whose page the points join (e.g. '20' DSS -> 'DCSA'). NULL for every other code."
       - name: decision
-        description: "same_program (points join the code's page) · history_only (era-only code: data, no page — R-DEC-FAM-ERAONLY) · exclude_placeholder (FY2017CR/FY2018CR continuing-resolution lines) · exclude_route_unsafe (0390D O&M / RDT&E) · exclude_reused_code (the code meant a different program in this range) · undecided (no seed row covers the key)."
+        description: "same_program (points join the code's page) · history_only (era-only code: data, no page — R-DEC-FAM-ERAONLY) · exclude_placeholder (FY2017CR/FY2018CR continuing-resolution lines) · exclude_route_unsafe (0390D RDT&E, which restates R-1 PEs 0708081D + 0708083D and has no page key; 0390D's O&M chain joined 0390DOM in owner batch B7, 2026-10-04) · exclude_reused_code (the code meant a different program in this range) · undecided (no seed row covers the key)."
         data_tests:
           - not_null
           - accepted_values:

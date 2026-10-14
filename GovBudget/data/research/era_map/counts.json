@@ -1,12 +1,12 @@
 {
  "chain_groups": {
-  "a1_only": 811,
+  "a1_only": 812,
   "a2_without_r": 18,
   "cr": 45,
   "h_drift_free": 271,
   "h_drifting": 8,
   "r_containing": 98,
-  "unsafe": 2
+  "unsafe": 1
  },
  "chains": 1253,
  "collision_codes": [
@@ -36,24 +36,24 @@
   "2023": 967
  },
  "key_class_actuals_k": {
-  "A1": "681693028",
+  "A1": "682494581",
   "A2": "10697778",
   "CR": "0",
   "H": "48272642",
   "R1": "11952806",
   "R2": "9172777",
   "R3": "16135771",
-  "UNSAFE": "5832017"
+  "UNSAFE": "5030464"
  },
  "key_classes": {
-  "A1": 5477,
+  "A1": 5484,
   "A2": 64,
   "CR": 45,
   "H": 978,
   "R1": 152,
   "R2": 133,
   "R3": 64,
-  "UNSAFE": 14
+  "UNSAFE": 7
  },
  "left_ruling": 0,
  "org_split_codes": [
@@ -63,15 +63,15 @@
   "30",
   "500"
  ],
- "owner_batch_chains": 125,
+ "owner_batch_chains": 126,
  "review_rows": 0,
  "ruled_actuals_k": {
-  "R-DEC-ERA-EXCLUDE": "5832017",
+  "R-DEC-ERA-EXCLUDE": "5030464",
   "R-DEC-ERA-HISTORY": "46875952",
   "R-DEC-ERA-SAME": "651579549"
  },
  "rulings": {
-  "R-DEC-ERA-EXCLUDE": 47,
+  "R-DEC-ERA-EXCLUDE": 46,
   "R-DEC-ERA-HISTORY": 271,
   "R-DEC-ERA-SAME": 810
  },

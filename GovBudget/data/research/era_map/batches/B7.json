@@ -1,0 +1,11 @@
+{
+  "batch": "B7",
+  "decided_on": "2026-10-04",
+  "owner_reply": "Join it (Recommended)",
+  "owner_acknowledgements": {
+    "B7 source": "The owner gave this reply in chat on 2026-10-04 to question Q3 of the families piece-1 follow-ups design: join the era O&M chain O&M|0390D| (PB2017-PB2023, 7 lines, $801,553 thousand of FY2015-FY2021 actuals) to /program/0390DOM/ as owner batch B7, reversing the 2026-10-02 exclude_route_unsafe for this chain. ROADMAP records it in commit 532205c9. The question named the chain, its lines and its dollars, so no batch page was shown."
+  },
+  "rows": {
+    "O&M|0390D|": {"decision": "same_program", "note": "owner B7 (design Q3, 2026-10-04): same_program, the era O&M chain joins /program/0390DOM/; supersedes the 2026-10-02 R-DEC-ERA-EXCLUDE row for this chain"}
+  }
+}
