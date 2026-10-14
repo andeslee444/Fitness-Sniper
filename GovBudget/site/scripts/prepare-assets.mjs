@@ -230,11 +230,15 @@ if (budgetPdfAudit?.schema_version !== 2 || !budgetPdfAudit.full_corpus || budge
   console.error("❌ PDF source receipts are missing, partial, or stale. Run `govbudget export-budget-pdf-receipts` before building.");
   process.exit(1);
 }
-if (fs.existsSync(budgetPdfSrc)) {
-  copyDir(budgetPdfSrc, path.join(jsonDestDir, "budget-pdf-receipts"));
-} else {
-  fs.rmSync(path.join(jsonDestDir, "budget-pdf-receipts"), { recursive: true, force: true });
-}
+// ROADMAP #196 (owner sign-off 2026-10-04): ship ONLY v2/. Mirroring the whole
+// directory also deployed the 256 two-hex v1 shards an older export left
+// beside it, which nothing reads. The destination parent is removed first, so
+// a file an earlier build copied there cannot survive; gate 1 checks that
+// out/json/budget-pdf-receipts holds exactly v2/ (checkShippedPdfReceipts).
+const budgetPdfDest = path.join(jsonDestDir, "budget-pdf-receipts");
+fs.rmSync(budgetPdfDest, { recursive: true, force: true });
+copyDir(pdfV2, path.join(budgetPdfDest, "v2"));
+console.log("✓  budget-pdf-receipts/v2/ (4,096 shards) → public/json/");
 
 // ── 5d3. Copy the SAM.gov registration receipts (ROADMAP #191) ───────────────
 // json/sam/<UEI>.json — the receipt each SAM registration fact's citation

@@ -993,6 +993,36 @@ function resolveBudgetTarget(entry) {
   return worst;
 }
 
+/**
+ * Shipped PDF receipts (ROADMAP #196; follow-ups design §5.7, owner sign-off
+ * 2026-10-04): out/json/budget-pdf-receipts holds exactly v2/ — its 4,096
+ * three-hex-digit shards and nothing else. The 256 two-hex v1 shards the
+ * removed F-15-only writer left (419,075 bytes) are read by nothing
+ * (src/lib/budget-pdf-receipts.ts fetches only v2/), and anything else here
+ * ships to every reader. Returns {errors, notes}.
+ */
+export function checkShippedPdfReceipts(root = outDir) {
+  const errors = [];
+  const notes = [];
+  const dir = path.join(root, "json", "budget-pdf-receipts");
+  if (!dirExists(dir)) {
+    errors.push("out/json/budget-pdf-receipts/ not found — prepare-assets 5d2 copies v2/ there");
+    return { errors, notes };
+  }
+  const top = fs.readdirSync(dir).sort();
+  if (top.length !== 1 || top[0] !== "v2" || !dirExists(path.join(dir, "v2"))) {
+    const shown = JSON.stringify(top.slice(0, 5)) + (top.length > 5 ? ` and ${top.length - 5} more` : "");
+    errors.push(`out/json/budget-pdf-receipts/ holds ${shown}; it must hold exactly v2/ (ROADMAP #196)`);
+  }
+  const v2 = dirExists(path.join(dir, "v2")) ? fs.readdirSync(path.join(dir, "v2")) : [];
+  const shards = v2.filter((name) => /^[0-9a-f]{3}\.json$/.test(name));
+  if (v2.length !== 4096 || shards.length !== 4096) {
+    errors.push(`out/json/budget-pdf-receipts/v2/ holds ${v2.length} entries, ${shards.length} of them [0-9a-f]{3}.json shards; it must hold exactly the 4,096 shards`);
+  }
+  if (errors.length === 0) notes.push("budget-pdf-receipts: exactly v2/ with 4,096 shards ✓");
+  return { errors, notes };
+}
+
 /** The leg. Returns {errors, notes} so runBuildGate can fold them in. */
 /** Gzip-ceiling usage at or above which a page is reported as near-ceiling. */
 const NEAR_CEILING_PCT = 90;
@@ -1614,6 +1644,13 @@ export async function runBuildGate() {
     } else {
       notes.push(`citations.json: ${citationKeys} keys == ${citationTotal} total ✓`);
     }
+  }
+
+  // ── Shipped PDF receipts: exactly v2/ (ROADMAP #196) ──────────────────────
+  {
+    const r = checkShippedPdfReceipts();
+    errors.push(...r.errors);
+    notes.push(...r.notes);
   }
 
   // ── /json/feed.json is SHIPPED, parses, and carries cards ─────────────────
