@@ -1,5 +1,6 @@
 import copy
 import json
+import re
 from decimal import Decimal
 
 import pytest
@@ -7,6 +8,8 @@ import pytest
 from govbudget.f15_funding_history import (
     ERA_MEMBERS,
     ERA_PROGRAM_CODES,
+    NOTE_RECEIPTS,
+    PROGRAM_NOTES,
     PROGRAMS,
     build_history,
     build_program_matrix,
@@ -283,10 +286,12 @@ def test_matrix_preserves_exact_scenario_measure_for_homogeneous_inputs(amount_t
     assert {row["measure"] for row in selected["components"]} == {expected}
 
 
-# Spec §6.5 (S5): the strings the owner signed off.
+# Spec §6.5 (S5): the strings the owner signed off; the first gloss is the
+# owner's 2026-10-04 amendment (#206 T9, design Q17: "F-15EX AP").
 F015E0_LABEL = "F-15e (FY2020 F-15EX Lot 1 aircraft)"
 F015E0_NOTE = (
-    "This exhibit does not include the eight aircraft in Lot 1 which were funded outside this exhibit in "
+    "This exhibit [the PB2026 F-15EX AP (F015EX) P-40] does not include the eight aircraft in Lot 1"
+    " which were funded outside this exhibit in "
     "FY 2020 (two test aircraft were purchased with RDT&E funds (PE 0207134F); four operationally "
     "representative test aircraft and two operational aircraft were purchased with procurement funds "
     "(F015E0, Line #3 [line 3 of the PB2020–21 P-1 (line 4 in PB2022)]))."
@@ -318,11 +323,35 @@ def test_coverage_notes_state_the_exclusions_and_the_f015e0_allocation():
     assert len(notes) == 7
 
 
+# The PB2026 AF Aircraft Procurement Vol I prints this sentence on PDF p.71 in
+# the F-15EX AP (F015EX) P-40 description (narrative fact e7d5bcfb4a30f458,
+# LineItem[2]; read 2026-10-13 from data/site/data/jbook_narratives.parquet).
+SOURCE_SENTENCE = (
+    "This exhibit does not include the eight aircraft in Lot 1 which were funded outside this exhibit in "
+    "FY 2020 (two test aircraft were purchased with RDT&E funds (PE 0207134F); four operationally "
+    "representative test aircraft and two operational aircraft were purchased with procurement funds "
+    "(F015E0, Line #3))."
+)
+
+
+def test_the_f015e0_note_is_the_source_sentence_plus_bracketed_glosses():
+    """#206 T9: "This exhibit" read as F015E0's own exhibit under the "BLI
+    F015E0" label. The first gloss names the exhibit the receipt is; with every
+    [..] gloss removed the note is the printed sentence, verbatim."""
+    note = PROGRAM_NOTES["F015E0"]["note"]
+    assert re.sub(r"\s*\[[^\]]*\]", "", note) == SOURCE_SENTENCE
+    glosses = re.findall(r"\[([^\]]*)\]", note)
+    assert glosses == ["the PB2026 F-15EX AP (F015EX) P-40", "line 3 of the PB2020–21 P-1 (line 4 in PB2022)"]
+    receipt = NOTE_RECEIPTS[PROGRAM_NOTES["F015E0"]["note_fact_id"]]
+    assert f"({receipt['pe_bli']})" in glosses[0]
+
+
 def test_a_program_note_ships_only_with_its_reviewed_narrative_receipt():
     check_program_notes(PROGRAMS, {"e7d5bcfb4a30f458": dict(NARRATIVE)})
     for registry in ({}, {"e7d5bcfb4a30f458": {**NARRATIVE, "page_number": 70}},
                      {"e7d5bcfb4a30f458": {**NARRATIVE, "kind": "workbook"}},
-                     {"e7d5bcfb4a30f458": {**NARRATIVE, "sha256": "f" * 64}}):
+                     {"e7d5bcfb4a30f458": {**NARRATIVE, "sha256": "f" * 64}},
+                     {"e7d5bcfb4a30f458": {**NARRATIVE, "pe_bli": "F015E0"}}):
         with pytest.raises(ValueError, match="program note receipt mismatch"):
             check_program_notes(PROGRAMS, registry)
     unreviewed = [{**PROGRAMS[0], "note": "x", "note_fact_id": "0123456789abcdef"}]

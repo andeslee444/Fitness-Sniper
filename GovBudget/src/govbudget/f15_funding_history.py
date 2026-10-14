@@ -52,11 +52,16 @@ ERA_PROGRAM_CODES = {
 # bought, cited to that sentence's narrative receipt (spec §6.5; the owner
 # signed off the exact strings, recorded in the ROADMAP). F015E0: PB2026 AF
 # Aircraft Procurement Vol I, F015EX P-40 description, PDF p.71, the only page
-# that prints it. The quote is verbatim; the [bracketed] gloss is ours, read
-# from ERA_PROGRAM_CODES (F015E0 is line 3 in PB2020–21, line 4 in PB2022).
+# that prints it. The quote is verbatim; each [bracketed] gloss is ours. The
+# first names the exhibit "This exhibit" means — the PB2026 F-15EX AP
+# (F015EX) P-40, P-1 line #7, not the line-44 "F-15EX" P-40 in Vol II — so the
+# sentence no longer reads as F015E0's own exhibit (owner, 2026-10-04; #206
+# T9, design Q17). The second is read from ERA_PROGRAM_CODES (F015E0 is line 3
+# in PB2020–21, line 4 in PB2022).
 PROGRAM_NOTES = {
     "F015E0": dict(
-        note=("This exhibit does not include the eight aircraft in Lot 1 which were funded outside this "
+        note=("This exhibit [the PB2026 F-15EX AP (F015EX) P-40] does not include the eight aircraft in "
+              "Lot 1 which were funded outside this "
               "exhibit in FY 2020 (two test aircraft were purchased with RDT&E funds (PE 0207134F); four "
               "operationally representative test aircraft and two operational aircraft were purchased with "
               "procurement funds (F015E0, Line #3 [line 3 of the PB2020–21 P-1 (line 4 in PB2022)]))."),
@@ -64,9 +69,10 @@ PROGRAM_NOTES = {
     ),
 }
 # What each note_fact_id must resolve to in the exported registry: the
-# jbook_narrative receipt for that paragraph, in that exact PDF.
+# jbook_narrative receipt for that paragraph, in that exact PDF, under the
+# budget line whose exhibit prints it (the code the note's first gloss names).
 NOTE_RECEIPTS = {
-    "e7d5bcfb4a30f458": dict(kind="jbook_narrative", page_number=71,
+    "e7d5bcfb4a30f458": dict(kind="jbook_narrative", page_number=71, pe_bli="F015EX",
                              sha256="528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e"),
 }
 PROGRAMS = [

@@ -20,8 +20,13 @@ Writes only into --out-dir (default tests/fixtures/f15/):
 Nothing is written unless all of these hold: the member-only rebuild equals
 the full-lake rebuild; the previews rebuilt from the sha-named workbooks equal
 the shipped workbook-cells entries; the rebuild from the captured inputs is
-byte-identical to the shipped history; and that history's sha256 equals
---expect-sha256 (the value the owner-approved record pins).
+byte-identical to the shipped history; that history's sha256 equals
+--expect-sha256 (the value the owner-approved record pins); and the fixture,
+gzipped exactly as it is written and read back, rebuilds the shipped history
+byte for byte the way tests/test_f15_era_identity.py rebuilds it (ROADMAP
+#201: the check used to run on the in-memory rows). The three files are then
+written to temporary siblings and moved into place, so a failed write leaves
+the old fixtures.
 
 Usage (from GovBudget/):
   S0 capture, from the live export:
@@ -40,6 +45,7 @@ import argparse
 import gzip
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -152,6 +158,42 @@ def capture(*, site_dir: Path, duckdb_path: Path) -> tuple[dict, bytes]:
     return fixture, shipped
 
 
+def rebuild_from_fixture_bytes(gz: bytes) -> bytes:
+    """The history tests/test_f15_era_identity.py rebuilds from these fixture bytes."""
+    inputs = json.loads(gzip.decompress(gz))
+    payload, _, _, _ = build_history(
+        inputs["source_rows"], inputs["series"], retrieved_at=inputs["retrieved_at"],
+        current_fact_ids=set(inputs["current_fact_ids"]))
+    rebuilt, _, _ = build_program_matrix(
+        payload, inputs["previews"], existing_citations=inputs["registry"],
+        retrieved_at=inputs["retrieved_at"])
+    return _json_bytes(rebuilt)
+
+
+def round_trip_check(fixture: dict, shipped: bytes) -> bytes:
+    """gzip the fixture exactly as it will be written, read it back and rebuild;
+    refuse unless that equals the shipped history. Returns the gzip bytes."""
+    gz = gzip.compress(_json_bytes(fixture), mtime=0)
+    if rebuild_from_fixture_bytes(gz) != shipped:
+        raise SystemExit("capture_f15_fixtures: the round-tripped fixture does not rebuild the shipped history")
+    return gz
+
+
+def write_fixtures(out_dir: Path, files: dict[str, bytes]) -> None:
+    """Write every file to a temporary sibling first, then os.replace each into
+    place; a failed write leaves the old fixtures and no temporary behind."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    temps = {name: out_dir / f".{name}.tmp" for name in files}
+    try:
+        for name, data in files.items():
+            temps[name].write_bytes(data)
+        for name in files:
+            os.replace(temps[name], out_dir / name)
+    finally:
+        for tmp in temps.values():
+            tmp.unlink(missing_ok=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--site-dir", type=Path, default=config.SITE_DIR)
@@ -165,10 +207,9 @@ def main(argv: list[str] | None = None) -> int:
     if actual != args.expect_sha256:
         print(f"capture_f15_fixtures: shipped history sha256 {actual} != expected {args.expect_sha256}", file=sys.stderr)
         return 1
-    args.out_dir.mkdir(parents=True, exist_ok=True)
-    (args.out_dir / "history.json").write_bytes(shipped)
-    (args.out_dir / "history.sha256").write_text(actual + "\n")
-    (args.out_dir / "builder_inputs.json.gz").write_bytes(gzip.compress(_json_bytes(fixture), mtime=0))
+    gz = round_trip_check(fixture, shipped)
+    write_fixtures(args.out_dir, {"history.json": shipped, "history.sha256": (actual + "\n").encode(),
+                                  "builder_inputs.json.gz": gz})
     print(json.dumps(dict(
         history_sha256=actual, history_bytes=len(shipped), source_rows=len(fixture["source_rows"]),
         series=len(fixture["series"]), previews=len(fixture["previews"]), registry=len(fixture["registry"]),
