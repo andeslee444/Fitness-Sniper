@@ -1,0 +1,141 @@
+{
+  "amount_types": [
+    "fy_2024_actuals",
+    "fy_2025_total"
+  ],
+  "decade_columns": [
+    {
+      "edition": 2019,
+      "fy": 2017,
+      "key": "fy2017a",
+      "kind": "actuals"
+    },
+    {
+      "edition": 2026,
+      "fy": 2024,
+      "key": "fy2024a",
+      "kind": "actuals"
+    }
+  ],
+  "decade_default_columns": [
+    "fy2017a",
+    "fy2024a"
+  ],
+  "default_columns": [
+    "fy_2024_actuals",
+    "fy_2025_total",
+    "fy2526_change",
+    "fy2526_pct_change"
+  ],
+  "delta_columns": [
+    "fy2526_change",
+    "fy2526_pct_change"
+  ],
+  "orgs": [
+    {
+      "org": "DCSA",
+      "programs": [
+        {
+          "cells": {
+            "fy2017a": {
+              "fid": "fc11000000000055",
+              "v": 1057.0
+            },
+            "fy2024a": {
+              "fid": "fb11000000000053",
+              "v": 2135.0
+            },
+            "fy2526_change": {
+              "fid": "3ffd26bdb0532aae",
+              "v": 39.0
+            },
+            "fy2526_pct_change": {
+              "v": 1.78
+            },
+            "fy_2024_actuals": {
+              "fid": "fa11000000000051",
+              "v": 2135.0
+            },
+            "fy_2025_total": {
+              "fid": "9fc061a5c6a5251c",
+              "v": 2191.0
+            }
+          },
+          "pe_bli": "20",
+          "projects": [],
+          "slug": "20-DCSA",
+          "title": "Vehicles"
+        }
+      ]
+    },
+    {
+      "org": "DTRA",
+      "programs": [
+        {
+          "cells": {
+            "fy2024a": {
+              "fid": "fb11000000000054",
+              "v": 356.0
+            },
+            "fy2526_change": {
+              "fid": "735d325b1c6381a5",
+              "v": 10.0
+            },
+            "fy2526_pct_change": {
+              "v": 2.5
+            },
+            "fy_2024_actuals": {
+              "fid": "fa11000000000052",
+              "v": 356.0
+            },
+            "fy_2025_total": {
+              "fid": "f3485af0e9880f50",
+              "v": 400.0
+            }
+          },
+          "pe_bli": "20",
+          "projects": [],
+          "slug": "20-DTRA",
+          "title": "Vehicles"
+        }
+      ]
+    },
+    {
+      "org": "N",
+      "programs": [
+        {
+          "cells": {
+            "fy2024a": {
+              "fid": "fd11000000000056",
+              "v": 1000.0
+            }
+          },
+          "pe_bli": "0145",
+          "projects": [],
+          "slug": "0145-APN",
+          "title": "F/A-18E/F (Fighter) Hornet"
+        },
+        {
+          "cells": {
+            "fy2024a": {
+              "fid": "fd11000000000057",
+              "v": 2000.0
+            }
+          },
+          "pe_bli": "0145",
+          "projects": [],
+          "slug": "0145-PANM",
+          "title": "General Purpose Bombs"
+        }
+      ]
+    }
+  ],
+  "program_units": "USD thousands",
+  "project_scenarios": {
+    "fy2024": "PriorYear",
+    "fy2025": "CurrentYear",
+    "fy2026": "BudgetYearOne"
+  },
+  "project_units": "USD millions",
+  "schema_version": 1
+}

@@ -2076,10 +2076,19 @@ def test_decade_sidecar_series(pg_dsn, tmp_path):
 
 def test_decade_matrix_columns(pg_dsn, tmp_path):
     """years_matrix.json carries the decade columns with per-column edition
-    and per-cell fids."""
+    and per-cell fids. Since ROADMAP #193 the cells are split across the core
+    and its two shards, so this reads the merged view."""
+    from govbudget.export_site import merge_years_matrix
+
     site, fids = _run_decade_export(pg_dsn, tmp_path)
-    matrix = json.loads(
-        (site / "json" / "years_matrix.json").read_text())
+    json_dir = site / "json"
+    matrix = merge_years_matrix(
+        json.loads((json_dir / "years_matrix.json").read_text()),
+        *(
+            json.loads((json_dir / "years_matrix" / f"{name}.json").read_text())
+            for name in ("decade", "detail")
+        ),
+    )
     cols = {c["key"]: c for c in matrix["decade_columns"]}
     assert cols["fy2022a"]["edition"] == 2024
     assert cols["fy2022r"]["edition"] == 2022
@@ -2134,15 +2143,17 @@ def test_decade_integrity_gate_set_equality(pg_dsn, tmp_path):
     assert result["checks"]["citation_distinctness"] is True, result["failures"]
 
 
-def test_era_grain_fids_reach_the_fenced_emitters(pg_dsn, tmp_path, monkeypatch):
+def test_era_grain_fids_reach_the_lineage_emitter_only(pg_dsn, tmp_path, monkeypatch):
     """Families piece 1 (spec 2026-10-02 §6.2): export_site hands the decade
-    tier's out-of-band era marker to the lineage and /years/ emitters, the
-    only two readers of it. A sentinel set stands in for the tier's own."""
+    tier's out-of-band era marker to the lineage emitter. Since the
+    follow-ups lifted the /years/ fence (ROADMAP #193), lineage is its only
+    reader: the /years/ emitter gets no era set at all. A sentinel set
+    stands in for the tier's own."""
     import govbudget.export_site as es
 
     sentinel = frozenset({"e0a0000000000001"})
     real_tier = es._build_decade_citation_rows
-    seen: dict[str, frozenset | None] = {}
+    seen: dict[str, object] = {}
 
     def tier(**kwargs):
         bl, cit, grains, side, _era = real_tier(**kwargs)
@@ -2150,7 +2161,7 @@ def test_era_grain_fids_reach_the_fenced_emitters(pg_dsn, tmp_path, monkeypatch)
 
     def spy(name, real):
         def wrapper(**kwargs):
-            seen[name] = kwargs.get("era_grain_fids")
+            seen[name] = kwargs.get("era_grain_fids", "not passed")
             return real(**kwargs)
         return wrapper
 
@@ -2159,7 +2170,7 @@ def test_era_grain_fids_reach_the_fenced_emitters(pg_dsn, tmp_path, monkeypatch)
     monkeypatch.setattr(
         es, "_emit_years_matrix", spy("years_matrix", es._emit_years_matrix))
     _run_decade_export(pg_dsn, tmp_path)
-    assert seen == {"lineage": sentinel, "years_matrix": sentinel}
+    assert seen == {"lineage": sentinel, "years_matrix": "not passed"}
 
 
 # ---------------------------------------------------------------------------

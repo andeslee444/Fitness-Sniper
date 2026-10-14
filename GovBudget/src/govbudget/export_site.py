@@ -32,8 +32,10 @@ Python values. DuckDB opened read_only=True for mart reads.
 from __future__ import annotations
 
 import datetime
+import gzip
 import hashlib
 import json
+import os
 import re
 import shutil
 from contextlib import contextmanager
@@ -7211,8 +7213,9 @@ def _build_decade_citation_rows(
       era_grain_fids   — frozenset of the fids of the decade_grains added
                          through the map. Never serialized: decade_grains and
                          the sidecar decade_series keep their exact shape;
-                         the lineage and /years/ emitters skip these fids
-                         (spec §6.2 fences).
+                         the lineage emitter skips these fids (spec §6.2
+                         fence). /years/ shows them since ROADMAP #193 lifted
+                         its fence.
 
     Scope (stated Task 6 decision): grains/diffs are minted for PEs in
     scope_pes (the PB2026 page universe — every PE with a program page of
@@ -11518,8 +11521,9 @@ def _write_all_sidecars(
     """Core sidecar writer; called from _emit_json_sidecars.
 
     era_grain_fids: the decade tier's out-of-band era marker (spec 2026-10-02
-    §6.1). Never serialized; only the lineage and /years/ emitters read it,
-    to keep era points off the surfaces this piece fences (§6.2)."""
+    §6.1). Never serialized; only the lineage emitter reads it, to keep era
+    points off the lineage funding lines (§6.2). /years/ shows era points
+    since ROADMAP #193 lifted its fence."""
 
     n_files = 0
     summary_by_pe = summary_by_pe or {}
@@ -14880,13 +14884,12 @@ def _write_all_sidecars(
         bl_rows=bl_rows,
         cited_fact_ids=_cited_fact_ids,
         decade_grains=decade_grains,
-        era_grain_fids=era_grain_fids,
         # program-lineage Task 8: sparse pe_bli→family_id map (from
         # _load_lineage_for_export above). Drives the /years/ family-thread
         # badge — a UI-only overlay, NOT a column / cell value / CSV field.
         families=_lin_families,
     )
-    n_files += 1
+    n_files += len(_YEARS_MATRIX_FILES)  # the core and its two shards (#193)
 
     # ------------------------------------------------------------------ #
     # 18. breakdowns/{fact_id}.json (Phase 5D Task 3b — show-your-work)   #
@@ -14999,16 +15002,7 @@ def _write_all_sidecars(
 
     _leak_source_titles = {src for (_pe, src) in _title_overrides}
     if _leak_source_titles:
-        _leak_surfaces = [
-            json_dir / "programs.json",
-            json_dir / "search_quick.json",
-            json_dir / "feed.json",
-            json_dir / "years_matrix.json",
-        ]
-        for _sub in ("program_details", "entity_details", "districts", "flows", "filings", "feed-sections"):
-            _d = json_dir / _sub
-            if _d.is_dir():
-                _leak_surfaces.extend(sorted(_d.glob("*.json")))
+        _leak_surfaces = _title_leak_surfaces(json_dir)
         _leaks: list[str] = []
         for _path in _leak_surfaces:
             if not _path.exists():
@@ -17648,18 +17642,28 @@ def _emit_categories_sidecar(*, json_dir: Path, categories_csv: Path | None = No
 # Phase 5D: years matrix + sharded citation slices + derived breakdowns
 # ---------------------------------------------------------------------------
 
-# Size budget for years_matrix.json (fetched lazily by the /years/ client
-# island). Phase 5E raised the 5D 900 KB budget to 2 MB raw (5E spec §6:
-# the decade adds ~7 columns × existing rows, same lazy-fetch pattern).
-# Phase 5G (Navy round) confirmed ~2 KB/program at 813 programs (~1.53 MB).
-# Phase 5G (Army/AF/SF archive round) grew the detail-grade matrix to 1,741
-# programs at ~1.6 KB/program → ~2.74 MB: the SAME per-program density, just
-# more programs (Army 'A' + Air Force/Space Force 'F' J-book detail landed).
-# Budget raised to 4 MB, which still catches a doubling from here (1,741 →
-# ~2,540 programs) — a regression in the matrix design, not corpus growth.
-# Loud guard — a payload over budget beyond linear program growth means the
-# matrix design regressed, not that the budget should move.
+# Size budget for EACH /years/ file (the core and its two lazy shards, all
+# fetched by the /years/ client island). Phase 5E raised the 5D 900 KB budget
+# to 2 MB raw (5E spec §6: the decade adds ~7 columns × existing rows, same
+# lazy-fetch pattern). Phase 5G (Navy round) confirmed ~2 KB/program at 813
+# programs (~1.53 MB). Phase 5G (Army/AF/SF archive round) grew the
+# detail-grade matrix to 1,741 programs at ~1.6 KB/program → ~2.74 MB: the
+# SAME per-program density, just more programs. Budget raised to 4 MB, which
+# still catches a doubling from there — a regression in the matrix design,
+# not corpus growth. Loud guard: never raise it.
+#
+# Families piece-1 follow-ups (ROADMAP #193, design §3.3, Q11): the cap now
+# applies per file and is measured on the exact bytes written
+# (_canonical_json_bytes). Until the split the guard measured the compact
+# encoding while _write_json shipped the spaced one (2,900,904 B measured,
+# 3,178,320 B shipped on 2026-10-04).
 _YEARS_MATRIX_MAX_BYTES = 4 * 1024 * 1024
+
+# What /years/ downloads on open (the core, gzip level 9 — Python's gzip and
+# `gzip -9 -n` agree byte for byte) may not exceed what the single pre-split
+# file cost: 780,074 B, years_matrix.json as deployed in 916ae88e. The split
+# exists so era history costs nothing until a reader asks for it (Q11).
+_YEARS_MATRIX_CORE_GZIP_MAX = 780_074
 
 # Decade column keys: fy + kind suffix ('fy2020a'). The (kind, fy) pair
 # determines the edition uniquely by the year-shift rule (actuals for FY N
@@ -17709,6 +17713,247 @@ _YEARS_DEFAULT_COLUMNS = [
     "fy2526_pct_change",
 ]
 
+# The /years/ files (families piece-1 follow-ups design §3.2, scheme A;
+# ROADMAP #193), relative to json/. The core keeps the pre-split name, so the
+# build-time readers (getProgramDecadeCells reads fy2024a and fy2026r, both
+# default columns; getDecadeEditions reads the header), the /coverage/
+# derivation sentence and the live-asset probe still name the same file.
+_YEARS_MATRIX_CORE = "years_matrix.json"
+_YEARS_MATRIX_SHARD_DIR = "years_matrix"
+_YEARS_MATRIX_SHARDS = ("decade", "detail")
+_YEARS_MATRIX_FILES = (
+    _YEARS_MATRIX_CORE,
+    *(f"{_YEARS_MATRIX_SHARD_DIR}/{name}.json" for name in _YEARS_MATRIX_SHARDS),
+)
+_YEARS_MATRIX_SCHEMA_VERSION = 2
+
+
+def _canonical_json_bytes(obj) -> bytes:
+    """The ONE encoding every /years/ file is written in and measured on:
+    compact separators, sorted keys, json's default ASCII escaping."""
+    return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def years_matrix_row_key(program: dict) -> str:
+    """A /years/ row's identity across the core and its shards: the page slug
+    of a split-key row (Task E3 / ROADMAP #45), else the bare pe_bli — the
+    `slug ?? pe_bli` the client island keys rows by. Unique: split rows carry
+    slugs."""
+    return program.get("slug") or program["pe_bli"]
+
+
+def split_years_matrix(payload: dict) -> dict[str, dict]:
+    """Split the v1-shaped /years/ payload into the core and two lazy shards
+    (design §3.2, scheme A), keyed by path relative to json/:
+
+      years_matrix.json          the header, every row (pe_bli, title, slug?,
+                                 family_id?, np = its project count) and the
+                                 cells of decade_default_columns: everything
+                                 the grid needs to open
+      years_matrix/decade.json   the other decade columns' cells
+      years_matrix/detail.json   the PB2026 amount-type, Δ and %Δ cells and
+                                 the project sub-rows
+
+    Shard rows are keyed by years_matrix_row_key and carry only what that
+    row has. Every file carries build_id, the sha256 of the canonical v1
+    payload: a content hash, never a timestamp, so byte-identity proofs keep
+    working and the island can tell a shard from another export. The core's
+    `shards` manifest lists each shard's name, path, columns, bytes and
+    sha256 (of the canonical encoding, i.e. of the file written).
+
+    Pure. merge_years_matrix(core, *shards) is its inverse up to the keys the
+    split adds: schema_version, build_id, shards, and np on rows.
+    """
+    build_id = hashlib.sha256(_canonical_json_bytes(payload)).hexdigest()
+    core_cols = set(payload.get("decade_default_columns", []))
+    lazy_decade = [
+        c["key"] for c in payload.get("decade_columns", [])
+        if c["key"] not in core_cols
+    ]
+    detail_cols = [*payload["amount_types"], *payload["delta_columns"]]
+    tier = {k: "core" for k in core_cols}
+    tier.update({k: "decade" for k in lazy_decade})
+    tier.update({k: "detail" for k in detail_cols})
+    rows: dict[str, dict] = {name: {} for name in _YEARS_MATRIX_SHARDS}
+    seen: set[str] = set()
+    core_orgs = []
+    for org in payload["orgs"]:
+        core_programs = []
+        for program in org["programs"]:
+            key = years_matrix_row_key(program)
+            if key in seen:
+                raise ValueError(
+                    f"years_matrix row key {key!r} appears twice: shard rows"
+                    " are keyed by slug ?? pe_bli, so two rows sharing it"
+                    " would merge into one"
+                )
+            seen.add(key)
+            by_tier: dict[str, dict] = {"core": {}, "decade": {}, "detail": {}}
+            for col, cell in program["cells"].items():
+                where = tier.get(col)
+                if where is None:
+                    raise ValueError(
+                        f"years_matrix cell {key}/{col} belongs to no file: it"
+                        " is neither a decade column nor an amount-type or Δ"
+                        " column of the header"
+                    )
+                by_tier[where][col] = cell
+            row = {k: v for k, v in program.items() if k not in ("cells", "projects")}
+            row["np"] = len(program["projects"])
+            row["cells"] = by_tier["core"]
+            core_programs.append(row)
+            if by_tier["decade"]:
+                rows["decade"][key] = {"cells": by_tier["decade"]}
+            detail: dict = {}
+            if by_tier["detail"]:
+                detail["cells"] = by_tier["detail"]
+            if program["projects"]:
+                detail["projects"] = program["projects"]
+            if detail:
+                rows["detail"][key] = detail
+        core_orgs.append({**org, "programs": core_programs})
+    columns = {"decade": lazy_decade, "detail": detail_cols}
+    shards = {
+        name: {
+            "schema_version": _YEARS_MATRIX_SCHEMA_VERSION,
+            "build_id": build_id,
+            "shard": name,
+            "columns": columns[name],
+            "rows": rows[name],
+        }
+        for name in _YEARS_MATRIX_SHARDS
+    }
+    manifest = []
+    for name in _YEARS_MATRIX_SHARDS:
+        data = _canonical_json_bytes(shards[name])
+        manifest.append({
+            "name": name,
+            "path": f"{_YEARS_MATRIX_SHARD_DIR}/{name}.json",
+            "columns": columns[name],
+            "bytes": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+        })
+    core = {k: v for k, v in payload.items() if k != "orgs"}
+    core.update({
+        "schema_version": _YEARS_MATRIX_SCHEMA_VERSION,
+        "build_id": build_id,
+        "shards": manifest,
+        "orgs": core_orgs,
+    })
+    out = {_YEARS_MATRIX_CORE: core}
+    for name in _YEARS_MATRIX_SHARDS:
+        out[f"{_YEARS_MATRIX_SHARD_DIR}/{name}.json"] = shards[name]
+    return out
+
+
+def merge_years_matrix(core: dict, *shards: dict) -> dict:
+    """The /years/ grid as the island sees it once shards have loaded: the
+    core with each shard's cells, and the detail shard's project rows, put
+    back on their rows. Rows a shard does not name keep what the core gave
+    them (a core row has no projects, so they default to []; a pre-split,
+    schema-1 payload passed as the core therefore merges to itself). Raises
+    when a shard carries another build_id: a shard from one export never
+    fills a core from another.
+
+    Mirrored key for key by mergeYearsMatrix in
+    site/src/lib/years-matrix-shards.mjs (the island and the yearsmatrix
+    gate); tests/fixtures/years_matrix_split/ pins the pair."""
+    for shard in shards:
+        if shard.get("build_id") != core.get("build_id"):
+            raise ValueError(
+                f"years_matrix shard {shard.get('shard')!r} carries build_id"
+                f" {shard.get('build_id')!r} but the core carries"
+                f" {core.get('build_id')!r}: files from two exports"
+            )
+    merged = {k: v for k, v in core.items() if k != "orgs"}
+    orgs = []
+    for org in core["orgs"]:
+        programs = []
+        for program in org["programs"]:
+            key = years_matrix_row_key(program)
+            cells = dict(program["cells"])
+            projects: list = program.get("projects", [])
+            for shard in shards:
+                row = shard["rows"].get(key)
+                if row is None:
+                    continue
+                cells.update(row.get("cells", {}))
+                if "projects" in row:
+                    projects = row["projects"]
+            programs.append({**program, "cells": cells, "projects": projects})
+        orgs.append({**org, "programs": programs})
+    merged["orgs"] = orgs
+    return merged
+
+
+def _write_json_compact(path: Path, obj) -> int:
+    """Write obj as _canonical_json_bytes through a temporary file and
+    os.replace, refusing (ValueError, nothing written) when the encoding is
+    over _YEARS_MATRIX_MAX_BYTES. Returns the bytes written: the guard and
+    the shipped file measure the same bytes."""
+    data = _canonical_json_bytes(obj)
+    if len(data) > _YEARS_MATRIX_MAX_BYTES:
+        raise ValueError(
+            f"{path.name} would be {len(data)} bytes, over the"
+            f" {_YEARS_MATRIX_MAX_BYTES}-byte cap per /years/ file; nothing"
+            " written. Do not raise the cap."
+        )
+    tmp = path.with_name(f".{path.name}.tmp")
+    tmp.write_bytes(data)
+    os.replace(tmp, path)
+    return len(data)
+
+
+def _write_years_matrix_files(json_dir: Path, files: dict[str, dict]) -> dict[str, int]:
+    """Check every /years/ budget, then write the files: json/years_matrix/
+    is removed and rewritten whole, so no stale shard can ship (prepare-assets
+    mirrors the directory the same way), the shards first and the core, whose
+    manifest describes them, last. Returns {path: bytes written}."""
+    encoded = {rel: _canonical_json_bytes(obj) for rel, obj in files.items()}
+    for rel, data in encoded.items():
+        if len(data) > _YEARS_MATRIX_MAX_BYTES:
+            raise ValueError(
+                f"years_matrix file {rel} would be {len(data)} bytes, over the"
+                f" {_YEARS_MATRIX_MAX_BYTES}-byte cap per file (spec §3,"
+                " follow-ups design §3.3). The matrix design regressed; do not"
+                " raise the cap."
+            )
+    core_gzip = len(gzip.compress(encoded[_YEARS_MATRIX_CORE], compresslevel=9, mtime=0))
+    if core_gzip > _YEARS_MATRIX_CORE_GZIP_MAX:
+        raise ValueError(
+            f"years_matrix core {_YEARS_MATRIX_CORE} gzips to {core_gzip} bytes,"
+            f" over the {_YEARS_MATRIX_CORE_GZIP_MAX}-byte budget for what /years/"
+            " downloads on open (follow-ups design Q11). Move columns to a lazy"
+            " shard; do not raise the budget."
+        )
+    shard_dir = json_dir / _YEARS_MATRIX_SHARD_DIR
+    if shard_dir.exists():
+        shutil.rmtree(shard_dir)
+    shard_dir.mkdir(parents=True)
+    written = {}
+    for rel in sorted(files, key=lambda r: r == _YEARS_MATRIX_CORE):
+        written[rel] = _write_json_compact(json_dir / rel, files[rel])
+    return written
+
+
+def _title_leak_surfaces(json_dir: Path) -> list[Path]:
+    """The built files export_site's title-override leak check re-reads: the
+    index files, every /years/ file (since the #193 split the core holds the
+    program titles and detail.json the project titles) and every file in the
+    per-entity sidecar directories. The caller skips files that do not
+    exist."""
+    surfaces = [
+        json_dir / "programs.json",
+        json_dir / "search_quick.json",
+        json_dir / "feed.json",
+        *(json_dir / rel for rel in _YEARS_MATRIX_FILES),
+    ]
+    for sub in ("program_details", "entity_details", "districts", "flows", "filings", "feed-sections"):
+        d = json_dir / sub
+        if d.is_dir():
+            surfaces.extend(sorted(d.glob("*.json")))
+    return surfaces
+
 
 def _emit_years_matrix(
     *,
@@ -17720,17 +17965,18 @@ def _emit_years_matrix(
     cited_fact_ids: set,
     decade_grains: list | None = None,
     families: dict[str, int] | None = None,
-    era_grain_fids: frozenset[str] = frozenset(),
 ) -> dict:
-    """Emit json/years_matrix.json — the /years/ CapIQ-style grid payload.
+    """Emit the /years/ CapIQ-style grid: json/years_matrix.json (the core)
+    and json/years_matrix/{decade,detail}.json (the lazy shards).
 
-    era_grain_fids (families piece 1, spec 2026-10-02 §6.2): decade grains
-    added through the reviewed era map are dropped BEFORE anything reads
-    decade_grains, so the payload (cells, decade_columns, the header's
-    edition map, decade_default_columns) is byte-identical to an export
-    without them. Era procurement would add about 0.75 MB against the
-    4 MiB cap and fail years-matrix leg g; carrying it needs the matrix
-    sharded first (filed follow-up, spec §11).
+    The payload is built exactly as before, in memory, as ONE v1-shaped dict
+    (the return value), and only then split by column tier
+    (split_years_matrix; families piece-1 follow-ups design §3.2, scheme A,
+    ROADMAP #193). Era procurement grains (PB2017–PB2023 lines a reviewed
+    decision joined to a program) become cells like any other: piece 1's
+    fence (spec 2026-10-02 §6.2) dropped them while the single file had no
+    room for them, and the split leaves every file far under the 4 MiB cap,
+    so a /years/ row now shows exactly its program page's decade points.
 
     Nesting: orgs → programs → projects; every dollar cell is {"v", "fid"}.
 
@@ -17772,15 +18018,12 @@ def _emit_years_matrix(
       The existing amount_types/default_columns lists are BYTE-STABLE:
       Task 7 adopts the decade keys, current clients ignore them.
 
-    Returns the payload dict (also written to disk). Raises ValueError when
-    the serialized payload exceeds _YEARS_MATRIX_MAX_BYTES.
+    Returns the v1-shaped payload dict, which _write_years_matrix_files
+    writes as the core and two shards. Raises ValueError when any file would
+    exceed _YEARS_MATRIX_MAX_BYTES or the core would gzip above
+    _YEARS_MATRIX_CORE_GZIP_MAX.
     """
     from collections import defaultdict
-
-    # spec §6.2 fence: the matrix is built as if era grains did not exist.
-    decade_grains = [
-        g for g in (decade_grains or []) if g[5] not in era_grain_fids
-    ]
 
     # program-lineage Task 8: sparse pe_bli→family_id overlay (UI-only badge).
     fam_map: dict[str, int] = families or {}
@@ -17793,8 +18036,15 @@ def _emit_years_matrix(
     # unchanged.
     ident = _fetch_program_identity(con)
 
+    # ROADMAP #207 (follow-ups design §3.5): the account is the discriminator
+    # ONLY on an account-split key. Keeping it for every split key looked the
+    # three organization-split codes' rows ('20', '30', '500') up under
+    # ('20', '0300D', 'DCSA') while their decade grains sit under
+    # ('20', None, 'DCSA'), so seven rows lost every decade cell, and it
+    # minted the trajectory key '20|DCSA|0300D', which no citation carries
+    # (_build_derived_citation_rows keys on is_account_split, ROADMAP #45).
     def _acct_key(pe_bli: str, account: str | None) -> str | None:
-        return account if pe_bli in ident.split_pe_blis else None
+        return account if ident.is_account_split(pe_bli) else None
 
     # ---- trajectory index: (pe_bli, organization[, account]) → metrics ----
     traj_rows = _query_with_account_fallback(
@@ -18145,14 +18395,7 @@ def _emit_years_matrix(
             k for k in default_candidates if k in used_decade
         ]
 
-    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    if len(raw.encode("utf-8")) > _YEARS_MATRIX_MAX_BYTES:
-        raise ValueError(
-            f"years_matrix.json is {len(raw.encode('utf-8'))} bytes — over the"
-            f" {_YEARS_MATRIX_MAX_BYTES}-byte budget (spec §3). The matrix"
-            " design regressed; do not raise the budget."
-        )
-    _write_json(json_dir / "years_matrix.json", payload)
+    _write_years_matrix_files(json_dir, split_years_matrix(payload))
     return payload
 
 

@@ -381,7 +381,15 @@ def test_the_r_int_9_census_names_every_withheld_row_and_tier(tmp_path, capsys):
 
 
 def test_years_matrix_projects_use_each_members_source(member_export):
-    years = json.loads((member_export / 'json/years_matrix.json').read_text())
+    # ROADMAP #193: project rows live in the detail shard; read the merged view.
+    from govbudget.export_site import merge_years_matrix
+
+    json_dir = member_export / 'json'
+    years = merge_years_matrix(
+        json.loads((json_dir / 'years_matrix.json').read_text()),
+        *(json.loads((json_dir / 'years_matrix' / f'{name}.json').read_text())
+          for name in ('decade', 'detail')),
+    )
     # Inspect all nested program rows without coupling the regression to the
     # presentation wrapper used by the years page.
     def entries(value):
