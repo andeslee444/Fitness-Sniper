@@ -3,6 +3,7 @@ Task 12; spec §4.3, §5.3, §7) on the miniature lake in era_map_fixtures."""
 from __future__ import annotations
 
 import csv
+import re
 from datetime import date
 from pathlib import Path
 
@@ -352,3 +353,102 @@ def test_cli_propose_defaults_to_the_class_rulings_date(cli_world, capsys, monke
     main(["era-map", "propose"])
     seed = cli_world / "dbt" / "seeds" / "p1_era_code_decisions.csv"
     assert {r["decided_on"] for r in read(seed)} == {"2027-01-02"}
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP #198 (follow-ups spec 2026-10-04 §6.2): ratify
+# ---------------------------------------------------------------------------
+
+def test_ratify_reads_chains_csv_only_for_a_successor(world):
+    decide(world, GOOD, SPLIT)
+    (world["out"] / "chains.csv").unlink()
+    assert ratify(world) == 5
+
+
+def test_ratify_reports_every_error_of_a_row(world):
+    decide(world, {"1045|1612N|": {"decision": "same", "first_edition": "2017"}})
+    with pytest.raises(ValueError) as exc:
+        ratify(world)
+    message = str(exc.value)
+    assert "1045|1612N|: decision 'same' not in" in message
+    assert "1045|1612N|: range 2017-2022 outside the chain (2022-2022)" in message
+
+
+def test_ratify_names_both_organizations_of_a_clash(clash_world):
+    decide(clash_world, {"10|0300D|DPAA": {"decision": "same_program"}})
+    with pytest.raises(ValueError) as exc:
+        ratify(clash_world)
+    assert [ln for ln in str(exc.value).splitlines() if "collides with" in ln] == [
+        "  10|0300D|TJS|2022-2023: same_program collides with 10|0300D|DPAA|2022-2022 — page 10"
+        " would sum TJS and DPAA in PB2022; decide history_only for the organization whose"
+        " page it is not"]
+
+
+@pytest.mark.parametrize("edits, extra, message", [
+    ({}, [("1045|1612N|", {"chain_id": "NOPE|3010F|", "decision": "same_program"})],
+     "NOPE|3010F|: no such chain in the lake"),
+    ({"1045|1612N|": {"decision": "same_program", "first_edition": "20x2"}}, [],
+     "1045|1612N|: first/last edition must be integers"),
+    ({"50|0300D|": {"decision": "exclude_reused_code", "successor_code": "5731D15610"}}, [],
+     "50|0300D|: successor_code only on history_only rows"),
+])
+def test_ratify_refuses_the_branches_piece_1_left_untested(world, edits, extra, message):
+    decide(world, edits, extra)
+    before = world["seed"].read_bytes()
+    with pytest.raises(ValueError, match=re.escape(message)):
+        ratify(world)
+    assert world["seed"].read_bytes() == before
+
+
+def test_ratify_refuses_a_range_that_holds_no_key(tmp_path):
+    # chain 50|0300D| with keys in PB2020, PB2022 and PB2023: PB2021 holds none
+    gap = ("P-1", "2020", "0300D", "Acct", "WHS", "01", "BA", "0300D-WHS-L50",
+           "Indian Financing Act", "fy_2018_actuals", "0", "22", "Exhibit P-1", "O50", "50")
+    db = make_lake(tmp_path / "lake", extra_era=[gap])
+    out = tmp_path / "research" / "era_map"
+    seed = tmp_path / "seeds" / "p1_era_code_decisions.csv"
+    era_map.propose(duckdb_path=db, raw_docs_dir=make_raw_docs(tmp_path), out_dir=out,
+                    seed_path=seed, decided_on=ON)
+    gap_world = {"db": db, "out": out, "seed": seed, "review": out / "review.csv"}
+    decide(gap_world, {"50|0300D|": {"decision": "history_only", "first_edition": "2021",
+                                     "last_edition": "2021"}})
+    with pytest.raises(ValueError, match=re.escape("50|0300D|: range 2021-2021 holds no era key")):
+        ratify(gap_world)
+
+
+def test_ratify_refuses_a_chain_the_lake_changed_after_review(world, tmp_path):
+    decide(world, GOOD, SPLIT)
+    later = ("P-1", "2023", "1612N", "Acct", "NAVY", "01", "BA", "1612N-NAVY-L4",
+             "OHIO Replacement Submarine", "fy_2021_actuals", "0", "23", "Exhibit P-1", "O4",
+             "1045")
+    drifted = make_lake(tmp_path / "drifted", extra_era=[later])
+    before = world["seed"].read_bytes()
+    with pytest.raises(ValueError,
+                       match=re.escape("1045|1612N|: keys_sha256 changed since review")):
+        era_map.ratify(review_csv=world["review"], seed_path=world["seed"], batch="B1",
+                       decided_on=DECIDED, duckdb_path=drifted)
+    assert world["seed"].read_bytes() == before
+
+
+def test_ratify_refuses_a_review_file_missing_a_column(world):
+    decide(world, GOOD, SPLIT)
+    rows = read(world["review"])
+    era_map.write_csv(world["review"], [c for c in era_map.REVIEW_COLUMNS if c != "note"], rows)
+    with pytest.raises(ValueError, match=r"missing columns \['note'\]"):
+        ratify(world)
+
+
+def test_cli_ratify_names_the_one_build_that_keeps_conservation(cli_world, capsys):
+    from govbudget.cli import main
+
+    main(["era-map", "propose"])
+    decide({"review": cli_world / "data" / "research" / "era_map" / "review.csv"}, GOOD, SPLIT)
+    capsys.readouterr()
+    main(["era-map", "ratify", "--batch", "B1", "--decided-on", "2026-10-05"])
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("era-map ratify: 5 decision row(s) added as R-DEC-ERA-B1")
+    assert out[1] == (
+        "era-map ratify: next, ONE build: uv run --project . dbt build --project-dir dbt"
+        " --profiles-dir dbt --select p1_era_code_decisions p1_era_line_map"
+        " fct_program_decade_series (a map-only build fails"
+        " assert_program_decade_conservation)")

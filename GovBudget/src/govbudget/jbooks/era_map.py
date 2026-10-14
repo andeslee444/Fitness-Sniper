@@ -1681,7 +1681,9 @@ def ratify(
         propose re-proposes only chains with no owner row, so a part-decided
         chain would never return to review.csv; split the whole chain into
         ranges, or leave its decision blank (defer it) until it is.
-    Returns the number of rows added."""
+    Every error of every row is reported at once (ROADMAP #198); chains.csv
+    is read only when a row names a successor. Returns the number of rows
+    added."""
     if not BATCH_RE.fullmatch(batch):  # .match: `$` accepts "B1\n"
         raise ValueError(f"batch {batch!r} is not B<n> (e.g. B1)")
     ruling = f"R-DEC-ERA-{batch}"
@@ -1696,7 +1698,8 @@ def ratify(
     existing = read_seed(Path(seed_path))
     if any(r["ruling"] == ruling for r in existing):
         raise ValueError(f"{ruling} is already in {seed_path}; use a new batch number")
-    stated = {r["chain_id"]: r for r in read_csv(review_csv.parent / "chains.csv")}
+    # chains.csv is read only when a decided row names a successor (ROADMAP #198)
+    stated: dict[str, dict] | None = None
 
     inputs = load_inputs(Path(duckdb_path))
     ctx = _Context(inputs.era, inputs.modern)
@@ -1716,62 +1719,69 @@ def ratify(
             errors.append(f"{cid}: no such chain in the lake")
             continue
         if r["keys_sha256"] != ch.keys_sha256:
+            # everything below reads the chain as it was reviewed
             errors.append(f"{cid}: keys_sha256 changed since review"
                           f" ({r['keys_sha256'][:12]} -> {ch.keys_sha256[:12]});"
                           " re-run propose and re-review")
             continue
+        # Every independent check runs, so one refusal lists all of a row's
+        # problems, not only the first (ROADMAP #198).
+        row_errors: list[str] = []
         if decision not in DECISIONS:
-            errors.append(f"{cid}: decision {decision!r} not in {DECISIONS}")
-            continue
+            row_errors.append(f"{cid}: decision {decision!r} not in {DECISIONS}")
+        first = last = None
         try:
             first, last = int(r["first_edition"]), int(r["last_edition"])
         except ValueError:
-            errors.append(f"{cid}: first/last edition must be integers")
-            continue
-        if not (ch.first_edition <= first <= last <= ch.last_edition):
-            errors.append(f"{cid}: range {first}-{last} outside the chain"
-                          f" ({ch.first_edition}-{ch.last_edition})")
-            continue
-        n_keys, sha = range_sha(keys_by_chain[cid], first, last)
-        if n_keys == 0:
-            errors.append(f"{cid}: range {first}-{last} holds no era key")
-            continue
+            row_errors.append(f"{cid}: first/last edition must be integers")
+        n_keys, sha = 0, ""
+        if first is not None:
+            if not (ch.first_edition <= first <= last <= ch.last_edition):
+                row_errors.append(f"{cid}: range {first}-{last} outside the chain"
+                                  f" ({ch.first_edition}-{ch.last_edition})")
+            else:
+                n_keys, sha = range_sha(keys_by_chain[cid], first, last)
+                if n_keys == 0:
+                    row_errors.append(f"{cid}: range {first}-{last} holds no era key")
         pa, po = r["program_account"].strip(), r["program_org"].strip()
         pinned = (ch.line_item_code in inputs.collision_codes
                   and decision in ("same_program", "history_only"))
         if pinned:
             ident = (ch.line_item_code, pa, po)
             if not pa or not po:
-                errors.append(f"{cid}: collision code — program_account and"
-                              " program_org are required")
-                continue
-            if decision == "same_program" and ident not in inputs.modern_pages:
-                errors.append(f"{cid}: {ident} is not a PB2026 page")
-                continue
-            own = {(k.account, _modern_org(k.organization))
-                   for k in keys_by_chain[cid]}
-            if (decision == "history_only" and ident not in line_idents
-                    and (pa, po) not in own):
-                errors.append(f"{cid}: {ident} is not a PB2024-26 P-1 line or"
-                              f" the chain's own identity {sorted(own)}")
-                continue
+                row_errors.append(f"{cid}: collision code — program_account and"
+                                  " program_org are required")
+            elif decision == "same_program" and ident not in inputs.modern_pages:
+                row_errors.append(f"{cid}: {ident} is not a PB2026 page")
+            elif decision == "history_only":
+                own = {(k.account, _modern_org(k.organization))
+                       for k in keys_by_chain[cid]}
+                if ident not in line_idents and (pa, po) not in own:
+                    row_errors.append(f"{cid}: {ident} is not a PB2024-26 P-1 line or"
+                                      f" the chain's own identity {sorted(own)}")
         elif pa or po:
-            errors.append(f"{cid}: program_account/program_org are only set for"
-                          " collision-code same_program/history_only rows")
-            continue
+            row_errors.append(f"{cid}: program_account/program_org are only set for"
+                              " collision-code same_program/history_only rows")
         successor: dict[str, str] = {}
         succ = r["successor_code"].strip()
         if succ:
-            book = stated.get(cid, {})
             if decision != "history_only":
-                errors.append(f"{cid}: successor_code only on history_only rows")
-                continue
-            if book.get("successor_code") != succ:
-                errors.append(f"{cid}: successor {succ!r} is not the book-stated"
-                              f" successor {book.get('successor_code') or '(none)'!r}")
-                continue
-            successor = {f: book[f] for f in
-                         ("successor_code", "successor_account", "successor_evidence")}
+                row_errors.append(f"{cid}: successor_code only on history_only rows")
+            else:
+                if stated is None:
+                    stated = {s["chain_id"]: s
+                              for s in read_csv(review_csv.parent / "chains.csv")}
+                book = stated.get(cid, {})
+                if book.get("successor_code") != succ:
+                    row_errors.append(
+                        f"{cid}: successor {succ!r} is not the book-stated"
+                        f" successor {book.get('successor_code') or '(none)'!r}")
+                else:
+                    successor = {f: book[f] for f in
+                                 ("successor_code", "successor_account", "successor_evidence")}
+        if row_errors:
+            errors.extend(row_errors)
+            continue
         new.append(seed_row(
             ch, first=first, last=last, n_keys=n_keys, keys_sha=sha,
             decision=decision, ruling=ruling, decided_on=decided_on,
@@ -1787,21 +1797,13 @@ def ratify(
         for b in existing + new[:i]:
             if _ranges_overlap(a, b):
                 errors.append(f"{a['decision_id']} overlaps {b['decision_id']}")
-            if (a["decision"] == b["decision"] == "same_program"
-                    and a["organization"] and b["organization"]
-                    and a["organization"] != b["organization"]
-                    and _page_grain(a, cc) == _page_grain(b, cc)):
-                shared = sorted(_row_editions(a, keys_by_chain)
-                                & _row_editions(b, keys_by_chain))
-                if shared:
-                    code, pin_a, pin_o = _page_grain(a, cc)
-                    page = f"{code} ({pin_a}/{pin_o})" if pin_o else code
-                    errors.append(
-                        f"{a['decision_id']}: same_program collides with"
-                        f" {b['decision_id']} — page {page} would"
-                        f" sum {a['organization']} and {b['organization']} in"
-                        f" {', '.join(f'PB{e}' for e in shared)}; decide"
-                        " history_only for the organization whose page it is not")
+    # Rule 4(b) over the whole seed-to-be, reported once per pair with both
+    # organizations named, whichever came first (ROADMAP #198; propose runs
+    # the same _org_grain_clashes on class-ruled rows).
+    new_ids = {r["decision_id"] for r in new}
+    for a, b, shared in _org_grain_clashes(existing + new, keys_by_chain, cc):
+        if a["decision_id"] in new_ids or b["decision_id"] in new_ids:
+            errors.append(_clash_message(a, b, shared, cc))
     touched = sorted({chain_id(a["line_item_code"], a["account"], a["organization"])
                       for a in new})
     for cid in touched:
