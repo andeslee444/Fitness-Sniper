@@ -5,7 +5,8 @@ every leg against config.SITE_DIR, config.DUCKDB_PATH and the committed seed
 (dbt/seeds/p1_era_code_decisions.csv), prints one line per leg and then
 exactly one final line, `verify-era-map: PASS` or `verify-era-map: FAIL`,
 and exits 1 on FAIL. It is built to fail: a missing table, workbook or seed
-is a FAIL, never a skip.
+is a FAIL, never a skip. A tool error (an unknown --legs letter) prints
+`verify-era-map: ERROR — <message>` instead and exits 2.
 
   Leg (a) — workbooks. Re-read the seven PB2017–PB2023 P-1 workbooks the site
     ships (data/site/workbooks/<sha>.xlsx; the shas are pinned below and the

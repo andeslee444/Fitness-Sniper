@@ -2436,12 +2436,18 @@ def cmd_verify_lineage(args) -> None:
 def cmd_verify_era_map(args) -> None:
     from govbudget import verify_era_map
 
-    out = verify_era_map.run_verify_era_map(
-        site_dir=config.SITE_DIR,
-        duckdb_path=config.DUCKDB_PATH,
-        seed_path=verify_era_map.DEFAULT_SEED_PATH,
-        legs=args.legs,
-    )
+    # Follow-ups CLI convention (design §6; ROADMAP #203): a tool error prints
+    # one ERROR line and exits 2; a failed check prints FAIL and exits 1.
+    try:
+        out = verify_era_map.run_verify_era_map(
+            site_dir=config.SITE_DIR,
+            duckdb_path=config.DUCKDB_PATH,
+            seed_path=verify_era_map.DEFAULT_SEED_PATH,
+            legs=args.legs,
+        )
+    except ValueError as e:
+        print(f"verify-era-map: ERROR — {e}")
+        sys.exit(2)
     for line in verify_era_map.format_report(out):
         print(line)
     print(f"verify-era-map: {out['verdict']}")

@@ -12,6 +12,7 @@ era_map.keys_sha256. Every leg passes on that corpus and fails on the defect
 it exists for.
 """
 import csv
+import dataclasses
 import hashlib
 from pathlib import Path
 
@@ -235,6 +236,98 @@ def test_leg_a_fails_when_a_workbook_is_missing(corpus):
     assert any(f.startswith("2023: workbook missing: ") for f in _failures(corpus.leg_a()))
 
 
+def _rewrite_workbook(corpus: Corpus, edition: int, rows: list[dict]) -> None:
+    """Replace one edition's workbook with `rows` (sheet row = 3 + index), re-pin
+    its sha, and point that edition's map rows at it."""
+    old = corpus.site_dir / "workbooks" / f"{corpus.shas[edition]}.xlsx"
+    tmp = corpus.site_dir.parent / f"p1_{edition}_rewritten.xlsx"
+    _write_workbook(tmp, edition, rows)
+    sha = _sha(tmp)
+    old.unlink()
+    tmp.rename(corpus.site_dir / "workbooks" / f"{sha}.xlsx")
+    corpus.shas[edition] = sha
+    for r in corpus.map_rows:
+        if r["edition"] == edition:
+            r["source_document_sha256"] = sha
+    corpus.save()
+
+
+def test_leg_a_skips_the_classified_programs_line(corpus, monkeypatch):
+    """ROADMAP #203: leg a's classified-row filter had no test. An era
+    workbook's Classified Programs line (blank Line Number, Line Item
+    9999999999; S1b loads it under that code) is not an era key, so leg a
+    neither looks for it in the map nor counts it. With the filter defeated
+    the same workbook fails, so the filter is what passes it."""
+    from govbudget.jbooks import era_keys
+
+    classified = dict(account="3010F", org="AF", ba="07", line="", code="9999999999",
+                      title="Classified Programs", add="Add", amount=1234)
+    _rewrite_workbook(corpus, 2019, _rows_for(2019) + [classified])
+    result = corpus.leg_a()
+    assert result["ok"], _failures(result)
+    assert result["detail"]["summary"].startswith("workbooks=7 keys_checked=32 expected=32")
+    monkeypatch.setattr(era_keys, "is_era_procurement_key", lambda pe_bli: True)
+    assert "2019/9999999999: in the workbook, missing from the map" in _failures(corpus.leg_a())
+
+
+def test_leg_a_fails_when_the_map_cites_another_workbook(corpus):
+    corpus.row(2021, "3010F-AF-L4")["source_document_sha256"] = "0" * 64
+    corpus.save()
+    assert (f"2021/3010F-AF-L4: map cites {'0' * 64}, not the pinned workbook"
+            in _failures(corpus.leg_a()))
+
+
+def test_leg_a_fails_when_a_cited_row_prints_another_line_number(corpus, monkeypatch):
+    # Leg a re-reads the printed Line Number without the loader; a reader that
+    # disagrees with the parse about a row's line is a FAIL.
+    real = verify_era_map._printed_cells
+
+    def shifted(path):
+        printed, code_col = real(path)
+        if path.name == f"{corpus.shas[2019]}.xlsx":
+            _line, code, title = printed[7]
+            printed[7] = ("2", code, title)
+        return printed, code_col
+
+    monkeypatch.setattr(verify_era_map, "_printed_cells", shifted)
+    assert "2019/2031A-ARMY-L1: row 7 line number '2' is not the key's line" in _failures(corpus.leg_a())
+
+
+def _wrap_parse(monkeypatch, edition, change):
+    from govbudget.jbooks import p1_loader
+
+    real = p1_loader.parse_p1_rollup
+
+    def wrapped(path, *, exhibit, fiscal_year):
+        parse = real(path, exhibit=exhibit, fiscal_year=fiscal_year)
+        return change(parse) if fiscal_year == edition else parse
+
+    monkeypatch.setattr(p1_loader, "parse_p1_rollup", wrapped)
+
+
+def test_leg_a_fails_on_a_parse_without_era_line_keying(corpus, monkeypatch):
+    _wrap_parse(monkeypatch, 2020, lambda parse: dataclasses.replace(parse, era_line_keying=False))
+    assert "2020: the parse did not use era line keying" in _failures(corpus.leg_a())
+
+
+def test_leg_a_fails_when_one_key_carries_two_identities(corpus, monkeypatch):
+    def doubled(parse):
+        row = next(r for r in parse.rows if r.pe_bli == "2031A-ARMY-L1")
+        return dataclasses.replace(
+            parse, rows=[*parse.rows, dataclasses.replace(row, title="Utility F/W Aircraft II")])
+
+    _wrap_parse(monkeypatch, 2019, doubled)
+    assert "2019/2031A-ARMY-L1: the workbook prints 2 identities for one key" in _failures(corpus.leg_a())
+
+
+def test_leg_a_reports_a_parse_error_as_a_failure(corpus, monkeypatch):
+    def refuse(parse):
+        raise ValueError("an era key prints two codes")
+
+    _wrap_parse(monkeypatch, 2017, refuse)
+    assert "2017: ValueError: an era key prints two codes" in _failures(corpus.leg_a())
+
+
 def test_leg_a_fails_on_a_duplicated_map_row(corpus):
     # Task 20 review carry-over: by_edition keys rows by (edition, era_key),
     # so a duplicated row would otherwise pass leg a silently (collapsed to
@@ -303,6 +396,14 @@ def test_leg_b_fails_when_the_published_date_is_not_the_seed_date(corpus):
         "F15EWS|3010F||2019-2023: map ('same_program', 'R-DEC-ERA-SAME', None, None, None,"
         " '2026-10-02') != seed ('same_program', 'R-DEC-ERA-SAME', None, None, None,"
         " '2026-10-03') (stale build)"]
+
+
+def test_leg_b_fails_on_a_map_decision_the_seed_no_longer_holds(corpus):
+    # ROADMAP #203: the stale-build branch for a decision_id the seed dropped.
+    corpus.seed = [s for s in corpus.seed if s["line_item_code"] != "9440A11300"]
+    corpus.save()
+    assert ("9440A11300|2031A||2019-2019: in the map, not in p1_era_code_decisions.csv"
+            " (stale build)") in _failures(corpus.leg_b())
 
 
 def test_leg_b_fails_on_an_unreadable_seed(corpus):
@@ -380,6 +481,19 @@ def test_cli_passes_with_one_final_verdict_line(pinned, capsys):
     assert out[-1] == "verify-era-map: PASS"
     assert [line for line in out if line.startswith("verify-era-map:")] == [out[-1]]
     assert out[0].startswith("leg a workbooks: workbooks=7 keys_checked=32")
+
+
+def test_cli_refuses_unknown_legs_with_exit_2(pinned, capsys):
+    """ROADMAP #203 and the follow-ups CLI convention (design §6): a tool error
+    prints one `verify-era-map: ERROR — …` line and exits 2, never a traceback;
+    a failed check still exits 1."""
+    with pytest.raises(SystemExit) as exit_:
+        cli.main(["verify-era-map", "--legs", "az"])
+    out = capsys.readouterr().out.splitlines()
+    assert exit_.value.code == 2
+    assert out[-1].startswith("verify-era-map: ERROR — legs must be letters from abcdef")
+    assert out[-1].endswith("got 'az'")
+    assert not any(line.startswith("leg ") for line in out)
 
 
 def test_cli_fails_with_exit_1(pinned, capsys):
