@@ -9,7 +9,6 @@ import {
   type ProgramRow,
 } from "@/lib/data";
 import { formatAmountNoCurrency } from "@/lib/format";
-import { normalizeExhibitFamily } from "@/lib/basis";
 import { companyLabel } from "@/lib/company-name.mjs";
 import { Cite } from "@/components/cite";
 import { ChartFigure, chartDescId } from "@/components/chart-figure";
@@ -71,11 +70,14 @@ export interface FlowData {
   flow: FlowSidecar;
 }
 
+// Reads the raw token, not basis.normalizeExhibitFamily: that is the CHIP
+// vocabulary, which reads "om" as the P-1 exhibit an om line's figures cite
+// (#194, /program/0390DOM/). The exhibit is not the appropriation: an O&M
+// line is not procurement money, so "om" falls through to "Appropriation".
 function appropriationLabel(family: string | null | undefined): string {
-  const f = normalizeExhibitFamily(family);
-  return f === "procurement"
+  return family === "procurement"
     ? "Procurement appropriation"
-    : f === "rdte"
+    : family === "rdte"
       ? "RDT&E appropriation"
       : "Appropriation";
 }

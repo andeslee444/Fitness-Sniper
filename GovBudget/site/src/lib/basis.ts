@@ -52,10 +52,20 @@ export function basisChipForExhibit(
  * two-exhibit vocabulary. A token this function does not recognize degrades
  * to null (→ the mixed chip via basisChipForExhibit) rather than being
  * passed through and silently mis-rendered as one of the two known exhibits.
+ *
+ * One exception, "om" → "procurement" (#194, spec §4.6): the corpus's only
+ * "om" line is /program/0390DOM/, the Chem Demil O&M line the PB2026 P-1
+ * prints as "O&M". The route-safe seed gives its page the "om" family so the
+ * header badge reads O&M, but every figure on it cites the P-1 workbook
+ * (sheet "Exhibit P-1"), and spec §4.6 calls it "a P-1 line". Its TOA chips
+ * therefore name the P-1 exhibit those citations prove, not the both-exhibits
+ * form (gate 23 leg f2). Gate 23 leg f4 fails the build if an "om" page's
+ * single-exhibit chip ever sits on a figure that does not cite that sheet.
  */
 export function normalizeExhibitFamily(
   family: string | null | undefined,
 ): ExhibitFamily {
+  if (family === "om") return "procurement";
   return family === "rdte" || family === "procurement" ? family : null;
 }
 

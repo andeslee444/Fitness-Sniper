@@ -128,6 +128,10 @@
  *      or the exhibit map silently matching nothing is exactly the failure
  *      mode that let the original defect ship past a gate suite that never
  *      looked at label CORRECTNESS, only number↔citation agreement.
+ *   f4 "om" PAGES (#194, Task 21h2) — on a page whose sidecar carries
+ *      exhibit_family "om" (absent from programs.json, so f1 skips it), every
+ *      single-exhibit chip must sit on a figure whose own citation sheet is
+ *      that exhibit's. See runOmExhibitLeg.
  *
  * LEG (g) — FY2026 discretionary/reconciliation split (#50; letter checked
  *   free against a/b/c/d/e/f above before use):
@@ -214,7 +218,7 @@
  * Export: runBasisGate() → { pass, errors, notes }
  * Helpers (unit-tested in __tests__/basis.test.mjs): normalizeAmount,
  * valuesAgree, fyTokensFromLabel, validateGoldenFootnote, chipExhibitClaim,
- * isBasisChipClassName, parseCsv.
+ * isBasisChipClassName, parseCsv, citationLeafSheets, omPageChipProblems.
  */
 
 import fs from "fs";
@@ -1129,6 +1133,9 @@ export async function runBasisGate() {
   // ── Leg (f) — exhibit agreement (#48) ──────────────────────────────────────
   runExhibitAgreementLeg(pages, errors, notes);
 
+  // ── Leg (f4) — an "om" page's chip names its figure's own sheet (#194) ────
+  runOmExhibitLeg(pages, errors, notes);
+
   // ── Leg (g) — FY2026 discretionary/reconciliation split (#50) ─────────────
   runFy26SplitLeg(pages, errors, notes);
 
@@ -1610,6 +1617,193 @@ function runExhibitAgreementLeg(pages, errors, notes) {
     );
   } else {
     notes.push(`leg f3: ${resolved} basis chips resolved — non-vacuous ✓`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEG (f4) — AN "om" PAGE'S SINGLE-EXHIBIT CHIP NAMES ITS FIGURE'S OWN SHEET
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// #194, spec §4.6, Task 21h2 (2026-10-14). src/lib/basis.ts's
+// normalizeExhibitFamily reads the "om" token as the P-1 exhibit, because the
+// corpus's only om line — /program/0390DOM/, Chem Demil O&M — is printed on
+// the PB2026 P-1 and every figure on its page cites sheet "Exhibit P-1".
+// Before that mapping the page rendered five both-exhibits "P-1/R-1 TOA"
+// chips and leg f2 refused the build. The mapping is a claim about THIS
+// line's citations, not about O&M: an O&M line printed on another workbook
+// would inherit a false "P-1 TOA" chip. Leg f1 cannot see it (an om page is
+// absent from programs.json by design, so f1 counts its chips as unlabelled),
+// so this leg checks the claim against the citations themselves:
+//
+//   f4 For every program page whose sidecar (program_details/{pe}.json)
+//      carries exhibit_family "om", every single-exhibit TOA chip ("P-1 …" /
+//      "R-1 …") must sit on a cited figure — the nearest preceding
+//      [data-amount] in document order: Cite renders its chip right after its
+//      figure, CiteChips right after its value cluster — whose citation's own
+//      workbook sheet is that exhibit's ("Exhibit P-1" / "Exhibit R-1"). A
+//      derived figure (the FY25→26 change) is read through its inputs, and
+//      every leaf must cite that sheet. A chip with no cited figure before
+//      it, a fact id the shipped cite-shards do not hold, or a leaf with no
+//      sheet FAILS: the leg never takes a claim on trust.
+//   NON-VACUITY: an export with om pages must resolve ≥ 1 chip on them. An
+//      export with none (every build before #194's write) is noted and passes.
+
+/** The sheet a single-exhibit chip claim must be cited to (leg f4). */
+const SHEET_BY_CHIP_CLAIM = { procurement: "Exhibit P-1", rdte: "Exhibit R-1" };
+
+function* walkElements(node) {
+  for (const child of node.childNodes ?? []) {
+    if (child.nodeType !== 1) continue;
+    yield child;
+    yield* walkElements(child);
+  }
+}
+
+/**
+ * The workbook sheets a figure's citation rests on: the record's own `sheet`,
+ * or, for a derived record, every input's, recursively. A record the loader
+ * does not hold, or a leaf without a sheet, yields null — never a guess. The
+ * shards carry `inputs` as a JSON string; an array is accepted too.
+ */
+export function citationLeafSheets(factId, loadCitation, seen = new Set()) {
+  if (seen.has(factId)) return [];
+  seen.add(factId);
+  const record = loadCitation(factId);
+  if (!record) return [null];
+  let inputs = record.inputs;
+  if (typeof inputs === "string") {
+    try {
+      inputs = JSON.parse(inputs);
+    } catch {
+      return [null];
+    }
+  }
+  if (Array.isArray(inputs) && inputs.length > 0) {
+    return inputs.flatMap((id) => citationLeafSheets(id, loadCitation, seen));
+  }
+  return [record.sheet ?? null];
+}
+
+/**
+ * Leg f4's check of one parsed "om" page. Returns { resolved, problems }:
+ * `resolved` counts the single-exhibit TOA chips seen; each problem names a
+ * chip whose exhibit its figure's citation does not prove.
+ */
+export function omPageChipProblems(root, loadCitation, relPath) {
+  let resolved = 0;
+  const problems = [];
+  let figureFid = null; // the nearest preceding [data-amount]'s fact id
+  for (const el of walkElements(root)) {
+    if (el.getAttribute("data-amount") != null) {
+      figureFid = el.getAttribute("data-fact-id") || null;
+      continue;
+    }
+    if (!isBasisChipClassName(el.getAttribute("class"))) continue;
+    const chipText = (el.text || "").trim();
+    const sheet = SHEET_BY_CHIP_CLAIM[chipExhibitClaim(chipText)];
+    if (!sheet) continue; // the mixed form is leg f2's; a non-TOA chip names no exhibit
+    resolved++;
+    if (!figureFid) {
+      problems.push(
+        `${relPath}: chip "${chipText}" has no cited figure before it — nothing ` +
+          `proves its ${sheet} claim`,
+      );
+      continue;
+    }
+    const leaves = citationLeafSheets(figureFid, loadCitation);
+    if (leaves.length === 0 || leaves.some((s) => s !== sheet)) {
+      problems.push(
+        `${relPath}: chip "${chipText}" on figure ${figureFid} claims ${sheet}, but ` +
+          `its citation rests on ${leaves.map((s) => s ?? "no sheet").join(", ") || "nothing"}`,
+      );
+    }
+  }
+  return { resolved, problems };
+}
+
+/** A reader of the shipped out/json/cite-shards (the files the drawer fetches). */
+function shippedCitationLoader(dir) {
+  const shards = new Map();
+  return (factId) => {
+    if (!/^[0-9a-f]{16}$/.test(factId ?? "")) return null;
+    const key = factId.slice(0, 2);
+    if (!shards.has(key)) {
+      const file = path.join(dir, `${key}.json`);
+      let shard = {};
+      try {
+        shard = JSON.parse(fs.readFileSync(file, "utf8"));
+      } catch {
+        // a missing or unreadable shard holds nothing: its ids resolve to null
+      }
+      shards.set(key, shard);
+    }
+    return shards.get(key)[factId] ?? null;
+  };
+}
+
+function runOmExhibitLeg(pages, errors, notes) {
+  const loadCitation = shippedCitationLoader(path.join(outDir, "json", "cite-shards"));
+  let omPages = 0;
+  let resolved = 0;
+  const problems = [];
+
+  for (const { pe, htmlPath } of pages) {
+    const sidecarPath = path.join(
+      repoRoot, "data", "site", "json", "program_details", `${pe}.json`,
+    );
+    let text;
+    try {
+      text = fs.readFileSync(sidecarPath, "utf8");
+    } catch {
+      continue; // no sidecar: not an om page
+    }
+    if (!text.includes('"om"')) continue; // cheap pre-filter; the parse decides
+    let sidecar;
+    try {
+      sidecar = JSON.parse(text);
+    } catch (e) {
+      problems.push(`/program/${pe}/: sidecar failed to parse (${e.message})`);
+      continue;
+    }
+    if (sidecar.exhibit_family !== "om") continue;
+    omPages++;
+    const relPath = path.relative(outDir, htmlPath);
+    let root;
+    try {
+      root = parse(fs.readFileSync(htmlPath, "utf8"), { comment: false });
+    } catch (e) {
+      problems.push(`${relPath}: failed to parse (${e.message})`);
+      continue;
+    }
+    const r = omPageChipProblems(root, loadCitation, relPath);
+    resolved += r.resolved;
+    problems.push(...r.problems);
+  }
+
+  if (problems.length > 0) {
+    errors.push(
+      `leg f4 om exhibit: ${problems.length} problem(s) on "om" pages — a single-exhibit ` +
+        `chip must name the sheet its own figure cites (first ${MAX_LISTED}):`,
+    );
+    for (const m of problems.slice(0, MAX_LISTED)) errors.push(`  ${m}`);
+    if (problems.length > MAX_LISTED)
+      errors.push(`  ... and ${problems.length - MAX_LISTED} more`);
+  }
+  if (omPages === 0) {
+    notes.push(
+      `leg f4: no program_details sidecar carries exhibit_family "om" in this export — ` +
+        `nothing to check (the om page exists only after #194's write)`,
+    );
+  } else if (resolved === 0) {
+    errors.push(
+      `leg f4 is VACUOUS: ${omPages} "om" page(s), but no single-exhibit TOA chip ` +
+        `resolved on them — the chip selector or the om mapping is not matching the built pages`,
+    );
+  } else if (problems.length === 0) {
+    notes.push(
+      `leg f4: ${resolved} single-exhibit chip(s) on ${omPages} "om" page(s) each sit on ` +
+        `a figure citing the sheet they name ✓`,
+    );
   }
 }
 

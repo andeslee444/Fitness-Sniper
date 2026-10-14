@@ -610,3 +610,75 @@ describe("ProgramTrajectoryCard — spark provenance caption", () => {
     expect(container.textContent).toContain("J-book detail · PB2026");
   });
 });
+
+// ── #194 / spec §4.6: an "om" line printed on the P-1 (/program/0390DOM/) ────
+//
+// The route-safe seed gives /program/0390DOM/ exhibit_family "om" (its header
+// badge reads O&M), but the line is printed on the P-1: every figure on the
+// page cites the PB2026 P-1 workbook, sheet "Exhibit P-1". Its TOA chips
+// rendered the both-exhibits "P-1/R-1 TOA" form, a claim to an exhibit the
+// line does not report, and gate 23 leg f2 refused the build (Task 21h).
+// The chips name the narrower true basis. Values and fact ids are the
+// sidecar's own (B@fu-post export, 2026-10-14).
+
+describe("ProgramFigures — an om-family line printed on the P-1 (0390DOM)", () => {
+  const OM_PROGRAM: ProgramRow = {
+    ...PROGRAM,
+    exhibit_family: "om",
+    org: "DoD",
+    pe_bli: "0390DOM",
+    slug: "0390DOM",
+    title: "Chem Demil-O&M",
+  };
+  const OM_SUMMARY: ProgramSummary = {
+    ...SUMMARY,
+    cards: [
+      card({ value: 87404, fid: "9a66c1d170413c20", public_id: "9a66c1d1" }),
+      card({
+        key: "fy2025",
+        fy: 2025,
+        measure: "enacted",
+        value: 20745,
+        fid: "28d7620d29b4ccd6",
+        public_id: "28d7620d",
+      }),
+      card({
+        key: "fy2026",
+        fy: 2026,
+        measure: "request",
+        value: 3243,
+        fid: "86eb97e8aabd38f4",
+        public_id: "86eb97e8",
+      }),
+      card({
+        key: "change",
+        fy: 2026,
+        measure: "change",
+        value: -17502,
+        pct: -84.37,
+        fid: "7e51d0fb2dbbd071",
+        public_id: "7e51d0fb",
+      }),
+    ],
+    reconciliation: [],
+  };
+
+  it("labels every card's TOA chip P-1 TOA, never the both-exhibits form", () => {
+    const { container } = render(
+      <ProgramFigures program={OM_PROGRAM} summary={OM_SUMMARY} />,
+    );
+    const text = container.textContent!;
+    expect(text.split("P-1 TOA · PB2026").length - 1).toBe(4);
+    expect(text).not.toContain("P-1/R-1 TOA");
+  });
+
+  it("labels the trajectory's shared provenance caption P-1 TOA", () => {
+    const { container } = render(
+      <ProgramTrajectoryCard program={OM_PROGRAM} summary={OM_SUMMARY} />,
+    );
+    const caption = container.querySelector('[data-testid="spark-provenance"]');
+    expect(caption).not.toBeNull();
+    expect(caption!.textContent).toContain("P-1 TOA · PB2026");
+    expect(container.textContent).not.toContain("P-1/R-1 TOA");
+  });
+});

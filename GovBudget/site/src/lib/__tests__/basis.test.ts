@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   basisChipForExhibit,
+  basisChipText,
   exhibitFamilyFromSheet,
   normalizeExhibitFamily,
 } from "../basis";
@@ -70,9 +71,22 @@ describe("normalizeExhibitFamily", () => {
   });
 
   it("degrades an unrecognized token to null (→ mixed chip), never a guess", () => {
-    expect(normalizeExhibitFamily("om")).toBeNull();
     expect(normalizeExhibitFamily("milpers")).toBeNull();
     expect(normalizeExhibitFamily(null)).toBeNull();
     expect(normalizeExhibitFamily(undefined)).toBeNull();
+  });
+
+  // #194 / spec §4.6: the corpus's one "om" line, /program/0390DOM/ (Chem
+  // Demil O&M), is printed on the P-1 — every figure on its page cites the
+  // PB2026 P-1 workbook, sheet "Exhibit P-1". The mixed "P-1/R-1 TOA" chip
+  // claimed an exhibit that line does not report (gate 23 leg f2, Task 21h);
+  // the chip names the narrower true basis instead.
+  it("reads the om token as the P-1 exhibit its figures cite (0390DOM, spec §4.6)", () => {
+    expect(normalizeExhibitFamily("om")).toBe(
+      exhibitFamilyFromSheet("Exhibit P-1"),
+    );
+    expect(
+      basisChipText("toa", "request", 2026, normalizeExhibitFamily("om")),
+    ).toBe("P-1 TOA · PB2026");
   });
 });

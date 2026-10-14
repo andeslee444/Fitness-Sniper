@@ -158,4 +158,17 @@ describe("FollowTheDollar — the appropriation node names the page's own family
     expect(t).toContain("RDT&E appropriation");
     expect(t).not.toContain("Procurement appropriation");
   });
+
+  // #194: the chip vocabulary reads "om" as the P-1 exhibit an om line's
+  // figures cite (basis.normalizeExhibitFamily, /program/0390DOM/). That is
+  // a statement about the EXHIBIT, not the money: an O&M line is not funded
+  // by a procurement appropriation, so this node stays generic. 0390DOM draws
+  // no flow today; the case borrows the mocked flow to pin the label if an om
+  // page ever does.
+  it("an om page names no single appropriation", () => {
+    const t = svgText(getFlowData(row({ exhibit_family: "om" })));
+    expect(t).toContain("Appropriation");
+    expect(t).not.toContain("Procurement appropriation");
+    expect(t).not.toContain("RDT&E appropriation");
+  });
 });

@@ -17,6 +17,8 @@ import {
   chipExhibitClaim,
   isBasisChipClassName,
   feedSectionIsTruncated,
+  citationLeafSheets,
+  omPageChipProblems,
 } from "../basis.mjs";
 import { parse } from "node-html-parser";
 
@@ -251,5 +253,89 @@ describe("feedSectionIsTruncated — leg g4 excuses a missing card only by its O
 
   it("no note at all excuses nothing", () => {
     expect(feedSectionIsTruncated(parse("<main><p>cards</p></main>"), "yoy_swing")).toBe(false);
+  });
+});
+
+// ── leg f4: an "om" page's chip names its figure's own sheet (#194) ─────────
+//
+// /program/0390DOM/ (Chem Demil O&M, exhibit_family "om") is printed on the
+// PB2026 P-1: its TOA chips read "P-1 TOA" because every figure on the page
+// cites sheet "Exhibit P-1" (Task 21h2). The markup and citation records
+// below are the B@fu-post build's own (fact ids, cells and the derived
+// change's inputs as shipped in out/json/cite-shards), trimmed to the
+// fields the leg reads.
+
+describe("omPageChipProblems — leg f4", () => {
+  const CHIP_CLASS =
+    "ml-1 inline-block whitespace-nowrap rounded border border-border bg-muted px-1 py-0.5 align-middle font-sans text-xs font-normal leading-none text-muted-foreground no-underline";
+  const figure = (fid, text) =>
+    `<span data-amount="true" data-fact-id="${fid}" data-basis="toa" class="cite-figure">${text}</span>` +
+    `<span data-receipts-chip="true" class="cite-id-chip">#${fid.slice(0, 8)}</span>`;
+  const chip = (text) => `<span class="${CHIP_CLASS}">${text}</span>`;
+  // answer-changed: a chip={false} Cite, then CiteChips after the value
+  // cluster; the figures grid: Cite's own chip right after its figure.
+  const PAGE =
+    `<div data-testid="answer-changed"><span class="whitespace-nowrap">` +
+    `${figure("7e51d0fb2dbbd071", "-$17.5M")}<span> (-84.4%)</span></span> ` +
+    `<span class="inline-flex items-center whitespace-nowrap">${chip("P-1 TOA · PB2026")}</span></div>` +
+    `<div data-section="figures">` +
+    `<span>${figure("9a66c1d170413c20", "$87.4M")}${chip("P-1 TOA · PB2026")}</span>` +
+    `<span>${figure("28d7620d29b4ccd6", "$20.7M")}${chip("P-1 TOA · PB2026")}</span>` +
+    `<span>${figure("86eb97e8aabd38f4", "$3.24M")}${chip("P-1 TOA · PB2026")}</span>` +
+    `<span>${figure("7e51d0fb2dbbd071", "-$17.5M")}${chip("P-1 TOA · PB2026")}</span></div>`;
+  const P1 = (cells) => ({ kind: "workbook", sheet: "Exhibit P-1", cells, inputs: null });
+  const CITATIONS = {
+    "9a66c1d170413c20": P1("O303"),
+    "28d7620d29b4ccd6": P1("Q303"),
+    "86eb97e8aabd38f4": P1("W303"),
+    // the shards carry a derived record's inputs as a JSON string
+    "7e51d0fb2dbbd071": {
+      kind: "derived",
+      sheet: null,
+      inputs: '["86eb97e8aabd38f4", "28d7620d29b4ccd6"]',
+    },
+  };
+  const loaderFor = (records) => (fid) => records[fid] ?? null;
+  const check = (html, records = CITATIONS) =>
+    omPageChipProblems(parse(`<main>${html}</main>`), loaderFor(records), "program/0390DOM/index.html");
+
+  it("passes the real page: five P-1 chips, each on a figure citing Exhibit P-1", () => {
+    const r = check(PAGE);
+    expect(r.problems).toEqual([]);
+    expect(r.resolved).toBe(5);
+  });
+
+  it("reads a derived figure through its inputs", () => {
+    expect(citationLeafSheets("7e51d0fb2dbbd071", loaderFor(CITATIONS))).toEqual([
+      "Exhibit P-1",
+      "Exhibit P-1",
+    ]);
+  });
+
+  it("PLANT: an om line whose figure cites another sheet fails — the P-1 claim is not proven", () => {
+    const r = check(PAGE, { ...CITATIONS, "86eb97e8aabd38f4": { ...P1("W303"), sheet: "Exhibit O-1" } });
+    // the FY2026 card's own chip, and both change chips (an input of the change)
+    expect(r.problems).toHaveLength(3);
+    expect(r.problems[0]).toContain('"P-1 TOA · PB2026"');
+    expect(r.problems.join("\n")).toContain("Exhibit O-1");
+  });
+
+  it("PLANT: a derived figure with one input on the R-1 fails", () => {
+    const r = check(PAGE, { ...CITATIONS, "28d7620d29b4ccd6": { kind: "workbook", sheet: "Exhibit R-1", inputs: null } });
+    expect(r.problems.some((p) => p.includes("7e51d0fb2dbbd071"))).toBe(true);
+  });
+
+  it("PLANT: a fact id the cite-shards do not hold, or a chip with no cited figure before it, fails closed", () => {
+    const missing = { ...CITATIONS };
+    delete missing["9a66c1d170413c20"];
+    expect(check(PAGE, missing).problems).toHaveLength(1);
+    expect(check(chip("P-1 TOA · PB2026")).problems).toHaveLength(1);
+    const uncited = `<span data-amount="true" data-basis="toa">$1.0M</span>${chip("P-1 TOA · PB2026")}`;
+    expect(check(uncited).problems).toHaveLength(1);
+  });
+
+  it("leaves the both-exhibits chip to leg f2 and a non-TOA chip alone", () => {
+    const r = check(`${figure("9a66c1d170413c20", "$87.4M")}${chip("P-1/R-1 TOA · PB2026")}${chip("J-book detail · PB2026")}`);
+    expect(r).toEqual({ resolved: 0, problems: [] });
   });
 });
