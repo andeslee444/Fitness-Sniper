@@ -21,7 +21,7 @@
  *   node scripts/run-mobile-leg.mjs [--port 4182]
  */
 
-import { fileURLToPath } from "url";
+import { isDirectRun } from "./direct-run.mjs";
 import { startServer as defaultStartServer } from "./serve-static.mjs";
 import { runMobileLeg as defaultRunMobileLeg } from "./gates/mobile.mjs";
 
@@ -100,7 +100,7 @@ export function parsePort(argv, warn = console.error) {
 }
 
 // ── CLI mode ───────────────────────────────────────────────────────────
-// Same guard serve-static.mjs uses (:236).
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// Same guard serve-static.mjs uses (real paths: ROADMAP #201).
+if (isDirectRun(import.meta.url)) {
   process.exitCode = await runStandaloneMobileLeg({ port: parsePort(process.argv) });
 }

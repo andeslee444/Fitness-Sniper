@@ -16,6 +16,7 @@ import http from "http";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { isDirectRun } from "./direct-run.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..");
@@ -233,7 +234,7 @@ export function startServer(port = PORT) {
 }
 
 // ── CLI mode ────────────────────────────────────────────────────────────────
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isDirectRun(import.meta.url)) {
   startServer(PORT).then(({ url }) => {
     console.log(`serve-static: listening at ${url}`);
     console.log(`  out/      → ${outDir}`);

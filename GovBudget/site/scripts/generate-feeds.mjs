@@ -33,6 +33,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { isDirectRun } from "./direct-run.mjs";
 
 import { filterSupportedConcentrationCards } from "../src/lib/concentration-evidence.mjs";
 import { companyLabel } from "../src/lib/company-name.mjs";
@@ -200,7 +201,7 @@ function main() {
 }
 
 // Run when invoked directly (prebuild); importable for tests.
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
+if (isDirectRun(import.meta.url)) {
   main();
 }
 

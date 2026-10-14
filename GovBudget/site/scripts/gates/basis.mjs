@@ -222,6 +222,7 @@ import path from "path";
 import { spawnSync } from "child_process";
 import { fileURLToPath, pathToFileURL } from "url";
 import { parse } from "node-html-parser";
+import { isDirectRun } from "../direct-run.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siteRoot = path.resolve(__dirname, "..", "..");
@@ -3381,10 +3382,7 @@ function runAliasRoutingLeg(errors, notes) {
 }
 
 // ── Direct run: node scripts/gates/basis.mjs ─────────────────────────────────
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
-) {
+if (isDirectRun(import.meta.url)) {
   const result = await runBasisGate();
   console.log(`gate 23 basis: ${result.notes.slice(0, 3).join("; ")} → ${result.pass ? "PASS" : "FAIL"}`);
   for (const n of result.notes) console.log(`  note: ${n}`);

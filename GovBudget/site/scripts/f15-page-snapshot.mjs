@@ -29,8 +29,8 @@
 
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
+import { isDirectRun } from "./direct-run.mjs";
 
 export const SNAPSHOT_SCHEMA = 1;
 
@@ -132,6 +132,6 @@ function main(argv) {
   return 0;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isDirectRun(import.meta.url)) {
   process.exit(main(process.argv.slice(2)));
 }
