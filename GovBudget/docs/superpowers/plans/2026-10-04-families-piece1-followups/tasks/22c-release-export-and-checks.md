@@ -92,7 +92,7 @@ H=$(shasum -a 256 "$LIVE/data/site/json/f15_funding_history.json" | cut -d' ' -f
 uv run --project . python -m govbudget link-coverage --site-dir "$LIVE/data/site" --baseline data/research/link_coverage/baseline.json > "$L/link-coverage-release.txt" 2>&1; echo "link-coverage exit=$?"; tail -3 "$L/link-coverage-release.txt"
 "$GOVBUDGET_PG_BIN/psql" "$GOVBUDGET_PG_DSN" -At -c "select count(*) from jbook_documents where file_path like '%/.claude/worktrees/%';"
 ```
-Expected: `proof diff exit=0` with `changed`/`only in` counts covered by the SAM rules only (all 0 when no SAM answer landed after fu-post) and last line `proof diff: PASS`; `F-15 history matches the pin <H>` (Task 21g's); `link-coverage exit=0` ending `link-coverage: PASS` (W6: budget figures 100% source-linked, no figure lost a complete receipt); `0`. Any failure: the abort path.
+Expected: `proof diff exit=0` with `changed`/`only in` counts covered by the SAM rules only (all 0 when no SAM answer landed after fu-post) and last line `proof diff: PASS` (a late SAM registration also moves `data/dim_entities.parquet` and its citation's `formula`/`retrieved_at`, which no rule excuses, so it stops the release for the owner: fail-closed by design, and none is expected since the SAM job finished on 2026-10-13); `F-15 history matches the pin <H>` (Task 21g's); `link-coverage exit=0` ending `link-coverage: PASS` (W6: budget figures 100% source-linked, no figure lost a complete receipt); `0`. Any failure: the abort path.
 
 - [ ] **Step 4: W3 and W5 on the live state**
 

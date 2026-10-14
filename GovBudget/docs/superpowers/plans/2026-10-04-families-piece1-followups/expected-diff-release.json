@@ -1,6 +1,6 @@
 [
-  {"path": "json/sam/*.json", "status": ["only_b", "changed"], "why": "design §8 step 4: a SAM.gov registration the hourly job stored after snapshot fu-post (all 200 families had an answer on 2026-10-13, so none is expected)"},
-  {"path": "json/entity_details/*.json", "status": ["changed"], "why": "design §8 step 4: a company page's SAM registration block, as above"},
+  {"path": "json/sam/*.json", "status": ["only_b", "changed"], "why": "design §8 step 4: a SAM.gov registration the hourly job stored after snapshot fu-post (all 200 families had an answer on 2026-10-13, so none is expected). A late SAM registration also moves data/dim_entities.parquet and its citation's formula/retrieved_at, which no rule excuses, so it stops the release for the owner (fail-closed by design; none is expected since the SAM job finished on 2026-10-13)"},
+  {"path": "json/entity_details/*.json", "status": ["changed"], "pointer": "/sam*", "why": "design §8 step 4: a company page's SAM registration block, as above"},
   {"path": "json/citations.json", "status": ["changed"], "pointer": "/{fid}", "change": ["added"], "why": "design §8 step 4: one derived citation per newly published SAM registration"},
   {"path": "json/cite-shards/*.json", "status": ["changed"], "pointer": "/{fid}", "change": ["added"], "why": "the cite shards carry those citations"},
   {"path": "citations/citations.parquet", "status": ["changed"], "why": "the citation table, as above"},

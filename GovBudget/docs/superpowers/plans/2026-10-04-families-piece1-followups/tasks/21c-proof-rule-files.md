@@ -134,8 +134,8 @@ Create `docs/superpowers/plans/2026-10-04-families-piece1-followups/expected-dif
 
 ```json
 [
-  {"path": "json/sam/*.json", "status": ["only_b", "changed"], "why": "design §8 step 4: a SAM.gov registration the hourly job stored after snapshot fu-post (all 200 families had an answer on 2026-10-13, so none is expected)"},
-  {"path": "json/entity_details/*.json", "status": ["changed"], "why": "design §8 step 4: a company page's SAM registration block, as above"},
+  {"path": "json/sam/*.json", "status": ["only_b", "changed"], "why": "design §8 step 4: a SAM.gov registration the hourly job stored after snapshot fu-post (all 200 families had an answer on 2026-10-13, so none is expected). A late SAM registration also moves data/dim_entities.parquet and its citation's formula/retrieved_at, which no rule excuses, so it stops the release for the owner (fail-closed by design; none is expected since the SAM job finished on 2026-10-13)"},
+  {"path": "json/entity_details/*.json", "status": ["changed"], "pointer": "/sam*", "why": "design §8 step 4: a company page's SAM registration block, as above"},
   {"path": "json/citations.json", "status": ["changed"], "pointer": "/{fid}", "change": ["added"], "why": "design §8 step 4: one derived citation per newly published SAM registration"},
   {"path": "json/cite-shards/*.json", "status": ["changed"], "pointer": "/{fid}", "change": ["added"], "why": "the cite shards carry those citations"},
   {"path": "citations/citations.parquet", "status": ["changed"], "why": "the citation table, as above"},
@@ -150,6 +150,8 @@ Create `docs/superpowers/plans/2026-10-04-families-piece1-followups/expected-dif
 ```
 
 No rule is required: on 2026-10-13 the hourly SAM job reported "all 200 published families have a stored SAM answer" (`data/parquet/sam/daily/state.json`), so the release export normally equals B@fu-post (`proof diff` then reads `PASS` with every rule at 0). Anything else that differs fails the release (design §8 step 4: "what ships is what was proven").
+
+The `json/entity_details/*.json` rule carries `"pointer": "/sam*"`, so it excuses only a company page's SAM block: a registration new to a company is `added` at `/sam` (51 of the 200 sidecars have no `sam` key today), a changed one is `changed` at `/sam/<field>`, and a change at `/awards`, `/influence`, `/linked_programs` or `/mentions` fails the release (`tests/test_fu_release_rules.py` pins both). A late SAM registration also moves `data/dim_entities.parquet` and its citation's `formula`/`retrieved_at`, which no rule excuses, so it stops the release for the owner: fail-closed by design, and none is expected since the SAM job finished on 2026-10-13.
 
 - [ ] **Step 5: Validate the four files**
 
