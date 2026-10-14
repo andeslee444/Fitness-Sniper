@@ -1,5 +1,6 @@
 """scripts/era/review_batch_page.py — owner review batches (Task 15, spec §5.3)."""
 import csv
+import hashlib
 import json
 from datetime import date
 from decimal import Decimal
@@ -273,9 +274,12 @@ def test_render_then_answer_round_trip_through_the_cli(tmp_path, capsys):
         assert tuple(reader.fieldnames) == REVIEW_COLUMNS
         decided = {r["chain_id"]: r["decision"] for r in reader}
     assert decided == {cid(1): "history_only", cid(2): "same_program", cid(3): "same_program"}
+    # the first answer rewrote review.csv, so the rendered page no longer
+    # describes it (ROADMAP #198); apply_answers' own "already has a
+    # decision" refusal is pinned by test_an_answered_chain_cannot_be_answered_twice
     assert main(["answer", "--batch", "2", "--review", str(review), "--out-dir", str(out),
                  "--answers", str(answers)]) == 2
-    assert "already has a decision" in capsys.readouterr().err
+    assert "changed since batch B2 was rendered" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("extra, message", [
@@ -361,3 +365,78 @@ def test_what_this_tool_writes_is_what_ratify_accepts(tmp_path, monkeypatch):
     assert main(["render", "--batch", "2", "--review", str(review), "--seed", str(seed),
                  "--out-dir", str(pages)]) == 0
     assert not (pages / "B2.json").exists()
+
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP #198 (follow-ups spec 2026-10-04 §6.2): the review page
+# ---------------------------------------------------------------------------
+
+def test_answer_refuses_a_review_file_changed_since_render(tmp_path, capsys):
+    review, out = write_world(tmp_path, [row(1), row(2)]), tmp_path / "out"
+    assert main(["render", "--batch", "2", "--review", str(review),
+                 "--seed", str(tmp_path / "absent.csv"), "--out-dir", str(out)]) == 0
+    manifest = json.loads((out / "B2.json").read_text())
+    assert manifest["review_sha256"] == hashlib.sha256(review.read_bytes()).hexdigest()
+    rows = era_map.read_csv(review)
+    rows[0]["reason"] = "edited after the page was rendered"
+    write_csv(review, REVIEW_COLUMNS, rows)
+    before = review.read_bytes()
+    capsys.readouterr()
+    assert main(["answer", "--batch", "2", "--review", str(review), "--out-dir", str(out),
+                 "--answers", str(answers_file(tmp_path, "B2", {}))]) == 2
+    err = capsys.readouterr().err
+    assert err.startswith("review_batch_page: ERROR — ")
+    assert "changed since batch B2 was rendered" in err
+    assert review.read_bytes() == before
+
+
+def test_a_blank_proposal_on_a_collision_code_names_the_pins_it_needs():
+    rows = [row(1, chain_id="20|0300D|DSS", proposed_decision="", program_account="0300D")]
+    page = render_page("B1", rows, 0, chains_for(rows), collision_codes=frozenset({"20"}))
+    assert '<span class="chip chip-other">needs your decision</span>' in page
+    assert ("PB2026 collision code 20: a same_program or history_only answer needs"
+            " program_org (ratify refuses it without both pins)") in page
+
+
+@pytest.mark.parametrize("break_it, message", [
+    (lambda out, answers: (out / "B2.json").unlink(), "B2.json is missing — render batch B2 first"),
+    (lambda out, answers: (out / "B2.json").write_text("{not json"), "B2.json is not JSON"),
+    (lambda out, answers: answers.write_text("{not json"), "B2.answers.json is not JSON"),
+    (lambda out, answers: answers.unlink(), "B2.answers.json is missing"),
+])
+def test_unreadable_files_are_a_review_error_not_a_traceback(tmp_path, capsys, break_it, message):
+    review, out = write_world(tmp_path, [row(1)]), tmp_path / "out"
+    assert main(["render", "--batch", "2", "--review", str(review),
+                 "--seed", str(tmp_path / "absent.csv"), "--out-dir", str(out)]) == 0
+    answers = answers_file(tmp_path, "B2", {})
+    break_it(out, answers)
+    capsys.readouterr()
+    assert main(["answer", "--batch", "2", "--review", str(review), "--out-dir", str(out),
+                 "--answers", str(answers)]) == 2
+    err = capsys.readouterr().err
+    assert err.startswith("review_batch_page: ERROR — ") and message in err
+
+
+def test_a_split_edition_that_is_not_a_year_is_a_review_error():
+    with pytest.raises(ReviewError, match="last_edition 'PB2020' is not a year"):
+        apply_answers(three(), SHOWN, {"rows": {cid(1): {"split": [
+            {"last_edition": "PB2020", "decision": "history_only"},
+            {"decision": "same_program"}]}}})
+
+
+def test_a_one_line_chain_says_era_line():
+    rows = [row(1)]
+    page = render_page("B1", rows, 1, chains_for(rows, n_keys="1"))
+    assert "1 era line · class A1+R1" in page
+    assert "1 undecided chain will remain after this batch" in page
+
+
+def test_page_escapes_the_stated_successor_block():
+    hostile = row(1, successor_code="<b>X</b>")
+    page = render_page("B1", [hostile], 0, chains_for(
+        [hostile], successor_account="<i>2035A</i>",
+        successor_evidence='quote="a <script>x</script>"'))
+    assert "<script>x" not in page and "<b>X</b>" not in page and "<i>2035A</i>" not in page
+    assert "&lt;b&gt;X&lt;/b&gt;" in page and "&lt;i&gt;2035A&lt;/i&gt;" in page
+    assert "quote=&quot;a &lt;script&gt;x&lt;/script&gt;&quot;" in page

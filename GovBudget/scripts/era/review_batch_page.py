@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import html
 import json
 import re
@@ -183,13 +184,16 @@ def read_collision_codes(path: Path) -> frozenset[str]:
 
 
 def collision_pins_missing(row: dict, collision_codes: frozenset[str]) -> list[str]:
-    """The pins ratify requires that this row's proposal leaves blank.
+    """The pins ratify requires that this row leaves blank.
 
     On a PB2026 collision code, same_program and history_only need BOTH
     program_account and program_org (Task 12 ratify refuses either blank), so
-    approving such a proposal as it stands could not be ratified."""
+    approving such a proposal as it stands could not be ratified. A row with
+    NO proposal on a collision code names them too (ROADMAP #198): the
+    owner's same_program or history_only answer will need them."""
     code, _account, _org = parse_chain_id(row["chain_id"])
-    if code not in collision_codes or row["proposed_decision"] not in ("same_program", "history_only"):
+    if code not in collision_codes or row["proposed_decision"] not in (
+            "", "same_program", "history_only"):
         return []
     return [f for f in ("program_account", "program_org") if not row[f].strip()]
 
@@ -209,17 +213,22 @@ def _row_html(n: int, row: dict, chain: dict, collision_codes: frozenset[str] = 
     proposed = row["proposed_decision"] if usable else "needs your decision"
     tone = _tone(row["proposed_decision"]) if usable else "other"
     need_html = ""
-    if missing:
+    if missing and row["proposed_decision"]:
         need_html = (f'<span class="pins">PB2026 collision code {_e(code)}: {_e(row["proposed_decision"])} '
                      f'needs {" and ".join(missing)} (ratify refuses it without them); answer the '
                      f"pin(s) or another decision</span>")
+    elif missing:
+        need_html = (f'<span class="pins">PB2026 collision code {_e(code)}: a same_program or '
+                     f'history_only answer needs {" and ".join(missing)} (ratify refuses it '
+                     f"without both pins)</span>")
     titles = _EDITION_BREAK.sub("\n", row["titles_by_edition"])
     return (
         f'<li class="chain" id="row-{n}">\n'
         f'<div class="chain-head"><span class="num">{n}</span><h2><code>{_e(code)}</code>'
         f'<span class="acct">{_e(account)}</span>{org_html}</h2>'
         f'<span class="usd">{_e(fmt_usd_k(actuals_k(row)))}</span></div>\n'
-        f'<p class="span">{_e(_editions(row))} · {_e(chain["n_keys"])} era lines · '
+        f'<p class="span">{_e(_editions(row))} · {_e(chain["n_keys"])} era '
+        f'line{"" if str(chain["n_keys"]).strip() == "1" else "s"} · '
         f'class {_e(chain["classes"]) or "—"}<br><span class="cid">{_e(label(row))}</span></p>\n'
         f"<dl>\n"
         f'<div><dt>Titles by edition</dt><dd class="pre">{_e(titles)}</dd></div>\n'
@@ -313,7 +322,10 @@ def _split(row: dict, ranges) -> list[dict]:
         is_last = i == len(ranges) - 1
         if not is_last and "last_edition" not in part:
             raise ReviewError(f"{lbl}: every split range but the last names its last_edition")
-        end = int(part.get("last_edition", last))
+        try:
+            end = int(part.get("last_edition", last))
+        except (TypeError, ValueError) as exc:
+            raise ReviewError(f"{lbl}: last_edition {part.get('last_edition')!r} is not a year") from exc
         if is_last and end != last:
             raise ReviewError(f"{lbl}: the last range must end at PB{last}, the chain's last edition")
         if end < start or (not is_last and end >= last):
@@ -378,7 +390,14 @@ def apply_answers(rows: list[dict], shown: list[str], answers: dict) -> tuple[li
 
 
 def _load_answers(path: Path, batch: str) -> dict:
-    answers = json.loads(Path(path).read_text(encoding="utf-8"))
+    try:
+        answers = json.loads(Path(path).read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ReviewError(f"{path} is missing") from exc
+    except ValueError as exc:
+        raise ReviewError(f"{path} is not JSON ({exc})") from exc
+    if not isinstance(answers, dict):
+        raise ReviewError(f"{path} must hold one JSON object")
     unknown = set(answers) - ANSWERS_KEYS
     if unknown:
         raise ReviewError(f"{path}: unknown top-level key(s) {sorted(unknown)}")
@@ -428,13 +447,26 @@ def main(argv=None) -> int:
                 "batch": batch, "chain_ids": [r["chain_id"] for r in shown],
                 "labels": [label(r) for r in shown], "actuals_k": str(total),
                 "undecided_before": open_count,
+                # ROADMAP #198: `answer` refuses once review.csv changes
+                "review_sha256": hashlib.sha256(args.review.read_bytes()).hexdigest(),
             }, indent=2) + "\n", encoding="utf-8")
             print(f"{batch}: {len(shown)} chain(s), {fmt_usd_k(total)} of era actuals -> {page} "
                   f"(manifest {manifest_path}); {open_count - len(shown)} undecided after this batch")
             return 0
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except FileNotFoundError as exc:
+            raise ReviewError(f"{manifest_path} is missing — render batch {batch} first") from exc
+        except ValueError as exc:
+            raise ReviewError(f"{manifest_path} is not JSON ({exc})") from exc
         if manifest.get("batch") != batch:
             raise ReviewError(f"{manifest_path} is batch {manifest.get('batch')!r}, not {batch}")
+        recorded = manifest.get("review_sha256")
+        current = hashlib.sha256(args.review.read_bytes()).hexdigest()
+        if recorded != current:
+            raise ReviewError(
+                f"{args.review} changed since batch {batch} was rendered (sha256"
+                f" {str(recorded)[:12]} at render, {current[:12]} now) — render the batch again")
         answers = _load_answers(args.answers, batch)
         out, counts = apply_answers(rows, manifest["chain_ids"], answers)
         write_csv(args.review, REVIEW_COLUMNS, out)
@@ -444,7 +476,7 @@ def main(argv=None) -> int:
               f"era-map ratify --batch {batch} --decided-on {answers['decided_on']}")
         return 0
     except ReviewError as exc:
-        print(f"review_batch_page: {exc}", file=sys.stderr)
+        print(f"review_batch_page: ERROR — {exc}", file=sys.stderr)
         return 2
 
 
