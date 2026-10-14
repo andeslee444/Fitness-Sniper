@@ -118,19 +118,23 @@ describe("staticFetchTargets — the shapes it must NOT invent", () => {
 });
 
 describe("scanFetchTargets — against the real site/src", () => {
-  it("finds the four statically named targets the client depends on", () => {
+  it("finds the six statically named targets the client depends on", () => {
     const found = scanFetchTargets(srcDir);
     // Measured 2026-09-04 at five; RE-MEASURED 2026-09-05 (ROADMAP #88):
     // /json/feed.json left this list when FeedSectionExpand moved to the
     // directory-templated /json/feed-sections/${eventType}.json, which the
-    // templated sweep below counts. This is the population
-    // MIN_STATIC_FETCH_TARGETS floors. Adding a target is fine; losing one
-    // without re-measuring is the regression the floor exists to catch.
+    // templated sweep below counts. RE-MEASURED again for ROADMAP #193 at
+    // six: the /years/ island fetches its two lazy shards by literal URL.
+    // This is the population MIN_STATIC_FETCH_TARGETS floors. Adding a
+    // target is fine; losing one without re-measuring is the regression the
+    // floor exists to catch.
     expect([...found.keys()].sort()).toEqual([
       "/config.json",
       "/json-lite/search_quick.json",
       "/json/flow_chart.json",
       "/json/years_matrix.json",
+      "/json/years_matrix/decade.json",
+      "/json/years_matrix/detail.json",
     ]);
     expect(found.has("/json/feed.json")).toBe(false);
   });

@@ -187,12 +187,22 @@ console.log(
   `✓  breakdowns/ (${fs.readdirSync(breakdownsSrc).length} files) → public/json/`
 );
 
-// ── 5d. Copy the years matrix sidecar (Phase 5D — /years/ grid) ──────────────
-copyFile(
-  path.join(jsonDir, "years_matrix.json"),
-  path.join(jsonDestDir, "years_matrix.json")
-);
-console.log("✓  years_matrix.json → public/json/");
+// ── 5d. Copy the years matrix (Phase 5D — /years/ grid) ──────────────────────
+// ROADMAP #193: years_matrix.json is the CORE and its two lazy shards sit in
+// years_matrix/ (decade.json, detail.json). The shard directory is MIRRORED
+// (copyDir removes the destination first), so no shard the core does not
+// list can ship beside it, and a split core without its directory is fatal.
+// An export from before the split (schema_version 1, one file) ships alone.
+const yearsCorePath = path.join(jsonDir, "years_matrix.json");
+copyFile(yearsCorePath, path.join(jsonDestDir, "years_matrix.json"));
+const yearsShardDest = path.join(jsonDestDir, "years_matrix");
+if (JSON.parse(fs.readFileSync(yearsCorePath, "utf8")).schema_version >= 2) {
+  copyDir(path.join(jsonDir, "years_matrix"), yearsShardDest);
+  console.log("✓  years_matrix.json + years_matrix/ (decade, detail) → public/json/");
+} else {
+  fs.rmSync(yearsShardDest, { recursive: true, force: true });
+  console.log("✓  years_matrix.json (pre-split export, no shards) → public/json/");
+}
 
 // ── 5d1. Copy the F-15 funding-history sidecar (codex/f15-family-browser) ──
 // Family annual totals are server-rendered; older workbook rows load

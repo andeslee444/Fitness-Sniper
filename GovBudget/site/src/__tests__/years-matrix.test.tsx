@@ -17,6 +17,10 @@
  *     (annotation of the cited Δ — no data-amount, matching program-figures)
  *   - expand caret reveals project sub-rows; org header collapses its section
  *   - sorting flattens the grouped view (global ordering, missing-last)
+ *
+ * ROADMAP #193: the island loads json/years_matrix.json (the core) and each
+ * lazy shard only when a reader asks for what it holds; the fixtures below
+ * are whole matrices, served split the way the exporter splits them.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -38,8 +42,15 @@ import {
   fmtDelta,
   fmtPct,
   YearsMatrix,
+  type YearsCell,
   type YearsMatrixData,
 } from "@/components/years-matrix";
+import type {
+  YearsMatrixCore,
+  YearsMatrixShard,
+  YearsShardName,
+  YearsShardRow,
+} from "@/lib/years-matrix-shards.mjs";
 
 // ── Fixture matrix (schema of data/site/json/years_matrix.json) ─────────────
 
@@ -320,26 +331,109 @@ function jsonResponse(body: unknown): Response {
   } as unknown as Response;
 }
 
+/**
+ * Split a whole fixture matrix the way export_site.split_years_matrix does:
+ * the core keeps the header, every row (with np) and the default decade
+ * columns' cells; decade.json the other decade columns; detail.json the
+ * amount-type, Δ and %Δ cells and the projects. (The real split and the real
+ * merge are pinned against each other by years-matrix-shards.test.ts.)
+ */
+function splitForTest(v1: YearsMatrixData, buildId = "build-1") {
+  const defaults = new Set(v1.decade_default_columns ?? []);
+  const lazy = (v1.decade_columns ?? [])
+    .map((c) => c.key)
+    .filter((k) => !defaults.has(k));
+  const detailCols = [...v1.amount_types, ...v1.delta_columns];
+  const decadeRows: Record<string, YearsShardRow> = {};
+  const detailRows: Record<string, YearsShardRow> = {};
+  const orgs = v1.orgs.map((o) => ({
+    org: o.org,
+    programs: o.programs.map((p) => {
+      const key = p.slug ?? p.pe_bli;
+      const { cells, projects, ...rest } = p;
+      const coreCells: Record<string, YearsCell> = {};
+      const decadeCells: Record<string, YearsCell> = {};
+      const detailCells: Record<string, YearsCell> = {};
+      for (const [k, c] of Object.entries(cells)) {
+        if (!c) continue;
+        if (defaults.has(k)) coreCells[k] = c;
+        else if (lazy.includes(k)) decadeCells[k] = c;
+        else detailCells[k] = c;
+      }
+      if (Object.keys(decadeCells).length) decadeRows[key] = { cells: decadeCells };
+      const detail: YearsShardRow = {};
+      if (Object.keys(detailCells).length) detail.cells = detailCells;
+      if (projects.length) detail.projects = projects;
+      if (Object.keys(detail).length) detailRows[key] = detail;
+      return { ...rest, np: projects.length, cells: coreCells };
+    }),
+  }));
+  const shard = (
+    name: YearsShardName,
+    columns: string[],
+    rows: Record<string, YearsShardRow>,
+  ): YearsMatrixShard => ({ schema_version: 2, build_id: buildId, shard: name, columns, rows });
+  const core: YearsMatrixCore = {
+    ...v1,
+    schema_version: 2,
+    build_id: buildId,
+    orgs,
+    shards: [
+      { name: "decade", path: "years_matrix/decade.json", columns: lazy, bytes: 0, sha256: "" },
+      { name: "detail", path: "years_matrix/detail.json", columns: detailCols, bytes: 0, sha256: "" },
+    ],
+  };
+  return {
+    core,
+    decade: shard("decade", lazy, decadeRows),
+    detail: shard("detail", detailCols, detailRows),
+  };
+}
+
+const CORE_URL = "/json/years_matrix.json";
+const DECADE_URL = "/json/years_matrix/decade.json";
+const DETAIL_URL = "/json/years_matrix/detail.json";
+
 let fetchMock: ReturnType<typeof vi.fn>;
 
-beforeEach(() => {
-  fetchMock = vi.fn((url: string) => {
-    if (String(url) === "/json/years_matrix.json") {
-      return Promise.resolve(jsonResponse(MATRIX));
-    }
-    return Promise.reject(new Error(`unmocked fetch ${url}`));
+/** Serve a whole fixture as the core and its two shards. `routes` overrides a
+ *  URL: a body, or a function called per request (a body that changes, or a
+ *  promise the test resolves itself). */
+function serveMatrix(v1: YearsMatrixData, routes: Record<string, unknown> = {}) {
+  const files = splitForTest(v1);
+  const table: Record<string, unknown> = {
+    [CORE_URL]: files.core,
+    [DECADE_URL]: files.decade,
+    [DETAIL_URL]: files.detail,
+    ...routes,
+  };
+  fetchMock.mockImplementation((url: string) => {
+    const route = table[String(url)];
+    if (route === undefined) return Promise.reject(new Error(`unmocked fetch ${url}`));
+    const body = typeof route === "function" ? (route as () => unknown)() : route;
+    return Promise.resolve(body).then(jsonResponse);
   });
+  return files;
+}
+
+/** Every URL fetched so far, in order. */
+const fetched = () => fetchMock.mock.calls.map((call) => String(call[0]));
+
+beforeEach(() => {
+  fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
+  serveMatrix(MATRIX);
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** Render, then wait until every column the grid opens with has merged. */
 async function renderMatrix() {
   const utils = render(<YearsMatrix />);
   await waitFor(() => {
-    expect(screen.getByTestId("years-matrix")).toBeInTheDocument();
+    expect(screen.getByTestId("years-matrix").getAttribute("aria-busy")).toBe("false");
   });
   return utils;
 }
@@ -394,11 +488,7 @@ describe("YearsMatrix — render contract", () => {
   });
 
   it("the default sort key is the payload's, not a hardcoded column", async () => {
-    fetchMock.mockImplementation((url: string) =>
-      String(url) === "/json/years_matrix.json"
-        ? Promise.resolve(jsonResponse(MATRIX_DECADE))
-        : Promise.reject(new Error(`unmocked fetch ${url}`)),
-    );
+    serveMatrix(MATRIX_DECADE);
     await renderMatrix();
     expect(
       document.querySelector('th[data-col="fy2026r"]')?.getAttribute("aria-sort"),
@@ -626,12 +716,7 @@ describe("YearsMatrix — render contract", () => {
 
 describe("YearsMatrix — decade view (Phase 5E)", () => {
   beforeEach(() => {
-    fetchMock.mockImplementation((url: string) => {
-      if (String(url) === "/json/years_matrix.json") {
-        return Promise.resolve(jsonResponse(MATRIX_DECADE));
-      }
-      return Promise.reject(new Error(`unmocked fetch ${url}`));
-    });
+    serveMatrix(MATRIX_DECADE);
   });
 
   it("default columns come from decade_default_columns", async () => {
@@ -727,12 +812,11 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
     expect(cell.getAttribute("title")).toBe("Not in the PB2017 edition");
   });
 
-  // Families piece 1 final review T4. /years/ keeps procurement rows from
-  // PB2024 on (the ROADMAP #193 fence) while their program pages now carry
-  // the PB2017–PB2023 era history, so a P-1 row's earlier gap must not claim
-  // the line was missing from that edition. R-1 rows (PE-shaped codes) and
-  // every PB2024+ gap keep "Not in the PB… edition".
-  it("a procurement row's pre-PB2024 gap points at the program page, not at the edition", async () => {
+  // ROADMAP #193 lifted piece 1's /years/ fence: a procurement row carries
+  // exactly its program page's decade points, era editions included, so every
+  // gap is a true absence from that edition's book (Q12) — final review T4's
+  // "on the program page, not yet in this grid" tooltip is retired with it.
+  it("every decade gap reads 'Not in the PB… edition', procurement rows included", async () => {
     const withP1: YearsMatrixData = {
       ...MATRIX_DECADE,
       orgs: [
@@ -743,41 +827,36 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
             {
               pe_bli: "2013",
               title: "Virginia Class Submarine",
-              // fence: no cell before PB2024; fy2025e (PB2026) is a plain gap
-              cells: { fy2026r: { fid: "dd00000000000008", v: 10000000 } },
+              // an era point (PB2017, joined by a reviewed decision) and a
+              // PB2026 one; fy2020a and fy2025e are gaps
+              cells: {
+                fy2015a: { fid: "dd00000000000009", v: 5000000 },
+                fy2026r: { fid: "dd00000000000008", v: 10000000 },
+              },
               projects: [],
             },
           ],
         },
       ],
     };
-    fetchMock.mockImplementation((url: string) =>
-      String(url) === "/json/years_matrix.json"
-        ? Promise.resolve(jsonResponse(withP1))
-        : Promise.reject(new Error(`unmocked fetch ${url}`)),
-    );
+    serveMatrix(withP1);
     await renderMatrix();
-    const title = (pe: string, col: string) =>
-      (document.querySelector(`tr[data-pe="${pe}"] td[data-col="${col}"]`) as HTMLElement)
-        .getAttribute("title");
-    expect(title("2013", "fy2015a")).toBe(
-      "Any PB2017 procurement history is on the program page, not yet in this grid",
-    );
-    expect(title("2013", "fy2020a")).toBe(
-      "Any PB2022 procurement history is on the program page, not yet in this grid",
-    );
-    expect(title("2013", "fy2025e")).toBe("Not in the PB2026 edition");
-    // the R-1 rows beside it are unchanged
-    expect(title("0602702E", "fy2015a")).toBe("Not in the PB2017 edition");
-    expect(title("0603882C", "fy2020a")).toBe("Not in the PB2022 edition");
+    const td = (pe: string, col: string) =>
+      document.querySelector(`tr[data-pe="${pe}"] td[data-col="${col}"]`) as HTMLElement;
+    expect(td("2013", "fy2015a").getAttribute("data-v")).toBe("5000000");
+    expect(td("2013", "fy2020a").getAttribute("title")).toBe("Not in the PB2022 edition");
+    expect(td("2013", "fy2025e").getAttribute("title")).toBe("Not in the PB2026 edition");
+    expect(td("0602702E", "fy2015a").getAttribute("title")).toBe("Not in the PB2017 edition");
+    expect(document.body.textContent).not.toContain("not yet in this grid");
   });
 
-  it("the edition legend says where procurement history before PB2024 lives", async () => {
+  it("the edition legend says what a procurement row shows before PB2024", async () => {
     await renderMatrix();
     const legend = document.querySelector('[data-testid="edition-legend"]') as HTMLElement;
     expect(legend.textContent).toContain(
-      "Procurement rows here start at PB2024; any PB2017–PB2023 history is on the program page.",
+      "Before PB2024, a procurement row shows only lines a reviewed decision joined to it.",
     );
+    expect(legend.textContent).not.toContain("start at PB2024");
   });
 
   it("sorting by a decade column works, missing-last", async () => {
@@ -904,11 +983,14 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
       screen.getByRole("button", { name: /hide fy2020a column/i }),
     );
     expect(document.querySelector('th[data-col="fy2020a"]')).toBeNull();
-    // The PB2026-detail chips still work
+    // The PB2026-detail chips still work (the column joins once detail.json
+    // has merged)
     fireEvent.click(
       screen.getByRole("button", { name: /show fy2025 total column/i }),
     );
-    expect(document.querySelector('th[data-col="fy_2025_total"]')).not.toBeNull();
+    await waitFor(() => {
+      expect(document.querySelector('th[data-col="fy_2025_total"]')).not.toBeNull();
+    });
   });
 
   it("project sub-rows map PB2026-edition decade columns to project cells", async () => {
@@ -916,14 +998,19 @@ describe("YearsMatrix — decade view (Phase 5E)", () => {
     fireEvent.click(document.querySelector("[data-expand]") as HTMLElement);
     // fy2026r (edition 2026) maps to the project fy2026 scenario cell — but
     // the fixture project has no fy2026 cell, so check fy2024a → fy2024.
-    // First bring fy2024a into view via the picker.
+    // First bring fy2024a into view via the picker. The projects arrive with
+    // detail.json and fy2024a with decade.json (ROADMAP #193).
     fireEvent.click(
       screen.getByRole("button", { name: /show fy2024a column/i }),
     );
+    await waitFor(() => {
+      expect(
+        document.querySelector('tr[data-project-row] td[data-col="fy2024"]'),
+      ).not.toBeNull();
+    });
     const projCell = document.querySelector(
       'tr[data-project-row] td[data-col="fy2024"]',
     );
-    expect(projCell).not.toBeNull();
     expect(
       projCell!.querySelector('[data-fact-id="bb00000000000001"]'),
     ).not.toBeNull();
@@ -961,12 +1048,7 @@ const MATRIX_FAMILY: YearsMatrixData = {
 
 describe("YearsMatrix — family-thread affordance (program-lineage)", () => {
   beforeEach(() => {
-    fetchMock.mockImplementation((url: string) => {
-      if (String(url) === "/json/years_matrix.json") {
-        return Promise.resolve(jsonResponse(MATRIX_FAMILY));
-      }
-      return Promise.reject(new Error(`unmocked fetch ${url}`));
-    });
+    serveMatrix(MATRIX_FAMILY);
   });
 
   it("family-member rows carry [data-family-badge]; lone rows do not", async () => {
@@ -1008,6 +1090,143 @@ describe("YearsMatrix — family-thread affordance (program-lineage)", () => {
     const csv = buildYearsCsv(entries, ["fy_2026_total"]);
     expect(csv).not.toContain("family_id");
     expect(csv).not.toContain("family");
+  });
+});
+
+// ── ROADMAP #193 — the core first, each shard when a reader asks ──────────
+
+describe("YearsMatrix — lazy shards (ROADMAP #193)", () => {
+  beforeEach(() => {
+    serveMatrix(MATRIX_DECADE);
+  });
+
+  it("opens on the core alone: no shard is fetched until a reader asks", async () => {
+    await renderMatrix();
+    expect(fetched()).toEqual([CORE_URL]);
+    expect(screen.getByTestId("years-matrix").getAttribute("data-shards")).toBe("core");
+    // the expand caret is there before detail.json: np comes with the core
+    expect(
+      document.querySelector('tr[data-pe="0601101E"] [data-expand]'),
+    ).not.toBeNull();
+  });
+
+  it("a non-default decade column loads decade.json once, then joins the grid", async () => {
+    const files = splitForTest(MATRIX_DECADE);
+    let release: () => void = () => {};
+    serveMatrix(MATRIX_DECADE, {
+      [DECADE_URL]: () =>
+        new Promise((resolve) => {
+          release = () => resolve(files.decade);
+        }),
+    });
+    await renderMatrix();
+    fireEvent.click(screen.getByRole("button", { name: /show fy2020e column/i }));
+    // asked for, not merged: the chip says so, the table is busy, and the
+    // column is not drawn as a column of "—" (which means "not in the book")
+    const chip = screen.getByRole("button", { name: /hide fy2020e column/i });
+    expect(chip.getAttribute("data-shard-state")).toBe("loading");
+    expect(screen.getByTestId("years-matrix").getAttribute("aria-busy")).toBe("true");
+    expect(document.querySelector('th[data-col="fy2020e"]')).toBeNull();
+    release();
+    await waitFor(() => {
+      expect(document.querySelector('th[data-col="fy2020e"]')).not.toBeNull();
+    });
+    expect(chip.hasAttribute("data-shard-state")).toBe(false);
+    expect(screen.getByTestId("years-matrix").getAttribute("data-shards")).toBe("core decade");
+    expect(
+      document
+        .querySelector('tr[data-pe="0601101E"] td[data-col="fy2020e"]')
+        ?.getAttribute("data-v"),
+    ).toBe("94000");
+    // another column from the same shard needs no second fetch
+    fireEvent.click(screen.getByRole("button", { name: /show fy2024a column/i }));
+    expect(document.querySelector('th[data-col="fy2024a"]')).not.toBeNull();
+    expect(fetched().filter((u) => u === DECADE_URL)).toHaveLength(1);
+  });
+
+  it("expanding a row loads detail.json, then shows its project rows", async () => {
+    await renderMatrix();
+    fireEvent.click(
+      document.querySelector('tr[data-pe="0601101E"] [data-expand]') as HTMLElement,
+    );
+    await waitFor(() => {
+      expect(document.querySelectorAll("tr[data-project-row]").length).toBeGreaterThan(0);
+    });
+    expect(fetched()).toEqual([CORE_URL, DETAIL_URL]);
+    expect(screen.getByTestId("years-matrix").getAttribute("data-shards")).toBe("core detail");
+  });
+
+  it("a shard from another build refetches the core once; still stale, its columns show an error", async () => {
+    const files = splitForTest(MATRIX_DECADE);
+    serveMatrix(MATRIX_DECADE, {
+      [DECADE_URL]: { ...files.decade, build_id: "build-0" },
+    });
+    await renderMatrix();
+    fireEvent.click(screen.getByRole("button", { name: /show fy2020e column/i }));
+    const chip = screen.getByRole("button", { name: /hide fy2020e column/i });
+    await waitFor(() => {
+      expect(chip.getAttribute("data-shard-state")).toBe("error");
+    });
+    expect(chip.textContent).toContain("(unavailable)");
+    expect(document.querySelector('th[data-col="fy2020e"]')).toBeNull();
+    expect(fetched()).toEqual([CORE_URL, DECADE_URL, CORE_URL]);
+    expect(fetchMock.mock.calls[2][1]).toEqual({ cache: "no-cache" });
+    // nothing else changes: the opening columns stay, the table is not busy
+    expect(document.querySelector('th[data-col="fy2020a"]')).not.toBeNull();
+    expect(screen.getByTestId("years-matrix").getAttribute("aria-busy")).toBe("false");
+  });
+
+  it("a redeploy between the two fetches moves the grid to the new build", async () => {
+    const v2: YearsMatrixData = {
+      ...MATRIX_DECADE,
+      orgs: MATRIX_DECADE.orgs.map((o, i) =>
+        i !== 0
+          ? o
+          : {
+              ...o,
+              programs: o.programs.map((p, j) =>
+                j !== 0
+                  ? p
+                  : { ...p, cells: { ...p.cells, fy2020a: { fid: "dd00000000000002", v: 96000 } } },
+              ),
+            },
+      ),
+    };
+    const before = splitForTest(MATRIX_DECADE, "build-1");
+    const after = splitForTest(v2, "build-2");
+    let coreRequests = 0;
+    serveMatrix(MATRIX_DECADE, {
+      [CORE_URL]: () => (coreRequests++ === 0 ? before.core : after.core),
+      [DECADE_URL]: after.decade,
+    });
+    await renderMatrix();
+    fireEvent.click(screen.getByRole("button", { name: /show fy2020e column/i }));
+    await waitFor(() => {
+      expect(document.querySelector('th[data-col="fy2020e"]')).not.toBeNull();
+    });
+    expect(
+      document
+        .querySelector('tr[data-pe="0601101E"] td[data-col="fy2020a"]')
+        ?.getAttribute("data-v"),
+    ).toBe("96000");
+    expect(fetched()).toEqual([CORE_URL, DECADE_URL, CORE_URL]);
+  });
+
+  it("an export from before the split (schema 1, one file) still renders whole", async () => {
+    fetchMock.mockImplementation((url: string) =>
+      String(url) === CORE_URL
+        ? Promise.resolve(jsonResponse(MATRIX_DECADE))
+        : Promise.reject(new Error(`unmocked fetch ${url}`)),
+    );
+    await renderMatrix();
+    fireEvent.click(screen.getByRole("button", { name: /show fy2020e column/i }));
+    expect(document.querySelector('th[data-col="fy2020e"]')).not.toBeNull();
+    fireEvent.click(
+      document.querySelector('tr[data-pe="0601101E"] [data-expand]') as HTMLElement,
+    );
+    expect(document.querySelectorAll("tr[data-project-row]").length).toBeGreaterThan(0);
+    expect(fetched()).toEqual([CORE_URL]);
+    expect(screen.getByTestId("years-matrix").getAttribute("aria-busy")).toBe("false");
   });
 });
 

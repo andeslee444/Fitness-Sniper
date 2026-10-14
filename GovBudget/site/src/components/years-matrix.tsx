@@ -3,9 +3,13 @@
 /**
  * years-matrix.tsx — CapIQ-style budget-over-time grid (Phase 5D, /years/).
  *
- * Client island: lazily fetches /json/years_matrix.json (exporter sidecar,
- * copied to public/json/ by prepare-assets) and renders every program element
- * as a row, fiscal-year amount types as columns:
+ * Client island: fetches /json/years_matrix.json (the core: the header,
+ * every row and the default decade columns' cells) on mount, and each lazy
+ * shard (/json/years_matrix/decade.json, /json/years_matrix/detail.json)
+ * only when a reader turns on a column it holds or, for detail, expands a
+ * row (ROADMAP #193; prepare-assets copies all three to public/json/). It
+ * renders every program element as a row, fiscal-year amount types as
+ * columns:
  *
  *   - Org sections (collapsible) → program rows → expandable project
  *     sub-rows (the J-book's own sub-program grain).
@@ -40,7 +44,9 @@
  *   [data-testid="years-matrix"] table, tr[data-program-row][data-pe],
  *   tr[data-project-row], td/th[data-col] (+ data-v on numeric cells),
  *   [data-sort="<key>"], [data-expand], [data-testid="years-filter"],
- *   [data-testid="years-csv"], [data-sticky-col].
+ *   [data-testid="years-csv"], [data-sticky-col],
+ *   table[data-shards="core[ decade][ detail]"] (the files merged so far)
+ *   with aria-busy="true" while a column the reader asked for is loading.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -53,9 +59,18 @@ import { aliasHitsForQuery } from "@/lib/aliases";
 import { TRAJECTORY_FY_LABEL } from "@/lib/site";
 import { formatCount } from "@/lib/format";
 import { EXTENDED_MEASURE_LABEL } from "@/lib/basis";
-import { isPeCode } from "@/lib/pe-link";
+import {
+  mergeYearsMatrix,
+  shardOfColumns,
+  YEARS_SHARD_NAMES,
+  type YearsMatrixCore,
+  type YearsMatrixShard,
+  type YearsShardManifestEntry,
+  type YearsShardName,
+} from "@/lib/years-matrix-shards.mjs";
 
-// ── Sidecar types (years_matrix.json schema_version 1) ──────────────────────
+// ── Sidecar types: the merged view of years_matrix.json (schema_version 2)
+//    and whichever of its shards have loaded (years-matrix-shards.mjs) ──────
 
 export interface YearsCell {
   v: number;
@@ -93,7 +108,11 @@ export interface YearsProgram {
   title: string;
   /** Keyed by amount_type + delta columns. */
   cells: Record<string, YearsCell | undefined>;
+  /** [] until detail.json has loaded (ROADMAP #193). */
   projects: YearsProject[];
+  /** The row's project count, from the core: the expand caret reads it so it
+   *  can render before detail.json (which holds the projects) has loaded. */
+  np?: number;
   /**
    * Program-lineage overlay (sparse — present only when this PE belongs to a
    * tracked lineage family). UI-only: drives the per-row family-thread badge
@@ -148,6 +167,10 @@ export interface YearsMatrixData {
   /** Phase 5E: present only when the exporter minted decade grains. */
   decade_columns?: DecadeColumn[];
   decade_default_columns?: string[];
+  /** ROADMAP #193: the export's content hash, shared by the core and shards. */
+  build_id?: string;
+  /** ROADMAP #193: the core's manifest of its two lazy shards. */
+  shards?: YearsShardManifestEntry[];
   orgs: YearsOrg[];
 }
 
@@ -384,7 +407,9 @@ export function sortEntries(
  * default set. Δ/%Δ columns are excluded — a change column is an annotation of
  * two amounts, not the amount a reader came for.
  */
-export function defaultSortKey(matrix: YearsMatrixData): string | null {
+export function defaultSortKey(
+  matrix: Pick<YearsMatrixData, "decade_default_columns" | "default_columns" | "delta_columns">,
+): string | null {
   const defaults = matrix.decade_default_columns?.length
     ? matrix.decade_default_columns
     : (matrix.default_columns ?? []);
@@ -575,7 +600,127 @@ function deltaColorClass(v: number): string {
 type LoadState =
   | { s: "loading" }
   | { s: "error" }
-  | { s: "ready"; matrix: YearsMatrixData };
+  | { s: "ready"; core: YearsMatrixCore };
+
+/** One lazy shard: never asked for, in flight, merged, or failed. */
+type ShardStatus = "idle" | "loading" | "ready" | "error";
+const NO_SHARDS: Record<YearsShardName, ShardStatus> = {
+  decade: "idle",
+  detail: "idle",
+};
+
+/**
+ * The shards' paths under /json/, which the core's manifest must name. The
+ * fetches below are string literals on purpose: linkgraph leg i reads every
+ * statically named fetch() target out of site/src and asserts the file
+ * ships under out/, and a computed `/json/${path}` would hide both from it.
+ */
+const SHARD_PATH: Record<YearsShardName, string> = {
+  decade: "years_matrix/decade.json",
+  detail: "years_matrix/detail.json",
+};
+
+function fetchShard(name: YearsShardName): Promise<Response> {
+  return name === "decade"
+    ? fetch("/json/years_matrix/decade.json")
+    : fetch("/json/years_matrix/detail.json");
+}
+
+async function jsonOf<T>(response: Promise<Response>, what: string): Promise<T> {
+  const res = await response;
+  if (!res.ok) throw new Error(`${what} HTTP ${res.status}`);
+  return (await res.json()) as T;
+}
+
+/**
+ * Fetch one shard for `core`. Its build_id must be the core's. If a deploy
+ * landed between the two fetches, the core is fetched again, once, past the
+ * HTTP cache: a fresh core that matches the shard is returned with it (the
+ * grid moves to that build); anything else throws, and the shard's columns
+ * show an error and nothing else.
+ */
+async function fetchShardFor(
+  core: YearsMatrixCore,
+  name: YearsShardName,
+): Promise<{ core: YearsMatrixCore; shard: YearsMatrixShard }> {
+  const entry = core.shards?.find((s) => s.name === name);
+  if (!entry || entry.path !== SHARD_PATH[name]) {
+    throw new Error(`the core's manifest does not list ${SHARD_PATH[name]}`);
+  }
+  const shard = await jsonOf<YearsMatrixShard>(fetchShard(name), SHARD_PATH[name]);
+  if (shard.build_id === core.build_id) return { core, shard };
+  const fresh = await jsonOf<YearsMatrixCore>(
+    fetch("/json/years_matrix.json", { cache: "no-cache" }),
+    "years_matrix.json",
+  );
+  if (fresh.build_id !== shard.build_id) {
+    throw new Error(`${SHARD_PATH[name]} is from another build`);
+  }
+  return { core: fresh, shard };
+}
+
+/** The island's shard bookkeeping: which shards have been asked for under
+ *  the current core, and the state setters that report on them. */
+interface ShardLoader {
+  requested: Set<YearsShardName>;
+  setLoad: (state: LoadState) => void;
+  setShards: React.Dispatch<
+    React.SetStateAction<Partial<Record<YearsShardName, YearsMatrixShard>>>
+  >;
+  setShardStatus: React.Dispatch<
+    React.SetStateAction<Record<YearsShardName, ShardStatus>>
+  >;
+}
+
+/**
+ * Ask for shards, each at most once per core. Called only from the core's
+ * load callback and from event handlers (a column chip, an expand caret),
+ * never from an effect: a shard loads because a reader asked for what it
+ * holds. When a shard comes back with a newer core, the grid moves to that
+ * build, and every other shard asked for so far is fetched again for it.
+ */
+function requestShards(
+  loader: ShardLoader,
+  current: YearsMatrixCore,
+  names: Iterable<YearsShardName>,
+): void {
+  for (const name of names) {
+    // A pre-split export (schema 1) lists no shards: nothing to fetch.
+    if (!current.shards?.some((s) => s.name === name)) continue;
+    if (loader.requested.has(name)) continue;
+    loader.requested.add(name);
+    loader.setShardStatus((prev) => ({ ...prev, [name]: "loading" }));
+    fetchShardFor(current, name)
+      .then(({ core, shard }) => {
+        if (core === current) {
+          loader.setShards((prev) => ({ ...prev, [name]: shard }));
+          loader.setShardStatus((prev) => ({ ...prev, [name]: "ready" }));
+          return;
+        }
+        const again = [...loader.requested].filter((n) => n !== name);
+        loader.requested.clear();
+        loader.requested.add(name);
+        loader.setLoad({ s: "ready", core });
+        loader.setShards({ [name]: shard });
+        loader.setShardStatus({ ...NO_SHARDS, [name]: "ready" });
+        requestShards(loader, core, again);
+      })
+      .catch(() => {
+        loader.setShardStatus((prev) => ({ ...prev, [name]: "error" }));
+      });
+  }
+}
+
+/** The shards holding any of `columns` under `core`'s manifest. */
+function shardsHolding(core: YearsMatrixCore, columns: string[]): Set<YearsShardName> {
+  const of = shardOfColumns(core);
+  const out = new Set<YearsShardName>();
+  for (const c of columns) {
+    const s = of.get(c);
+    if (s) out.add(s);
+  }
+  return out;
+}
 
 interface SortState {
   key: string;
@@ -620,6 +765,18 @@ const STICKY_ORG_COL_CLASS =
 
 export function YearsMatrix() {
   const [load, setLoad] = useState<LoadState>({ s: "loading" });
+  // ROADMAP #193: the lazy shards merged so far, and where each one is.
+  const [shards, setShards] = useState<
+    Partial<Record<YearsShardName, YearsMatrixShard>>
+  >({});
+  const [shardStatus, setShardStatus] =
+    useState<Record<YearsShardName, ShardStatus>>(NO_SHARDS);
+  const [loader] = useState<ShardLoader>(() => ({
+    requested: new Set(),
+    setLoad,
+    setShards,
+    setShardStatus,
+  }));
   const [collapsedOrgs, setCollapsedOrgs] = useState<ReadonlySet<string>>(
     new Set(),
   );
@@ -695,7 +852,9 @@ export function YearsMatrix() {
     const maxScroll = box.scrollWidth - box.clientWidth;
     box.scrollLeft = Math.max(0, Math.min(snapped, maxScroll));
     setScrollToCol(null);
-  }, [scrollToCol, load]);
+    // shardStatus: a sort column held by a shard only gets its <th> once the
+    // shard has merged, so the scroll waits for it.
+  }, [scrollToCol, load, shardStatus]);
   const [filter, setFilter] = useState("");
   // null until the matrix loads (defaults come from the sidecar).
   const [chosenCols, setChosenCols] = useState<string[] | null>(null);
@@ -706,20 +865,22 @@ export function YearsMatrix() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/json/years_matrix.json")
-      .then((res) => {
-        if (!res.ok) throw new Error(`years_matrix.json HTTP ${res.status}`);
-        return res.json() as Promise<YearsMatrixData>;
-      })
-      .then((matrix) => {
+    jsonOf<YearsMatrixCore>(fetch("/json/years_matrix.json"), "years_matrix.json")
+      .then((core) => {
         if (cancelled) return;
-        setLoad({ s: "ready", matrix });
+        setLoad({ s: "ready", core });
         // §P2-2: open on substance, not on a screenful of em-dashes.
-        const key = defaultSortKey(matrix);
+        const key = defaultSortKey(core);
         if (key) {
           setSort({ key, dir: "desc" });
           setScrollToCol(key);
         }
+        // The opening view's shards: none when the defaults are decade
+        // columns, which the core holds (ROADMAP #193).
+        const opening = core.decade_default_columns?.length
+          ? core.decade_default_columns
+          : core.default_columns;
+        requestShards(loader, core, shardsHolding(core, opening));
       })
       .catch(() => {
         if (!cancelled) setLoad({ s: "error" });
@@ -727,9 +888,26 @@ export function YearsMatrix() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loader]);
 
-  const matrix = load.s === "ready" ? load.matrix : null;
+  const core = load.s === "ready" ? load.core : null;
+  // column key → the shard holding it; a key in no shard is in the core.
+  const shardOf = useMemo(
+    () => (core ? shardOfColumns(core) : new Map<string, YearsShardName>()),
+    [core],
+  );
+  // The grid's data: the core plus every shard merged so far. A shard is
+  // stored only once its build_id matches the core's (fetchShardFor).
+  const matrix = useMemo(
+    () =>
+      core
+        ? mergeYearsMatrix(
+            core,
+            YEARS_SHARD_NAMES.flatMap((n) => (shards[n] ? [shards[n]!] : [])),
+          )
+        : null,
+    [core, shards],
+  );
 
   // Phase 5E decade meta: column key → {fy, kind, edition}.
   const decadeMeta = useMemo(() => {
@@ -759,11 +937,54 @@ export function YearsMatrix() {
       ? matrix.decade_default_columns
       : matrix.default_columns;
   }, [matrix]);
-  const visibleCols = useMemo(() => {
+  // The columns the reader asked for…
+  const wantedCols = useMemo(() => {
     if (!matrix) return [];
     const chosen = new Set(chosenCols ?? defaultCols);
     return allColumns.filter((c) => chosen.has(c));
   }, [matrix, chosenCols, allColumns, defaultCols]);
+  // …and the ones on screen: a column joins the grid only once its shard has
+  // merged. Until then a "—" in it would claim the book has no figure.
+  const visibleCols = useMemo(
+    () =>
+      wantedCols.filter((c) => {
+        const s = shardOf.get(c);
+        return s === undefined || shardStatus[s] === "ready";
+      }),
+    [wantedCols, shardOf, shardStatus],
+  );
+  // A shard is wanted when a chosen column lives in it, or (detail) when a
+  // row is expanded: the project sub-rows ship in detail.json. The chip and
+  // caret handlers ask for it (requestShards); this only drives aria-busy.
+  const wantedShards = useMemo(() => {
+    const out = new Set<YearsShardName>();
+    for (const c of wantedCols) {
+      const s = shardOf.get(c);
+      if (s) out.add(s);
+    }
+    const listsDetail = (core?.shards ?? []).some((s) => s.name === "detail");
+    if (expandedPrograms.size > 0 && listsDetail) out.add("detail");
+    return out;
+  }, [core, wantedCols, shardOf, expandedPrograms]);
+
+  // aria-busy: some column the reader asked for has not merged yet.
+  const busy = [...wantedShards].some(
+    (s) => shardStatus[s] === "idle" || shardStatus[s] === "loading",
+  );
+  // The gates' marker: which files the grid is showing, in a fixed order.
+  const loadedFiles = [
+    "core",
+    ...YEARS_SHARD_NAMES.filter((s) => shardStatus[s] === "ready"),
+  ].join(" ");
+
+  /** A picker chip's loading state: "loading" or "error" while the reader
+   *  has it on and its shard has not merged; undefined otherwise. */
+  function chipShardState(key: string): "loading" | "error" | undefined {
+    const s = shardOf.get(key);
+    if (s === undefined || !wantedCols.includes(key)) return undefined;
+    if (shardStatus[s] === "error") return "error";
+    return shardStatus[s] === "ready" ? undefined : "loading";
+  }
 
   // Tri-persona review Wave 2 — the † footnote's own population: the VISIBLE
   // decade columns whose money comes from a workbook column reporting
@@ -815,6 +1036,10 @@ export function YearsMatrix() {
   }
 
   function toggleProgram(peBli: string) {
+    // Project sub-rows ship in detail.json (ROADMAP #193).
+    if (core && !expandedPrograms.has(peBli)) {
+      requestShards(loader, core, ["detail"]);
+    }
     setExpandedPrograms((prev) => {
       const next = new Set(prev);
       if (next.has(peBli)) next.delete(peBli);
@@ -833,6 +1058,9 @@ export function YearsMatrix() {
       setSort((prev) => (prev && prev.key === key ? null : prev));
     } else {
       current.add(key);
+      // A column held by a shard appears once the shard merges (ROADMAP #193).
+      const shard = shardOf.get(key);
+      if (core && shard) requestShards(loader, core, [shard]);
     }
     setChosenCols(allColumns.filter((c) => current.has(c)));
   }
@@ -974,15 +1202,22 @@ export function YearsMatrix() {
         )}
         {decadeKeys.map((key) => {
           const col = decadeMeta.get(key)!;
-          const on = visibleCols.includes(key);
+          const on = wantedCols.includes(key);
           const label = decadeColumnLabel(col);
+          const pending = chipShardState(key);
           return (
             <button
               key={key}
               type="button"
               aria-pressed={on}
               aria-label={`${on ? "Hide" : "Show"} ${label} column`}
-              title={decadeColumnTitle(col)}
+              aria-busy={pending === "loading" || undefined}
+              data-shard-state={pending}
+              title={
+                pending === "error"
+                  ? `${decadeColumnTitle(col)}: could not be loaded; reload the page to try again`
+                  : decadeColumnTitle(col)
+              }
               onClick={() => toggleColumn(key)}
               className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
                 on
@@ -991,6 +1226,8 @@ export function YearsMatrix() {
               }`}
             >
               {label}
+              {pending === "loading" && <span aria-hidden="true"> …</span>}
+              {pending === "error" && <span> (unavailable)</span>}
             </button>
           );
         })}
@@ -1001,13 +1238,21 @@ export function YearsMatrix() {
         )}
         {[...(matrix?.amount_types ?? []), ...(matrix?.delta_columns ?? [])].map(
           (key) => {
-            const on = visibleCols.includes(key);
+            const on = wantedCols.includes(key);
+            const pending = chipShardState(key);
             return (
               <button
                 key={key}
                 type="button"
                 aria-pressed={on}
                 aria-label={`${on ? "Hide" : "Show"} ${columnLabel(key)} column`}
+                aria-busy={pending === "loading" || undefined}
+                data-shard-state={pending}
+                title={
+                  pending === "error"
+                    ? `${columnLabel(key)}: could not be loaded; reload the page to try again`
+                    : undefined
+                }
                 onClick={() => toggleColumn(key)}
                 className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
                   on
@@ -1018,6 +1263,8 @@ export function YearsMatrix() {
                 }`}
               >
                 {columnLabel(key)}
+                {pending === "loading" && <span aria-hidden="true"> …</span>}
+                {pending === "error" && <span> (unavailable)</span>}
               </button>
             );
           },
@@ -1041,8 +1288,8 @@ export function YearsMatrix() {
           className="text-xs leading-5 text-muted-foreground"
         >
           Actuals for FY N come from the PB(N+2) book; each column states its
-          edition. Procurement rows here start at PB2024; any PB2017–PB2023
-          history is on the program page.{" "}
+          edition. Before PB2024, a procurement row shows only lines a
+          reviewed decision joined to it.{" "}
           <Link
             href="/methodology/#coverage-editions"
             className="underline decoration-dotted hover:text-foreground"
@@ -1177,6 +1424,11 @@ export function YearsMatrix() {
           // to pin the leftmost column, which was only a proxy for that and
           // stopped being one the moment the viewport followed the sort.
           data-sorted-col={sort?.key ?? ""}
+          // ROADMAP #193: the files merged so far ("core", "core decade", …)
+          // and whether a column the reader asked for is still loading. The
+          // yearsmatrix gate waits on these instead of on timeouts.
+          data-shards={loadedFiles}
+          aria-busy={busy}
           // border-separate (NOT collapse): collapsed borders stay in the
           // scrolled layer when cells are sticky — see STICKY_*_COL_CLASS.
           className="w-full border-separate border-spacing-0 text-xs"
@@ -1399,7 +1651,8 @@ function ProgramRows({
   showOrg = false,
 }: ProgramRowsProps) {
   const { org, program } = entry;
-  const hasProjects = program.projects.length > 0;
+  // np comes with the core; the projects themselves arrive with detail.json.
+  const hasProjects = (program.np ?? program.projects.length) > 0;
 
   return (
     <>
@@ -1486,7 +1739,6 @@ function ProgramRows({
             colKey={key}
             cell={program.cells[key]}
             decade={decadeMeta.get(key)}
-            peBli={program.pe_bli}
           />
         ))}
       </tr>
@@ -1582,10 +1834,6 @@ const PROJECT_COL_META: Record<string, { fy: number; measure: string }> = {
   fy2026: { fy: 2026, measure: "request" },
 };
 
-/** The first edition /years/ carries procurement (P-1) rows in: the
- *  families piece 1 fence (spec 2026-10-02 §6.2, ROADMAP #193). */
-const PROCUREMENT_GRID_FIRST_EDITION = 2024;
-
 /**
  * One program dollar/Δ/%Δ cell. Missing → "—" (plain text, no data-v).
  *
@@ -1611,37 +1859,28 @@ function ProgramCellTd({
   colKey,
   cell,
   decade,
-  peBli,
 }: {
   colKey: string;
   cell: YearsCell | undefined;
   /** Phase 5E: set when colKey is a decade column ('fy{yyyy}{a|e|r}'). */
   decade?: DecadeColumn;
-  /** The row's code: a PE-shaped one is an R-1 row, any other a P-1 row. */
-  peBli: string;
 }) {
   if (!cell) {
-    // Decade gaps are edition-honest absences (spec §2 rule 4): the PE has
-    // no entry in that column's book — the tooltip says which edition.
-    // Except a procurement row before PB2024 (families piece 1 final review
-    // T4): /years/ keeps P-1 rows from PB2024 on (the ROADMAP #193 fence)
-    // while the program page carries the era history a reviewed decision
-    // matched, so that gap is this grid's, not the edition's. "Any": not
-    // every P-1 row has era history (S5: 4,995 of the 6,027 default-view
-    // pre-PB2024 P-1 gaps have a point on the program page).
-    const procurementBeforeGrid =
-      decade !== undefined &&
-      decade.edition < PROCUREMENT_GRID_FIRST_EDITION &&
-      !isPeCode(peBli);
+    // Decade gaps are edition-honest absences (spec §2 rule 4): the row has
+    // no entry in that column's book, and the tooltip says which edition.
+    // Procurement rows included since ROADMAP #193 lifted piece 1's fence:
+    // a /years/ row carries exactly its program page's decade points, so a
+    // P-1 gap before PB2024 is a code that edition did not print, a line
+    // joined to the sibling account's row, or a reused code an owner
+    // decision excluded (Q12, measured on the default view: 985, 41 and 6
+    // of 1,032), never a point the grid left out.
     return (
       <td
         data-col={colKey}
         data-cell-state="absent"
         title={
           decade
-            ? procurementBeforeGrid
-              ? `Any PB${decade.edition} procurement history is on the program page, not yet in this grid`
-              : `Not in the PB${decade.edition} edition`
+            ? `Not in the PB${decade.edition} edition`
             : "No figure for this program in this column's source"
         }
         className="border-b border-border px-2.5 py-1 text-right t-figure t-figure--2 text-muted-foreground"

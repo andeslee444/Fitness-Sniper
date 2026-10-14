@@ -88,8 +88,11 @@ export default async function AgencyPage({
   const agencyPrograms = getPrograms()
     .filter((p) => p.org === org)
     .sort((a, b) => {
-      const av = decadeCells.get(a.pe_bli)?.fy26?.v ?? -Infinity;
-      const bv = decadeCells.get(b.pe_bli)?.fy26?.v ?? -Infinity;
+      // ROADMAP #208: the cells are keyed by page slug (one per /years/ row),
+      // as /programs/ looks them up. By bare pe_bli the 27 rows of the 13
+      // shared budget-line codes found nothing and rendered "—".
+      const av = decadeCells.get(a.slug)?.fy26?.v ?? -Infinity;
+      const bv = decadeCells.get(b.slug)?.fy26?.v ?? -Infinity;
       return bv - av;
     });
 
@@ -112,7 +115,7 @@ export default async function AgencyPage({
     // The FY24 figure this list renders is the program-level TOA fact, not the
     // J-book detail fact it used to render (gate 23 leg e) — so that is the
     // fact that has to be in the page's citation slice.
-    const fid = decadeCells.get(p.pe_bli)?.fy24?.fid;
+    const fid = decadeCells.get(p.slug)?.fy24?.fid;
     if (fid) pageFactIds.push(fid);
   }
   if (gao?.overlay.improper?.fact_id) {
@@ -358,13 +361,13 @@ export default async function AgencyPage({
                     /programs/, /years/ and each program's own headline, with
                     the basis declared once above the list. */}
                 <div className="shrink-0 text-sm text-right tabular-nums text-muted-foreground">
-                  {decadeCells.get(p.pe_bli)?.fy24 != null ? (
+                  {decadeCells.get(p.slug)?.fy24 != null ? (
                     <>
                       <Cite
-                        value={decadeCells.get(p.pe_bli)!.fy24!.v}
+                        value={decadeCells.get(p.slug)!.fy24!.v}
                         units="USD thousands"
                         dataset="fct_decade_series"
-                        factId={decadeCells.get(p.pe_bli)!.fy24!.fid}
+                        factId={decadeCells.get(p.slug)!.fy24!.fid}
                         basis="toa"
                         fy={2024}
                         measure="actuals"
