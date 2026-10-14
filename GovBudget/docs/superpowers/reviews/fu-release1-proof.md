@@ -284,16 +284,18 @@ weights.txt lists 18 entries, none over its ceiling, and no `maxRaw` or `maxGzip
   [site-verify.log]; vitest 2,891 / 2,891 [site-vitest.log]; the weights re-measured and re-stamped from this build
   [weights.txt]. The blocked run's logs are kept as `*.blocked-run.*`. Against them, raw bytes are equal on all
   18 entries, and gzip moved by 1–3 bytes on 15 of them (the HTML references new chunk hashes, as Task 21h2's
-  report explains); /programs/, /methodology/ and /district/*/ are byte-identical [weights.blocked-run.txt,
-  weights.txt].
+  report explains); /programs/, /methodology/ and /district/*/ have equal raw and gzip sizes in both runs
+  [weights.blocked-run.txt, weights.txt].
 
 ## For Task 22d's go-ahead
 
 Tell the owner, with these numbers:
 
-1. A tie at the 12th place on a flows page now publishes a fixed award (lowest piid, then uei, state, district,
-   family). A and B publish the same award set on all 312 flows pages; against production only 0605502E's order
-   changes [p2-flows-check.txt].
+1. Tied awards on a flows page now come out in a fixed order (by piid, then uei, state, district, family), so a
+   tie at the 12th place would always publish the same award; no 12th-place tie exists today. A@fu-pre (the
+   deployed code on the same lake) and B@fu-pre publish the same award set on all 312 flows pages, and only
+   0605502E's order changes, at places 9–10 [p2-flows-check.txt]; production's own file, as copied into fu-pre,
+   carries A's order.
 2. /program/0390DOM/'s TOA chips read "P-1 TOA · PB2026", not the "P-1/R-1 TOA" that contract note G2-6 expected
    (Task 21h2).
 3. `fct_budget_trajectory` gains one 0390DOM row (fy2024_actuals 87404, fy2026_total 3243), shipped in the
