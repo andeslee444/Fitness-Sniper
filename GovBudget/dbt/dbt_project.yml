@@ -46,3 +46,12 @@ seeds:
         decided_by: varchar
         ruling: varchar
         note: varchar
+    p1_route_safe_codes:
+      +column_types:
+        account: varchar
+        line_item_code: varchar
+        page_key: varchar
+        exhibit_family: varchar
+        decided_on: varchar
+        decided_by: varchar
+        note: varchar
