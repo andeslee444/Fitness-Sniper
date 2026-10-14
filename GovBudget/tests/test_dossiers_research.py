@@ -44,6 +44,7 @@ from govbudget.dossiers.research import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CATEGORIES_CSV = REPO_ROOT / "data-seeds" / "program_categories.csv"
 ALIASES_CSV = REPO_ROOT / "data-seeds" / "search_aliases.csv"
+PROGRAM_ALIASES_CSV = REPO_ROOT / "dbt" / "seeds" / "program_aliases.csv"
 LIVE_DUCKDB = REPO_ROOT / "data" / "duckdb" / "govbudget.duckdb"
 NARRATIVES_PARQUET = REPO_ROOT / "data" / "site" / "data" / "jbook_narratives.parquet"
 
@@ -569,6 +570,31 @@ class TestSearchAliasesCsv:
         con.close()
         for term, pe in load_alias_terms(ALIASES_CSV).items():
             assert pe in known, f"alias {term!r} targets missing program {pe}"
+
+    def test_terms_shared_with_program_aliases_target_one_of_its_programs(self):
+        """ROADMAP #197: #55 moved JASSM and C-130J in dbt/seeds/program_aliases.csv
+        on 2026-08-27, and nothing tied this seed to that one, so search kept
+        routing both to the old pages. A term whose alphanumeric key is also a
+        program_aliases alias must target one of that alias's programs
+        (membership, not equality: 10 aliases name several programs). The
+        families registry (pieces 2-4) is meant to become the one source."""
+        def key(text: str) -> str:
+            return re.sub(r"[^0-9a-z]", "", text.lower())
+
+        targets: dict[str, set[str]] = {}
+        for row in _read_csv(PROGRAM_ALIASES_CSV):
+            targets.setdefault(key(row["alias"]), set()).add(row["pe_bli"])
+        checked, wrong = [], []
+        for row in _read_csv(ALIASES_CSV):
+            members = targets.get(key(row["term"]))
+            if members is None:
+                continue
+            pe = re.fullmatch(r"/program/([^/]+)/", row["target_url"]).group(1)
+            checked.append(row["term"])
+            if pe not in members:
+                wrong.append(f"{row['term']} -> {pe}, program_aliases says {sorted(members)}")
+        assert checked == ["JADC2", "JASSM", "C2BMC", "C-130J"]
+        assert wrong == []
 
     @pytest.mark.skipif(
         not NARRATIVES_PARQUET.exists(), reason="narratives sidecar not present"

@@ -1,6 +1,6 @@
 term,target_url,source_ref,note
 JADC2,/program/0604122D8Z/,lda:a449d70c-6416-4828-bc38-6e3643aae6b1,"Joint All-Domain Command and Control; appears as matched_term in LDA filings mapped to this PE (fct_program_lobbying)"
-JASSM,/program/0603000D8Z/,lda:a449d70c-6416-4828-bc38-6e3643aae6b1,"Joint Air-to-Surface Standoff Missile; named in the filing's activity description; PE is Joint Munitions Advanced Technology"
+JASSM,/program/0207325F/,jbook:0207325F:ProgramElement[182]/Project[0],"Joint Air-to-Surface Standoff Missile; the AF RDT&E PE carrying the acronym in its own title, whose project mission names the JASSM family (dbt/seeds/program_aliases.csv since #55, 2026-08-27). #197 CORRECTION (families piece-1 follow-ups, approved 2026-10-04): pointed at 0603000D8Z (Joint Munitions Advanced Technology) on an LDA filing's wording"
 Golden Dome,/program/0603892C/,jbook:0603892C:ProgramElement[7]/Project[1]/AccomplishmentPlannedProgram[1],"FY2026 J-book: 'The SM-3 Block IIA is required for Golden Dome for America' (Aegis BMD)"
 Next Generation Interceptor,/program/0604874C/,jbook:0604874C:ProgramElement[20],"PE mission: development/integration/testing of a Next Generation Interceptor AUR (Improved Homeland Defense Interceptors)"
 NGI,/program/0604874C/,jbook:0604874C:ProgramElement[20]/Project[1],"NGI acronym used in the project mission narrative"
@@ -8,7 +8,7 @@ C2BMC,/program/0603896C/,jbook:0603896C:ProgramElement[8]/Project[2]/Accomplishm
 Armed Overwatch,/program/1160403BB/,jbook:1160403BB:ProgramElement[5]/Project[2],"SOCOM Armed Overwatch (OA-1K) project lives inside the Aviation Systems PE"
 Ghostrider,/program/2012C130J/,jbook:2012C130J:LineItem[12],"AC-130J Ghostrider gunship nickname; named in the AC/MC-130J line-item description"
 Commando II,/program/2012C130J/,jbook:2012C130J:LineItem[12],"MC-130J Commando II nickname; named in the AC/MC-130J line-item description"
-C-130J,/program/2012C130J/,lda:a449d70c-6416-4828-bc38-6e3643aae6b1,"C-130J named in the filing's activity description; SOCOM AC/MC-130J variants page"
+C-130J,/program/0401132F/,jbook:0401132F:ProgramElement[252],"Lockheed C-130J Hercules, the baseline airlifter; C-130J Program, the PE mission names the C-130J (dbt/seeds/program_aliases.csv since #55, 2026-08-27). #197 CORRECTION (families piece-1 follow-ups, approved 2026-10-04): pointed at 2012C130J (AC/MC-130J, the SOCOM gunship and special-operations variants)"
 DISN,/program/18/,jbook:18:LineItem[3],"Defense Information Systems Network acronym; used in the DISA line-item description"
 CTEIP,/program/0604940D8Z/,jbook:0604940D8Z:ProgramElement[85]/Project[0],"Central Test and Evaluation Investment Program acronym; used in the project mission narrative"
 drones,/program/0608776D8Z/,jbook:0608776D8Z:ProgramElement[128]/Project[2],"DIU Fielding congressional add 'AI ISR Drones' (Artificial Intelligence Drones)"
