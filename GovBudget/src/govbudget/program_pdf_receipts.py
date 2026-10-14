@@ -318,6 +318,25 @@ def attach_additive_receipts(citations: dict, receipts: dict) -> None:
         visit(fact)
 
 
+_V1_SHARD = re.compile(r"[0-9a-f]{2}\.json")
+
+
+def remove_v1_receipt_shards(receipts_dir: Path) -> int:
+    """Delete the 256 v1 shards (json/budget-pdf-receipts/??.json) the removed
+    F-15-only writer left beside v2/ (ROADMAP #196: the site reads only v2/,
+    and prepare-assets used to copy the whole directory, so they deployed).
+    Only top-level two-hex-digit .json files go; v2/ and anything else stay.
+    Returns the number removed."""
+    if not receipts_dir.is_dir():
+        return 0
+    removed = 0
+    for path in sorted(receipts_dir.iterdir()):
+        if path.is_file() and _V1_SHARD.fullmatch(path.name):
+            path.unlink()
+            removed += 1
+    return removed
+
+
 def export_program_pdf_receipts(*, site_dir: Path, manifest: Path, cache_dir: Path, editions: set[int] | None = None) -> dict:
     citations = json.loads((site_dir / "json/citations.json").read_text())
     sources = {(r["edition"], r["exhibit"]): r for r in json.loads(manifest.read_text())}
@@ -428,6 +447,7 @@ def export_program_pdf_receipts(*, site_dir: Path, manifest: Path, cache_dir: Pa
         print(json.dumps(audit), flush=True)
     leaf_count = len(receipts)
     attach_additive_receipts(citations, receipts)
+    remove_v1_receipt_shards(site_dir / "json/budget-pdf-receipts")
     out = site_dir / "json/budget-pdf-receipts/v2"
     out.mkdir(parents=True, exist_ok=True)
     shards = defaultdict(dict)

@@ -1,25 +1,23 @@
-"""Reconcile F-15 workbook cells to the same-edition DoD P-1/R-1 PDF.
+"""Exact-match primitives that bind a workbook cell to the same-edition DoD
+P-1/R-1 PDF amount (program_pdf_receipts writes the receipts with them).
 
 Only exact matches of account, line, program, fiscal column, and amount become
 highlights. Parentheses around gross procurement amounts are not negatives;
 the explicit minus sign on Less: Advance Procurement is retained. Printed
 blanks are recorded separately for workbook zeros and never get a made-up box.
-Canonical workbook citations and facts are not modified by this sidecar export.
+Canonical workbook citations and facts are not modified by the receipts.
+
+The v1 F-15-only writer that lived here (export_budget_pdf_receipts, with
+load_sources and tight_glyph_geometry, which only it used) and its unread
+data-seeds/f15_budget_pdf_sources.json were removed with the owner's sign-off
+(ROADMAP #196, 2026-10-04); program_pdf_receipts writes
+json/budget-pdf-receipts/v2/, the only shards the site reads.
 """
 from __future__ import annotations
 
-import hashlib
-import json
 import re
-import shutil
-from collections import Counter, defaultdict
-from ctypes import c_double
+from collections import Counter
 from statistics import median
-from pathlib import Path
-
-import openpyxl
-import pdfplumber
-import pypdfium2 as pdfium
 
 NUMBER = re.compile(r"^\(?-?\d[\d,]*(?:\.\d+)?\)?$")
 
@@ -86,33 +84,6 @@ def select_glyph_geometry(page: dict, word: dict, native_cropbox: tuple, candida
             0 <= geometry["top_pt"] < geometry["bottom_pt"] <= geometry["page_height"]):
         raise ValueError("Tight amount glyphs are outside the PDF crop frame")
     return geometry
-
-
-def tight_glyph_geometry(pdf_path: Path, page: dict, word: dict) -> dict:
-    """Read source font glyph outlines without changing or rasterizing the PDF."""
-    candidates = []
-    with pdfium.PdfDocument(pdf_path) as document:
-        rendered_page = document[page["page_number"] - 1]
-        try:
-            textpage = rendered_page.get_textpage()
-            try:
-                search = textpage.search(word["text"], match_case=True)
-                try:
-                    while found := search.get_next():
-                        index, count = found
-                        x, y = c_double(), c_double()
-                        if not pdfium.raw.FPDFText_GetCharOrigin(textpage, index, x, y):
-                            raise ValueError("Could not read the source glyph baseline")
-                        boxes = [textpage.get_charbox(i, loose=False) for i in range(index, index + count)]
-                        candidates.append({"text": textpage.get_text_range(index, count), "origin": (x.value, y.value),
-                                           "box": (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))})
-                finally:
-                    search.close()
-                return select_glyph_geometry(page, word, rendered_page.get_bbox(), candidates)
-            finally:
-                textpage.close()
-        finally:
-            rendered_page.close()
 
 
 def normalize_header(text: str) -> tuple[str, ...]:
@@ -346,127 +317,9 @@ def match_cell(page: dict, row: dict, header: str, value: float, exhibit: str, e
     return {"word": amounts[0], "page": page, "pdf_column_label": col["header"]}
 
 
-def load_sources(manifest: Path, cache_dir: Path, site_dir: Path) -> dict:
-    """Re-extract only reviewed pages from checksum-pinned original PDFs."""
-    sources = {}
-    for record in json.loads(manifest.read_text()):
-        pdf = site_dir / "pdfs" / f"{record['sha256']}.pdf"
-        if not pdf.exists():
-            cached = cache_dir / f"{record['edition']}_{record['exhibit'].lower().replace('-', '')}.pdf"
-            if cached.exists():
-                if hashlib.sha256(cached.read_bytes()).hexdigest() != record["sha256"]:
-                    raise ValueError(f"Source hash mismatch: {cached}")
-                pdf.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(cached, pdf)
-            else:
-                import httpx
-                response = httpx.get(record["url"], follow_redirects=True, timeout=90)
-                response.raise_for_status()
-                if hashlib.sha256(response.content).hexdigest() != record["sha256"]:
-                    raise ValueError(f"Source hash changed; review needed: {record['url']}")
-                pdf.parent.mkdir(parents=True, exist_ok=True)
-                pdf.write_bytes(response.content)
-        if hashlib.sha256(pdf.read_bytes()).hexdigest() != record["sha256"]:
-            raise ValueError(f"Source hash mismatch: {pdf}")
-        pages = []
-        with pdfplumber.open(pdf) as document:
-            for number in record["pages"]:
-                page = document.pages[number - 1]
-                if page.rotation != 0:
-                    raise ValueError(f"Rotated PDF source needs review: {pdf} page {number}")
-                text = page.extract_text() or ""
-                if f"FY {record['edition']} President's Budget" not in text or f"Exhibit {record['exhibit']}" not in text or "(Dollars in Thousands)" not in text:
-                    raise ValueError(f"PDF identity mismatch: {pdf} page {number}")
-                pages.append({"page_number": number, "width": page.width, "height": page.height, "mediabox": list(page.mediabox), "cropbox": list(page.cropbox), "rotation": page.rotation, "text": text, "words": page.extract_words(return_chars=True)})
-        sources[(record["edition"], record["exhibit"])] = {**record, "pages": pages}
-    return sources
-
-
 def combine_receipts(receipts: list[dict], expected: float) -> dict:
     parts = [part for r in receipts for part in r["parts"]]
     matched = sum(p["amount_thousands"] for p in parts)
     unmatched = sum(r["unmatched_count"] for r in receipts)
     complete = all(r["complete"] for r in receipts) and matched == expected
     return {"amount_thousands": expected, "matched_amount_thousands": matched, "complete": complete, "blank_zero_count": sum(r["blank_zero_count"] for r in receipts), "unmatched_count": unmatched, "parts": parts}
-
-
-def export_budget_pdf_receipts(*, site_dir: Path, manifest: Path, cache_dir: Path) -> dict:
-    history = json.loads((site_dir / "json/f15_funding_history.json").read_text())
-    citations = json.loads((site_dir / "json/citations.json").read_text())
-    sources = load_sources(manifest, cache_dir, site_dir)
-    workbooks = {}
-    receipts = {}
-    unmatched = []
-    for point in history["points"]:
-        for component in point["components"]:
-            fact = component["fact_id"]
-            if fact in receipts:
-                continue
-            citation = citations[fact]
-            sha = citation["sha256"]
-            if sha not in workbooks:
-                path = site_dir / "workbooks" / f"{sha}.xlsx"
-                if hashlib.sha256(path.read_bytes()).hexdigest() != sha:
-                    raise ValueError(f"Workbook hash mismatch: {path}")
-                workbooks[sha] = openpyxl.load_workbook(path, data_only=True)
-            sheet = workbooks[sha][component["sheet"]]
-            source = sources[(point["edition"], component["exhibit"])]
-            parts = []
-            blanks = 0
-            missing = 0
-            workbook_total = 0
-            for cell in component["cells"].split(","):
-                address = sheet[cell]
-                row = address.row
-                value = float(address.value or 0)
-                workbook_total += value
-                metadata = {"account": str(sheet[f"A{row}"].value), "activity": str(sheet[f"D{row}"].value), "line": str(sheet[f"F{row}"].value).strip(), "code": str(sheet[f"I{row}" if component["exhibit"] == "P-1" else f"G{row}"].value), "title": str(sheet[f"J{row}" if component["exhibit"] == "P-1" else f"H{row}"].value), "cost_type": str(sheet[f"K{row}"].value)}
-                if metadata["account"] != component["account"] or metadata["code"] != component["program_id"].split(":")[-1] or metadata["activity"] != component["budget_activity"] or metadata["title"].lower() != component["title"].lower():
-                    raise ValueError(f"Workbook program identity mismatch: {fact}/{cell}")
-                header = str(sheet.cell(2, address.column).value)
-                matches = [match for page in source["pages"] if (match := match_cell(page, metadata, header, value, component["exhibit"], point["edition"])) is not None]
-                if len(matches) != 1:
-                    missing += 1
-                    unmatched.append({"fact_id": fact, "edition": point["edition"], "exhibit": component["exhibit"], "cell": cell, "value": value, "header": header, **metadata, "matches": len(matches)})
-                    continue
-                match = matches[0]
-                if match.get("blank_zero"):
-                    blanks += 1
-                    continue
-                word, page = match["word"], match["page"]
-                glyph_geometry = tight_glyph_geometry(site_dir / "pdfs" / f"{source['sha256']}.pdf", page, word)
-                parts.append({"amount_thousands": value, "program": metadata["title"], "line": metadata["line"], "workbook_cell": cell, "column_label": " ".join(header.split()), "pdf_column_label": match["pdf_column_label"], "edition": point["edition"], "exhibit": component["exhibit"], "sha256": source["sha256"], "hosted_pdf_url": f"/pdfs/{source['sha256']}.pdf", "page_number": page["page_number"], **glyph_geometry, "resolution": "unique", "amount_text": word["text"], "units": "USD thousands", "official_url": source["url"]})
-                if component["exhibit"] == "P-1":
-                    parts[-1]["row_label"] = str(sheet[f"L{row}"].value)
-            expected = component["amount_thousands"]
-            if workbook_total != expected:
-                raise ValueError(f"Canonical workbook amount mismatch: {fact}")
-            matched = sum(p["amount_thousands"] for p in parts)
-            receipts[fact] = {"amount_thousands": expected, "matched_amount_thousands": matched, "complete": missing == 0 and matched == expected, "blank_zero_count": blanks, "unmatched_count": missing, "parts": parts}
-    leaf_count = len(receipts)
-    for point in history["points"]:
-        for cell in point["program_cells"]:
-            if cell["fact_id"] not in receipts:
-                receipts[cell["fact_id"]] = combine_receipts([receipts[fid] for fid in cell["input_fact_ids"]], cell["amount_thousands"])
-        receipts[point["fact_id"]] = combine_receipts([receipts[c["fact_id"]] for c in point["components"]], point["amount_thousands"])
-    cumulative = history["cumulative"]
-    inputs = json.loads(citations[cumulative["fact_id"]]["inputs"])
-    receipts[cumulative["fact_id"]] = combine_receipts([receipts[fid] for fid in inputs], cumulative["amount_thousands"])
-    shards = defaultdict(dict)
-    for fact, receipt in receipts.items():
-        shards[fact[:2]][fact] = receipt
-    out = site_dir / "json/budget-pdf-receipts"
-    out.mkdir(parents=True, exist_ok=True)
-    for i in range(256):
-        (out / f"{i:02x}.json").write_text(json.dumps(shards[f"{i:02x}"], separators=(",", ":"), sort_keys=True) + "\n")
-    default_cells = [cell for p in history["points"] if p["id"] in history["default_point_ids"] for cell in p["program_cells"]]
-    report = {"source_count": len(sources), "leaf_count": leaf_count, "receipt_count": len(receipts), "default_cells": len(default_cells), "default_complete": sum(receipts[c["fact_id"]]["complete"] for c in default_cells), "complete_receipts": sum(r["complete"] for r in receipts.values()), "unmatched_cells": unmatched, "highlight_geometry": "tight PDFium glyph bounds verified by exact text and first-character origin"}
-    report["coordinate_frames"] = [
-        {"edition": source["edition"], "exhibit": source["exhibit"], "sha256": source["sha256"], "pages": [
-            {"page_number": page["page_number"], "cropbox": page["cropbox"], "rotation": page["rotation"]}
-            for page in source["pages"]
-        ]}
-        for source in sources.values()
-    ]
-    (site_dir / "json/budget_pdf_receipts_audit.json").write_text(json.dumps(report, indent=2) + "\n")
-    return report
