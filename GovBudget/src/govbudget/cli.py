@@ -3409,11 +3409,12 @@ def main(argv=None) -> None:
     vera = sub.add_parser(
         "verify-era-map",
         help="families piece 1 release gate: era P-1 map vs the shipped"
-             " workbooks, owner decisions, F-15 roster (legs a-f)",
+             " workbooks, owner decisions, F-15 roster, era minters and era"
+             " book diffs (legs a-h)",
     )
     vera.add_argument(
-        "--legs", default="abcdef",
-        help="legs to run, letters from abcdef (default: all six)",
+        "--legs", default="abcdefgh",
+        help="legs to run, letters from abcdefgh (default: all eight)",
     )
     vera.set_defaults(func=cmd_verify_era_map)
 

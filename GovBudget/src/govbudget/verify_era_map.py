@@ -47,14 +47,29 @@ is a FAIL, never a skip. A tool error (an unknown --legs letter) prints
     the export fails here until the site is re-exported.
 
   Leg (f) — F-15 history pin. data/site/json/f15_funding_history.json hashes
-    to the sha256 committed at S0 in tests/fixtures/f15/history.sha256 (its
-    first token, so `shasum -a 256` output reads); only the S5 correction
-    re-pins it.
+    to the sha256 committed in tests/fixtures/f15/history.sha256 (its first
+    token, so `shasum -a 256` output reads); only an owner-approved correction
+    re-pins it (S5 2026-10-04; the T9 gloss, follow-ups Task 21g).
+
+  Leg (g) — era minters (follow-ups, ROADMAP #206 T11). Every PB2017–PB2023
+    P-1 row of the exported budget_lines_decade is a same_program line whose
+    program_key has a program page and whose workbook citation carries that
+    program_key, or an F-15 roster line (ERA_MEMBERS x ERA_PROGRAM_CODES)
+    whose citation carries none; the era P-1 workbook citations are exactly
+    those rows. This is the p1_era_line_map scope's "Only a same_program line
+    whose code has a program page, or an F-15 family-history line, has those
+    rows and citations".
+
+  Leg (h) — era book diffs (ROADMAP #206 T11). Every program sidecar
+    book_diff from PB2023 or earlier resolves, through the derived citations'
+    inputs, to budget_lines_decade leaves none of which is P-1 or P-1R:
+    /methodology/'s "book diffs for the era editions cover RDT&E only".
 """
 from __future__ import annotations
 
 import csv
 import hashlib
+import json
 import re
 from collections import Counter, defaultdict
 from collections.abc import Mapping
@@ -62,10 +77,11 @@ from pathlib import Path
 
 from govbudget import config
 
-LEGS = ("a", "b", "c", "d", "e", "f")
+LEGS = ("a", "b", "c", "d", "e", "f", "g", "h")
 LEG_NAMES = {
     "a": "workbooks", "b": "decisions", "c": "f15",
     "d": "fact ids", "e": "published map", "f": "f15 history pin",
+    "g": "era minters", "h": "era book diffs",
 }
 
 # The seven era P-1 display workbooks (jbook_documents rel_path
@@ -480,13 +496,188 @@ def leg_f_history_pin(*, site_dir: Path) -> dict:
                     [f"{F15_HISTORY_PIN} does not start with a sha256 hex digest"])
     actual = _sha256_file(history)
     failures = [] if actual == pin else [
-        f"{history.name} hashes to {actual}, the S0 pin says {pin}"
-        " (only the S5 correction re-pins it)"]
+        f"{history.name} hashes to {actual}, the committed pin says {pin}"
+        " (only an owner-approved correction re-pins it)"]
     return _leg(not failures, f"pinned={pin} actual={actual}", failures)
 
 
+# --- Legs g–h (follow-ups Task 11, ROADMAP #206 T11): two published claims --
+#
+# The p1_era_line_map scope says "Only a same_program line whose code has a
+# program page, or an F-15 family-history line, has those rows and
+# citations"; /methodology/ says "book diffs for the era editions cover RDT&E
+# only". Both held on the S5 export with only string pins guarding them (the
+# home trust anchor went stale exactly that way, final review T1).
+
+
+def _program_pages(site_dir: Path) -> tuple[set[str], dict[tuple, str]]:
+    """The program pages the export ships (one per json/program_details/<slug>.json)
+    and, for the split codes, the (pe_bli, account, org) -> slug map that
+    json/programs.json carries ('20', '0300D', 'DCSA') -> '20-DCSA'."""
+    json_dir = Path(site_dir) / "json"
+    pages = {p.stem for p in (json_dir / "program_details").glob("*.json")}
+    slugs: dict[tuple, str] = {}
+    for row in json.loads((json_dir / "programs.json").read_text(encoding="utf-8")):
+        if row.get("slug") and row["slug"] != row.get("pe_bli"):
+            slugs[(row["pe_bli"], row.get("account"), row.get("org"))] = row["slug"]
+    return pages, slugs
+
+
+def leg_g_era_minters(*, site_dir: Path, workbooks: Mapping[int, str]) -> dict:
+    """Leg (g): who minted each era row of the exported budget_lines_decade.
+
+    Every PB2017–PB2023 P-1 row carrying an era key is either (1) a
+    same_program line of the published map whose program_key has a page —
+    the split page json/programs.json names for a pinned collision code —
+    and whose workbook citation carries program_key as pe_bli (program_key,
+    not line_item_code: 0390D's O&M line is cited under 0390DOM), or (2) an
+    F-15 roster line (ERA_MEMBERS x ERA_PROGRAM_CODES) whose citation carries
+    no pe_bli (the family-history builder's rows). Each row cites its
+    edition's pinned era P-1 workbook, and the workbook citations under those
+    shas are exactly the era rows' fact ids."""
+    import duckdb
+
+    from govbudget.f15_funding_history import ERA_MEMBERS, ERA_PROGRAM_CODES
+    from govbudget.jbooks.era_keys import is_era_procurement_key
+
+    site_dir = Path(site_dir)
+    decade = site_dir / "data" / "budget_lines_decade.parquet"
+    era_map = site_dir / "data" / "p1_era_line_map.parquet"
+    cites = site_dir / "citations" / "citations.parquet"
+    needed = (decade, era_map, cites, site_dir / "json" / "programs.json",
+              site_dir / "json" / "program_details")
+    missing = [f"missing {p}" for p in needed if not p.exists()]
+    if missing:
+        return _leg(False, "export incomplete", missing)
+    pages, slugs = _program_pages(site_dir)
+    roster = {(edition, f"3010F-AF-L{line}", ERA_PROGRAM_CODES[edition][line])
+              for edition, members in ERA_MEMBERS.items() for line, _ba, _title in members}
+    con = duckdb.connect()
+    try:
+        rows = con.execute(
+            "select b.fact_id, b.fiscal_year, b.pe_bli, b.document_sha256,"
+            " m.line_item_code, m.decision, m.program_key, m.program_account, m.program_org,"
+            " c.kind, c.sha256, c.pe_bli"
+            " from read_parquet(?) b"
+            " left join read_parquet(?) m on m.edition = b.fiscal_year and m.era_key = b.pe_bli"
+            " left join read_parquet(?) c on c.fact_id = b.fact_id"
+            " where b.exhibit = 'P-1' and b.fiscal_year <= ?",
+            [str(decade), str(era_map), str(cites), _ERA_P1_LAST_EDITION]).fetchall()
+        cited = {r[0] for r in con.execute(
+            "select fact_id from read_parquet(?)"
+            " where kind = 'workbook' and list_contains(?, sha256)",
+            [str(cites), sorted(set(workbooks.values()))]).fetchall()}
+    finally:
+        con.close()
+    failures: list[str] = []
+    counts: Counter = Counter()
+    era_fids: set[str] = set()
+    for (fid, edition, pe_bli, doc_sha, code, decision, program_key, p_account, p_org,
+         kind, cite_sha, cite_pe) in rows:
+        if not is_era_procurement_key(pe_bli):
+            continue  # leg d fails an era-edition P-1 row that lost its era key
+        era_fids.add(fid)
+        where = f"{fid} ({edition}/{pe_bli})"
+        if decision is None:
+            failures.append(f"{where}: no p1_era_line_map row")
+            continue
+        pinned = workbooks.get(edition)
+        if kind != "workbook" or cite_sha != pinned or doc_sha != pinned:
+            failures.append(f"{where}: citation is {kind}/{(cite_sha or '')[:12]}, not the"
+                            f" PB{edition} era P-1 workbook")
+        if decision == "same_program":
+            counts["same_program"] += 1
+            slug = slugs.get((program_key, p_account, p_org)) if (p_account or p_org) else program_key
+            if slug not in pages:
+                failures.append(f"{where}: same_program line {code} has no program page"
+                                f" ({program_key}, {p_account}, {p_org})")
+            if cite_pe != program_key:
+                failures.append(f"{where}: citation pe_bli {cite_pe!r} != program_key {program_key!r}")
+        elif (edition, pe_bli, code) in roster:
+            counts["f15_roster"] += 1
+            if cite_pe is not None:
+                failures.append(f"{where}: F-15 roster line {code} ({decision}) cites pe_bli {cite_pe!r}")
+        else:
+            failures.append(f"{where}: a {decision} line ({code}) that is neither same_program"
+                            " nor on the F-15 roster minted a decade row")
+    for fid in sorted(cited - era_fids):
+        failures.append(f"{fid}: an era P-1 workbook citation with no era budget_lines_decade row")
+    for fid in sorted(era_fids - cited):
+        failures.append(f"{fid}: an era budget_lines_decade row with no era P-1 workbook citation")
+    if not era_fids:
+        failures.append("no era P-1 row in budget_lines_decade: the leg would pass vacuously")
+    return _leg(not failures,
+                f"era_rows={len(era_fids)} same_program={counts['same_program']}"
+                f" f15_roster={counts['f15_roster']} era_workbook_citations={len(cited)}"
+                f" failures={len(failures)}", failures)
+
+
+def leg_h_era_book_diffs(*, site_dir: Path) -> dict:
+    """Leg (h): no book diff from an era edition sums procurement rows.
+
+    Every json/program_details/*.json book_diff whose from_edition is PB2023 or
+    earlier is resolved, through the derived citations' inputs (recursively),
+    to its budget_lines_decade leaves; none may be a P-1 or P-1R row, and each
+    must resolve to at least one leaf. At least one era diff must exist."""
+    import duckdb
+
+    site_dir = Path(site_dir)
+    decade = site_dir / "data" / "budget_lines_decade.parquet"
+    cites = site_dir / "citations" / "citations.parquet"
+    details = site_dir / "json" / "program_details"
+    missing = [f"missing {p}" for p in (decade, cites, details) if not p.exists()]
+    if missing:
+        return _leg(False, "export incomplete", missing)
+    con = duckdb.connect()
+    try:
+        exhibit = dict(con.execute("select fact_id, exhibit from read_parquet(?)",
+                                   [str(decade)]).fetchall())
+        inputs = dict(con.execute("select fact_id, inputs from read_parquet(?)"
+                                  " where inputs is not null", [str(cites)]).fetchall())
+    finally:
+        con.close()
+
+    def leaves(fid: str, seen: set[str]) -> set[str]:
+        if fid in exhibit:
+            return {fid}
+        if fid in seen or fid not in inputs:
+            return set()
+        seen.add(fid)
+        out: set[str] = set()
+        for child in json.loads(inputs[fid]):
+            out |= leaves(child, seen)
+        return out
+
+    failures: list[str] = []
+    era = 0
+    by_exhibit: Counter = Counter()
+    for path in sorted(details.glob("*.json")):
+        diffs = json.loads(path.read_text(encoding="utf-8")).get("book_diff")
+        for diff in ([diffs] if isinstance(diffs, dict) else diffs or []):
+            from_edition = diff.get("from_edition")
+            if not isinstance(from_edition, int) or from_edition > _ERA_P1_LAST_EDITION:
+                continue
+            era += 1
+            found = leaves(diff["fid"], set())
+            if not found:
+                failures.append(f"{path.stem}: book_diff {diff['fid']} (from PB{from_edition})"
+                                " resolves to no budget_lines_decade row")
+            kinds = {exhibit[f] for f in found}
+            by_exhibit.update(kinds)
+            procurement = sorted(kinds & {"P-1", "P-1R"})
+            if procurement:
+                failures.append(f"{path.stem}: book_diff {diff['fid']} from PB{from_edition} sums"
+                                f" {'/'.join(procurement)} rows (era book diffs are RDT&E only)")
+    if not era:
+        failures.append("no book_diff from an era edition: the leg would pass vacuously")
+    return _leg(not failures,
+                f"era_diffs={era} r1={by_exhibit['R-1']}"
+                f" procurement={by_exhibit['P-1'] + by_exhibit['P-1R']} failures={len(failures)}",
+                failures)
+
+
 def run_verify_era_map(
-    *, site_dir: Path, duckdb_path: Path, seed_path: Path, legs: str = "abcdef",
+    *, site_dir: Path, duckdb_path: Path, seed_path: Path, legs: str = "abcdefgh",
 ) -> dict:
     """Run the selected legs. Returns {"legs": {leg: {"ok", "detail"}}, "verdict"}."""
     unknown = sorted(set(legs) - set(LEGS))
@@ -515,8 +706,13 @@ def run_verify_era_map(
         elif leg == "e":
             results[leg] = leg_e_published_map(site_dir=Path(site_dir),
                                                duckdb_path=Path(duckdb_path))
-        else:  # f
+        elif leg == "f":
             results[leg] = leg_f_history_pin(site_dir=Path(site_dir))
+        elif leg == "g":
+            results[leg] = leg_g_era_minters(site_dir=Path(site_dir),
+                                             workbooks=ERA_P1_WORKBOOK_SHA256)
+        else:  # h
+            results[leg] = leg_h_era_book_diffs(site_dir=Path(site_dir))
     verdict = "PASS" if all(r["ok"] for r in results.values()) else "FAIL"
     return {"legs": results, "verdict": verdict}
 

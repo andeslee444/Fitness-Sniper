@@ -33,10 +33,12 @@ Gates (CLI: verify-phase5):
      lineage honesty legs a–e; its leg d audits the built export, so a
      missing built artifact FAILs the leg — same treatment as the other
      build-dependent phase gates) PLUS verify-era-map (families piece 1,
-     legs a–f: the era P-1 workbooks re-read against the map, no undecided
+     legs a–h: the era P-1 workbooks re-read against the map, no undecided
      or stale decision, F-15's era rows, every budget_lines_decade fact ID
      recomputed from its own row, the published map equal to the
-     warehouse's, the F-15 history sha pinned; legs d–f audit the export,
+     warehouse's, the F-15 history sha pinned, every era decade row minted
+     by a same_program line with a page or by the F-15 roster, no era book
+     diff over procurement rows; legs d–h audit the export,
      so a missing artifact FAILs). Parses each full output with the verdict
      regex; BLOCKED propagates. Prints a result table.
 

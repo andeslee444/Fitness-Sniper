@@ -14,6 +14,7 @@ it exists for.
 import csv
 import dataclasses
 import hashlib
+import json
 from pathlib import Path
 
 import duckdb
@@ -507,31 +508,53 @@ def test_cli_fails_with_exit_1(pinned, capsys):
 
 
 LEG_LINES = ["leg a workbooks", "leg b decisions", "leg c f15",
-             "leg d fact ids", "leg e published map", "leg f f15 history pin"]
+             "leg d fact ids", "leg e published map", "leg f f15 history pin",
+             "leg g era minters", "leg h era book diffs"]
 
 
 def _publish_export(corpus: Corpus, monkeypatch) -> None:
-    """The three artifacts legs d–f read, consistent with the corpus: one era
-    P-1 row of budget_lines_decade (its fact id from fact_id_workbook), the
-    warehouse map exported as data/p1_era_line_map.parquet, and an F-15
+    """The artifacts legs d–h read, consistent with the corpus: one era P-1
+    row and one PB2019 R-1 row of budget_lines_decade (fact ids from
+    fact_id_workbook); their citations (the era row's workbook citation
+    carrying its program_key, and a derived book diff over the R-1 row); the
+    era row's program page and the R-1 page whose book_diff is that diff; the
+    warehouse map exported as data/p1_era_line_map.parquet; and an F-15
     history file with its pin."""
     from govbudget.export_site import fact_id_workbook
 
     k = corpus.row(2019, "3010F-AF-L30")
     ident = (k["source_document_sha256"], "P-1", 2019, k["account"], k["organization"],
              k["budget_activity"], k["era_key"], "fy_2017_base_oco")
+    r1 = ("e" * 64, "R-1", 2019, "3600F", "AF", "07", "0207134F", "fy_2017_actuals")
+    era_fid, r1_fid, diff_fid = fact_id_workbook(*ident), fact_id_workbook(*r1), "d" * 16
     data = corpus.site_dir / "data"
     data.mkdir(exist_ok=True)
     con = duckdb.connect()
     con.execute("create table bld (fact_id varchar, document_sha256 varchar, exhibit varchar,"
                 " fiscal_year integer, account varchar, organization varchar,"
                 " budget_activity varchar, pe_bli varchar, amount_type varchar)")
-    con.execute("insert into bld values (?,?,?,?,?,?,?,?,?)", [fact_id_workbook(*ident), *ident])
+    con.executemany("insert into bld values (?,?,?,?,?,?,?,?,?)",
+                    [[era_fid, *ident], [r1_fid, *r1]])
     con.execute(f"copy bld to '{data / 'budget_lines_decade.parquet'}' (format parquet)")
+    con.execute("create table cit (fact_id varchar, kind varchar, sha256 varchar,"
+                " pe_bli varchar, inputs varchar)")
+    con.executemany("insert into cit values (?,?,?,?,?)", [
+        [era_fid, "workbook", k["source_document_sha256"], k["program_key"], None],
+        [r1_fid, "workbook", r1[0], "0207134F", None],
+        [diff_fid, "derived", None, None, json.dumps([r1_fid])]])
+    (corpus.site_dir / "citations").mkdir(exist_ok=True)
+    con.execute(f"copy cit to '{corpus.site_dir / 'citations' / 'citations.parquet'}'"
+                " (format parquet)")
     con.execute(f"attach '{corpus.duckdb_path}' as wh (read_only)")
     con.execute("copy (select * from wh.p1_era_line_map)"
                 f" to '{data / 'p1_era_line_map.parquet'}' (format parquet)")
     con.close()
+    details = corpus.site_dir / "json" / "program_details"
+    details.mkdir(parents=True)
+    (details / f"{k['program_key']}.json").write_text(json.dumps({"book_diff": None}))
+    (details / "0207134F.json").write_text(json.dumps(
+        {"book_diff": {"fid": diff_fid, "from_edition": 2019, "to_edition": 2026}}))
+    (corpus.site_dir / "json" / "programs.json").write_text("[]")
     history = b'{"points": []}\n'
     (corpus.site_dir / "json").mkdir(exist_ok=True)
     (corpus.site_dir / "json" / "f15_funding_history.json").write_bytes(history)
@@ -562,5 +585,7 @@ def test_cli_zero_arguments_fails_without_the_export(pinned, capsys):
     assert legs["leg d fact ids"].endswith(": budget_lines_decade.parquet missing → FAIL")
     assert legs["leg e published map"].endswith(": p1_era_line_map.parquet missing → FAIL")
     assert legs["leg f f15 history pin"].endswith(": f15_funding_history.json missing → FAIL")
+    assert legs["leg g era minters"].endswith(": export incomplete → FAIL")
+    assert legs["leg h era book diffs"].endswith(": export incomplete → FAIL")
     assert exit_.value.code == 1
     assert out[-1] == "verify-era-map: FAIL"

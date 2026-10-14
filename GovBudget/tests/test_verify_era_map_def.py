@@ -268,8 +268,8 @@ def test_f_fails_when_the_history_changed(tmp_path, monkeypatch):
     assert result["ok"] is False
     assert _summary(result) == f"pinned={digest} actual={actual}"
     assert _failures(result) == [
-        f"f15_funding_history.json hashes to {actual}, the S0 pin says {digest}"
-        " (only the S5 correction re-pins it)"]
+        f"f15_funding_history.json hashes to {actual}, the committed pin says {digest}"
+        " (only an owner-approved correction re-pins it)"]
 
 
 def test_f_fails_without_the_pin(tmp_path, monkeypatch):
@@ -329,6 +329,6 @@ def test_format_report_prints_legs_d_to_f(tmp_path, monkeypatch):
         " era_rows_without_era_key=0 → PASS",
         "leg e published map: mart_rows=2 published_rows=2 only_in_mart=0 only_published=0 → PASS",
         f"leg f f15 history pin: pinned={'0' * 64} actual={digest} → FAIL",
-        f"  FAIL f15_funding_history.json hashes to {digest}, the S0 pin says {'0' * 64}"
-        " (only the S5 correction re-pins it)",
+        f"  FAIL f15_funding_history.json hashes to {digest}, the committed pin says {'0' * 64}"
+        " (only an owner-approved correction re-pins it)",
     ]
