@@ -5,13 +5,20 @@ import Link from "next/link";
 import { Cite } from "@/components/cite";
 import { NarrativeSourceChip } from "@/components/narrative-chip";
 import { formatAmount } from "@/lib/format";
-import { familyHistorySeries, type FamilyFundingHistoryView, type FamilyFundingPointSummary } from "@/lib/family-funding-history";
+import { familyHistorySeries, type FamilyFundingHistoryView, type FamilyFundingPointSummary, type FamilyFundingProgram } from "@/lib/family-funding-history";
 import styles from "./family-funding-history.module.css";
 
 function AnnualFigure({ point, familyId }: { point: FamilyFundingPointSummary; familyId: string }) {
   return <Cite value={point.amount_thousands} units="USD thousands" factId={point.fact_id}
     dataset="f15_funding_history" basis="toa" fy={point.fy} measure={point.measure}
     edition={point.edition} entity={`family:${familyId}`} exhibitFamily="mixed" chip={false} />;
+}
+
+/** A noted row's accessible name: what its header shows, without the "Note
+ *  below" link. Every cell names its row header (headers=…), so the link text
+ *  was read as part of each of the row's cells (ROADMAP #201, owner Q21). */
+function rowName(program: FamilyFundingProgram): string {
+  return `${program.exhibit === "R-1" ? "PE" : "BLI"} ${program.code} ${program.title} ${program.exhibit === "R-1" ? "Development" : "Procurement"}${program.program_slug ? "" : " · Historical code"}`;
 }
 
 /** Family scope is independent of the aircraft variant or individual record below. */
@@ -82,7 +89,7 @@ export function FamilyFundingHistory({ history, shortName }: { history: FamilyFu
               {point.coverage === "partial" && <span className={styles.partial}>Partial</span>}
             </td>)}</tr>
             {history.programs.map((program, index) => <tr key={program.id} data-history-program={program.id}>
-              <th scope="row" id={`history-row-${index}`} className={styles.matrixProgram}>
+              <th scope="row" id={`history-row-${index}`} className={styles.matrixProgram} aria-label={program.note ? rowName(program) : undefined}>
                 <span className={styles.programCode}>{program.exhibit === "R-1" ? "PE" : "BLI"} {program.code}</span>
                 {program.program_slug ? <Link href={`/program/${program.program_slug}/`}>{program.title}</Link> : <span>{program.title}</span>}
                 <span className={styles.rowMeta}>{program.exhibit === "R-1" ? "Development" : "Procurement"}{!program.program_slug ? " · Historical code" : ""}</span>
@@ -103,7 +110,7 @@ export function FamilyFundingHistory({ history, shortName }: { history: FamilyFu
           </tbody>
         </table>
       </div>
-      <p className={styles.matrixNote}>Rows follow the government’s PE or budget-line code across editions. Historical F0150P and F015E0 remain separate. Missing EPAWSS development figures in FY2025–2026 are excluded from those totals.</p>
+      <p className={styles.matrixNote} data-history-matrix-note="">Rows follow the government’s PE or budget-line code across editions. Historical F0150P and F015E0 remain separate. Missing EPAWSS development figures in FY2025–2026 are excluded from those totals.</p>
       {noted.length > 0 && <ul className={styles.programNotes} aria-label="Budget-line notes">
         {noted.map(program => <li key={program.id} id={`history-note-${program.code}`} data-history-note={program.code}>
           <span className={styles.programCode}>{program.exhibit === "R-1" ? "PE" : "BLI"} {program.code}</span>

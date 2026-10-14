@@ -143,6 +143,15 @@ export function checkFamilyHistoryNotes(root, history, citations) {
       errors.push(`program ${program.code} note lacks a narrative receipt`);
       continue;
     }
+    // ROADMAP #201: the receipt must open the printed page — a page number, the
+    // document's 64-hex sha256, and `#page=N` on both the hosted and the
+    // official link — not merely be of the right kind.
+    const receipt = citations[program.note_fact_id];
+    const page = receipt.page_number;
+    if (!(Number.isInteger(page) && page > 0) || !/^[0-9a-f]{64}$/.test(receipt.sha256 ?? "")
+        || ![receipt.hosted_pdf_url, receipt.official_url].every(url => typeof url === "string" && url.endsWith(`#page=${page}`))) {
+      errors.push(`program ${program.code} note receipt lacks its page, sha256 or #page= links`);
+    }
     const el = root.querySelector(`[data-history-note="${program.code}"]`);
     const quote = el?.querySelector(`[data-source-text="narrative"][data-cite-fact-id="${program.note_fact_id}"]`);
     if (!el || !quote || !el.querySelector(`[data-narrative-chip][data-fact-id="${program.note_fact_id}"]`)) {
@@ -150,7 +159,14 @@ export function checkFamilyHistoryNotes(root, history, citations) {
       continue;
     }
     if (squash(quote.text) !== squash(`“${program.note}”`)) errors.push(`program ${program.code} rendered note differs from its export`);
-    if (!root.querySelector(`[data-history-program="${program.id}"] [data-history-note-ref="${program.code}"]`)) errors.push(`program ${program.code} row does not point to its note`);
+    const ref = root.querySelector(`[data-history-program="${program.id}"] [data-history-note-ref="${program.code}"]`);
+    if (!ref) errors.push(`program ${program.code} row does not point to its note`);
+    else if (ref.getAttribute("href") !== `#history-note-${program.code}`) errors.push(`program ${program.code} note link does not target #history-note-${program.code}`);
+    // Owner Q21: each cell names this header, so its name must not carry the link.
+    const name = root.querySelector(`[data-history-program="${program.id}"] th[scope="row"]`)?.getAttribute("aria-label") ?? "";
+    if (!name.includes(program.code) || !name.includes(program.title) || name.includes("Note below")) {
+      errors.push(`program ${program.code} row header's accessible name must name the line, not its "Note below" link`);
+    }
   }
   return errors;
 }

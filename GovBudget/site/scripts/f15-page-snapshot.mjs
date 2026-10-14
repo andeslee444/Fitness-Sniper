@@ -15,8 +15,13 @@
  *     (Flight) payload — the F-15 browser's records ship there, so an era
  *     fact leaking into loadRecord shows up here even when it is not in the
  *     initially rendered DOM,
- *   - the funding matrix: columns, the annual total row, and each program
- *     row's label and cells (fact id, display text, inputs, missing marker).
+ *   - the funding matrix: columns, the annual total row (with each year's
+ *     Partial badge), and each program row's label, accessible name and
+ *     cells (fact id, display text, inputs, missing marker),
+ *   - the prose around it (schema 2, ROADMAP #201): the coverage paragraph,
+ *     the total row's header, the matrix note and the budget-line notes list
+ *     (code, anchor, receipt, quoted text) — schema 1 skipped all of these,
+ *     so a reworded note or coverage limit passed the identity proof.
  *
  * Usage (from GovBudget/site):
  *   node scripts/f15-page-snapshot.mjs out/families/f-15/index.html
@@ -32,13 +37,14 @@ import path from "path";
 import { parse } from "node-html-parser";
 import { isDirectRun } from "./direct-run.mjs";
 
-export const SNAPSHOT_SCHEMA = 1;
+export const SNAPSHOT_SCHEMA = 2;
 
 // A fact id is 16 lowercase hex characters. Decimal fractions in inline
 // styles ("0.6682583630407969") are excluded by the "." look-behind.
 const FACT_TOKEN_RE = /(?<![0-9A-Za-z.])[0-9a-f]{16}(?![0-9A-Za-z])/g;
 
 const attr = (el, name) => el?.getAttribute(name) ?? null;
+const squash = (text) => String(text ?? "").replace(/\s+/g, " ").trim();
 
 function sortedCounts(values) {
   const counts = {};
@@ -66,12 +72,23 @@ export function snapshotF15Page(html) {
   if (!section) throw new Error('f15-page-snapshot: no section[data-family-history="f-15"] in the page');
   const factElements = root.querySelectorAll("[data-fact-id]");
   const tokens = html.match(FACT_TOKEN_RE) ?? [];
-  const rows = section.querySelectorAll("tr[data-history-program]").map((tr) => ({
-    program_id: attr(tr, "data-history-program"),
-    label: tr.querySelector("th").childNodes.filter((node) => node.nodeType === 1).map((node) => node.text.trim()),
-    cells: tr.querySelectorAll("td[data-history-cell]").map((td) => cellOf(td, "data-history-cell")),
-  }));
+  const rows = section.querySelectorAll("tr[data-history-program]").map((tr) => {
+    const th = tr.querySelector("th");
+    return {
+      program_id: attr(tr, "data-history-program"),
+      label: th.childNodes.filter((node) => node.nodeType === 1).map((node) => node.text.trim()),
+      aria_label: attr(th, "aria-label"),
+      cells: tr.querySelectorAll("td[data-history-cell]").map((td) => cellOf(td, "data-history-cell")),
+    };
+  });
   if (rows.length === 0) throw new Error("f15-page-snapshot: the funding matrix has no program rows");
+  const coverage = section.querySelector("[data-history-coverage]");
+  const totalHeader = section.querySelector("th#history-row-total");
+  const matrixNote = section.querySelector("[data-history-matrix-note]");
+  for (const [name, el] of [["coverage paragraph [data-history-coverage]", coverage],
+    ["total-row header th#history-row-total", totalHeader], ["matrix note [data-history-matrix-note]", matrixNote]]) {
+    if (!el) throw new Error(`f15-page-snapshot: no ${name} in the funding section`);
+  }
   return {
     schema: SNAPSHOT_SCHEMA,
     page: "/families/f-15/",
@@ -81,9 +98,23 @@ export function snapshotF15Page(html) {
     family_f15_occurrences: html.split("family:f-15").length - 1,
     page_fact_id_occurrences: tokens.length,
     page_fact_ids: [...new Set(tokens)].sort(),
+    prose: {
+      coverage: squash(coverage.text),
+      matrix_note: squash(matrixNote.text),
+      notes: section.querySelectorAll("li[data-history-note]").map((li) => ({
+        code: attr(li, "data-history-note"),
+        id: attr(li, "id"),
+        fact_id: attr(li.querySelector("[data-cite-fact-id]"), "data-cite-fact-id"),
+        quote: squash(li.querySelector('[data-source-text="narrative"]')?.text),
+      })),
+    },
     matrix: {
       columns: section.querySelectorAll("th[data-history-column]").map((th) => attr(th, "data-history-column")),
-      annual: section.querySelectorAll("td[data-history-annual]").map((td) => cellOf(td, "data-history-annual")),
+      total_header: totalHeader.childNodes.map((node) => squash(node.text)).filter(Boolean),
+      annual: section.querySelectorAll("td[data-history-annual]").map((td) => ({
+        ...cellOf(td, "data-history-annual"),
+        partial: td.childNodes.some((node) => node.nodeType === 1 && node.text.trim() === "Partial"),
+      })),
       rows,
     },
   };
@@ -116,7 +147,7 @@ function main(argv) {
   if (flag === "--out") {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, text);
-    console.log(`f15-page-snapshot: wrote ${target} (${snapshot.data_fact_id_elements} data-fact-id elements, ${snapshot.page_fact_ids.length} distinct page fact ids, ${snapshot.matrix.rows.length} matrix rows)`);
+    console.log(`f15-page-snapshot: wrote ${target} (${snapshot.data_fact_id_elements} data-fact-id elements, ${snapshot.page_fact_ids.length} distinct page fact ids, ${snapshot.matrix.rows.length} matrix rows, ${snapshot.prose.notes.length} note(s))`);
     return 0;
   }
   if (flag === "--check") {
