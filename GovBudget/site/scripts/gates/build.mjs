@@ -166,7 +166,11 @@ export const PAGE_WEIGHT_BUDGET = [
   // 2026-09-25 gate-fix wave, built 2026-09-25T20:39:57Z; gate 1's own
   // weigh()): 2,962,743 / 308,292 -> 2,968,731 / 310,063. CEILINGS UNCHANGED;
   // 181,269 raw / 19,937 gzip left.
-  { label: "/programs/", file: "programs/index.html", maxRaw: 3_150_000, maxGzip: 330_000, measured: "2,968,731 / 310,063" },
+  // RE-MEASURED 2026-10-14 (Task 21h, the follow-ups release-1 proof build of
+  // abff1e97 on B@fu-post: the seven org-split rows' FY24/FY26 cells (#207);
+  // gate 1's weigh(), zlib level 9): 2,968,731 / 310,063 -> 2,973,786 /
+  // 310,710. CEILINGS UNCHANGED; 176,214 raw / 19,290 gzip left.
+  { label: "/programs/", file: "programs/index.html", maxRaw: 3_150_000, maxGzip: 330_000, measured: "2,973,786 / 310,710" },
   // RE-MEASURED 2026-09-25 (integration, build of 42eed1e4 plus the
   // 2026-09-25 gate-fix wave, built 2026-09-25T20:39:57Z; gate 1's own
   // weigh()): 33,170 / 6,685 -> 37,390 / 7,708. CEILINGS UNCHANGED;
@@ -177,7 +181,11 @@ export const PAGE_WEIGHT_BUDGET = [
   // with datasets.json's two fixed scopes; gate 1's weigh(), zlib level 9):
   // 37,390 / 7,708 -> 37,362 / 7,668. CEILINGS UNCHANGED; 7,638 raw / 1,332
   // gzip left.
-  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "37,362 / 7,668" },
+  // RE-MEASURED 2026-10-14 (Task 21h, the follow-ups release-1 proof build of
+  // abff1e97 on B@fu-post: the sharded island and the Q14 legend (#193);
+  // gate 1's weigh(), zlib level 9): 37,362 / 7,668 -> 37,364 / 7,671.
+  // CEILINGS UNCHANGED; 7,636 raw / 1,329 gzip left.
+  { label: "/years/", file: "years/index.html", maxRaw: 45_000, maxGzip: 9_000, measured: "37,364 / 7,671" },
   // Re-baselined 2026-09-01 (FPDS-AP expansion): the crosswalked-PE universe
   // grew 24 → ~186 and the feed derives from it — cards 160 → ~720. Corpus
   // growth, not template bloat (the per-card markup is unchanged). Ceilings
@@ -267,7 +275,11 @@ export const PAGE_WEIGHT_BUDGET = [
   // S5 working tree on the S5 proof export, this file's own weigh() —
   // zlib level 9): 701,316 / 67,757 -> 703,427 / 68,538. CEILINGS UNCHANGED;
   // 21,573 raw / 1,462 gzip left.
-  { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "703,427 / 68,538" },
+  // RE-MEASURED 2026-10-14 (Task 21h, the follow-ups release-1 proof build of
+  // abff1e97 on B@fu-post: the F015E0 gloss and row aria-label (#206 T9, Q17,
+  // Q21); gate 1's weigh(), zlib level 9): 703,427 / 68,538 -> 703,623 /
+  // 68,615. CEILINGS UNCHANGED; 21,377 raw / 1,385 gzip left.
+  { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "703,623 / 68,615" },
   // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
   // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
   // table views totalling 86 identity rows and 52 link rows. The weight is
@@ -409,7 +421,11 @@ export const PAGE_WEIGHT_BUDGET = [
   // here; build of ea1c4071 on the S5 proof export with datasets.json's two
   // fixed scopes; gate 1's weigh(), zlib level 9): 84,798 / 14,401 -> 85,358
   // / 14,530. CEILINGS UNCHANGED; 19,642 raw / 1,070 gzip left.
-  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "85,358 / 14,530" },
+  // RE-MEASURED 2026-10-14 (Task 21h, the follow-ups release-1 proof build of
+  // abff1e97 on B@fu-post: the p1_era_line_map decided_on column (#206 T6)
+  // and its amended scope (Q3); gate 1's weigh(), zlib level 9): 85,358 /
+  // 14,530 -> 85,747 / 14,745. CEILINGS UNCHANGED; 19,253 raw / 855 gzip left.
+  { label: "/data/", file: "data/index.html", maxRaw: 105_000, maxGzip: 15_600, measured: "85,747 / 14,745" },
   // New page, Sprint C Task C3 (ROADMAP #62) — the /agency/ index (23 rows,
   // two <Cite> figures each). Same ~8% headroom convention as the other
   // section indexes above (/district/, /companies/families/) rather than a
@@ -708,7 +724,11 @@ export const PAGE_WEIGHT_BUDGET = [
   // S5 proof export with datasets.json's two fixed scopes; gate 1's weigh(),
   // zlib level 9): 161,353 / 45,339 -> 161,353 / 45,336. CEILINGS UNCHANGED;
   // 647 raw / 64 gzip left.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,353 / 45,336" },
+  // RE-MEASURED 2026-10-14 (Task 21h, the follow-ups release-1 proof build of
+  // abff1e97 on B@fu-post: T7, Q13 and the dbt assertion count; gate 1's
+  // weigh(), zlib level 9): 161,353 / 45,336 -> 161,373 / 45,323. CEILINGS
+  // UNCHANGED; 627 raw / 77 gzip left.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,373 / 45,323" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
@@ -857,7 +877,11 @@ export const PAGE_WEIGHT_BUDGET = [
   // 2026-09-25 gate-fix wave, built 2026-09-25T20:39:57Z; gate 1's own
   // weigh()): 1,791,734 / 120,673 -> 1,755,341 / 120,583. CEILINGS UNCHANGED;
   // 304,659 raw / 16,417 gzip left.
-  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,755,341 / 120,583 (/agency/N/)" },
+  // RE-MEASURED 2026-10-14 (Task 21h, the follow-ups release-1 proof build of
+  // abff1e97 on B@fu-post: the slug lookup for split-key rows (#208); gate
+  // 1's weigh(), zlib level 9): 1,755,341 / 120,583 -> 1,765,372 / 121,549 on
+  // /agency/N/. CEILINGS UNCHANGED; 294,628 raw / 15,451 gzip left.
+  { label: "/agency/*/ (heaviest)", dir: "agency", maxRaw: 2_060_000, maxGzip: 137_000, measured: "1,765,372 / 121,549 (/agency/N/)" },
   // RE-MEASURED 2026-09-25 (integration, build of 42eed1e4 plus the
   // 2026-09-25 gate-fix wave, built 2026-09-25T20:39:57Z; gate 1's own
   // weigh()): 1,111,532 / 142,888 -> 1,157,926 / 145,603. CEILINGS UNCHANGED;

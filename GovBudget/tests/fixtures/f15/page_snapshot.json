@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "page": "/families/f-15/",
   "data_fact_id_elements": 108,
   "data_fact_ids": [
@@ -330,6 +330,18 @@
     "fd8e7b24615c8637",
     "ff2c844c2d1fb4ae"
   ],
+  "prose": {
+    "coverage": "Coverage starts in FY2015; earlier funding is not included. Newer enacted funding and requests are shown separately.",
+    "matrix_note": "Rows follow the government’s PE or budget-line code across editions. Historical F0150P and F015E0 remain separate. Missing EPAWSS development figures in FY2025–2026 are excluded from those totals.",
+    "notes": [
+      {
+        "code": "F015E0",
+        "id": "history-note-F015E0",
+        "fact_id": "e7d5bcfb4a30f458",
+        "quote": "“This exhibit [the PB2026 F-15EX AP (F015EX) P-40] does not include the eight aircraft in Lot 1 which were funded outside this exhibit in FY 2020 (two test aircraft were purchased with RDT&E funds (PE 0207134F); four operationally representative test aircraft and two operational aircraft were purchased with procurement funds (F015E0, Line #3 [line 3 of the PB2020–21 P-1 (line 4 in PB2022)])).”"
+      }
+    ]
+  },
   "matrix": {
     "columns": [
       "fy2015a",
@@ -345,6 +357,10 @@
       "fy2025e",
       "fy2026r"
     ],
+    "total_header": [
+      "F-15 family total",
+      "Covered programs"
+    ],
     "annual": [
       {
         "column": "fy2015a",
@@ -352,7 +368,8 @@
         "dataset": "f15_funding_history",
         "text": "$771.1M",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": false
       },
       {
         "column": "fy2016a",
@@ -360,7 +377,8 @@
         "dataset": "f15_funding_history",
         "text": "$984.6M",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": false
       },
       {
         "column": "fy2017a",
@@ -368,7 +386,8 @@
         "dataset": "f15_funding_history",
         "text": "$734.1M",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": false
       },
       {
         "column": "fy2018a",
@@ -376,7 +395,8 @@
         "dataset": "f15_funding_history",
         "text": "$963.2M",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": false
       },
       {
         "column": "fy2019a",
@@ -384,7 +404,8 @@
         "dataset": "f15_funding_history",
         "text": "$992.6M",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": false
       },
       {
         "column": "fy2020a",
@@ -392,7 +413,8 @@
         "dataset": "f15_funding_history",
         "text": "$1.88B",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": false
       },
       {
         "column": "fy2021a",
@@ -400,7 +422,8 @@
         "dataset": "f15_funding_history",
         "text": "$2.01B",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": false
       },
       {
         "column": "fy2022a",
@@ -408,7 +431,8 @@
         "dataset": "f15_funding_history",
         "text": "$2.02B",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": false
       },
       {
         "column": "fy2023a",
@@ -416,7 +440,8 @@
         "dataset": "f15_funding_history",
         "text": "$3.54B",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": false
       },
       {
         "column": "fy2024a",
@@ -424,7 +449,8 @@
         "dataset": "f15_funding_history",
         "text": "$3.16B",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": false
       },
       {
         "column": "fy2025e",
@@ -432,7 +458,8 @@
         "dataset": "f15_funding_history",
         "text": "$2.29B",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": true
       },
       {
         "column": "fy2026r",
@@ -440,7 +467,8 @@
         "dataset": "f15_funding_history",
         "text": "$3.71B",
         "inputs": [],
-        "missing": null
+        "missing": null,
+        "partial": true
       }
     ],
     "rows": [
@@ -451,6 +479,7 @@
           "F-15E Squadrons",
           "Development"
         ],
+        "aria_label": null,
         "cells": [
           {
             "column": "fy2015a",
@@ -581,6 +610,7 @@
           "F-15EX",
           "Development"
         ],
+        "aria_label": null,
         "cells": [
           {
             "column": "fy2015a",
@@ -703,6 +733,7 @@
           "F-15 EPAWSS",
           "Development"
         ],
+        "aria_label": null,
         "cells": [
           {
             "column": "fy2015a",
@@ -830,6 +861,7 @@
           "F-15",
           "Procurement"
         ],
+        "aria_label": null,
         "cells": [
           {
             "column": "fy2015a",
@@ -969,6 +1001,7 @@
           "F-15EX",
           "Procurement"
         ],
+        "aria_label": null,
         "cells": [
           {
             "column": "fy2015a",
@@ -1097,6 +1130,7 @@
           "F-15 EPAW",
           "Procurement"
         ],
+        "aria_label": null,
         "cells": [
           {
             "column": "fy2015a",
@@ -1223,6 +1257,7 @@
           "F-15 (legacy support line)",
           "Procurement · Historical code"
         ],
+        "aria_label": null,
         "cells": [
           {
             "column": "fy2015a",
@@ -1338,6 +1373,7 @@
           "Procurement · Historical code",
           "Note below"
         ],
+        "aria_label": "BLI F015E0 F-15e (FY2020 F-15EX Lot 1 aircraft) Procurement · Historical code",
         "cells": [
           {
             "column": "fy2015a",
