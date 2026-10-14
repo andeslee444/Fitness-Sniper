@@ -181,3 +181,25 @@ def test_cli_reads_a_noise_file(tmp_path):
     args = ["--a", str(a), "--b", str(b), "--expected-f15", "1"]
     assert main(args) == 1
     assert main(args + ["--noise-from", str(noise)]) == 0
+
+
+# ROADMAP #199 (follow-ups spec 2026-10-04 §6.1)
+
+def test_fact_stability_imports_no_private_proof_helper():
+    import ast
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[1] / "scripts" / "era" / "fact_stability.py"
+    names = [alias.name for node in ast.walk(ast.parse(src.read_text()))
+             if isinstance(node, ast.ImportFrom) and node.module == "govbudget.proof"
+             for alias in node.names]
+    assert names and not [n for n in names if n.startswith("_")], names
+
+
+@pytest.mark.parametrize("va, vb", [(1, 1.0), (True, 1), (0, False)])
+def test_a_type_change_with_an_equal_value_is_a_change(va, vb):
+    a, b = a_side(), b_side()
+    a["w1"]["n_inputs"], b["w1"]["n_inputs"] = va, vb
+    report = compare_citations(a, b, LEAVES, expected_f15=1)
+    assert not report["ok"]
+    assert [(c["fact_id"], c["field"]) for c in report["changed"]] == [("w1", "n_inputs")]

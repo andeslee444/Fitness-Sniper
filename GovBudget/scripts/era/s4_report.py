@@ -6,6 +6,9 @@ sidecars  Every json/program_details/<slug>.json keeps every key except
           book diffs, budget lines, awards ...). Every decade point A shows,
           B shows unchanged. B adds points only from PB2017-PB2023 and only
           on procurement pages; decade_absent appears or vanishes nowhere.
+          decade_absent is compared for presence only: its value
+          (first_edition, edition_count) is not checked here; site gate 21
+          leg k value-checks it (ROADMAP #199).
           Measures the page gain: procurement pages with PB2026 lines and
           decade-only procurement pages that gained era points, how many of
           them now carry all seven era editions, and how many points.

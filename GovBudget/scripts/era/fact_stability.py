@@ -36,7 +36,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from govbudget.proof import _json_noise, _Mode, load_noise_classes
+from govbudget.proof import NoiseMode, json_noise, load_noise_classes
 
 RUN_STAMPED_KINDS = frozenset({"derived", "state_file", "state_soql"})
 F15_A1_CODES = frozenset({"F01500", "F015EX", "F15EWS"})
@@ -57,10 +57,10 @@ def f15_a1_leaves(history: dict) -> dict[str, str]:
     return leaves
 
 
-def _is_noise(fid: str, field: str, va, vb, mode: _Mode) -> bool:
+def _is_noise(fid: str, field: str, va, vb, mode: NoiseMode) -> bool:
     """proof diff's verdict on one citations.json leaf: equivalent export noise?"""
     probe = mode.fork()
-    if _json_noise(va, vb, group=CITATIONS_GROUP, mode=probe, key_pointer=f"/{fid}/{field}") is None:
+    if json_noise(va, vb, group=CITATIONS_GROUP, mode=probe, key_pointer=f"/{fid}/{field}") is None:
         return False
     mode.absorb(probe)
     return True
@@ -72,7 +72,7 @@ def compare_citations(a: dict, b: dict, f15_leaves: dict[str, str], *, expected_
     changed: list[dict] = []
     restamped = 0
     noise: Counter = Counter()
-    mode = _Mode(trusted={(c["path"], c["pointer"]) for c in noise_classes or []})
+    mode = NoiseMode(trusted={(c["path"], c["pointer"]) for c in noise_classes or []})
     for fid in sorted(a):
         ca, cb = a[fid], b.get(fid)
         if cb is None:
@@ -81,7 +81,8 @@ def compare_citations(a: dict, b: dict, f15_leaves: dict[str, str], *, expected_
         moved: set[str] = set()
         for field in sorted(set(ca) | set(cb)):
             va, vb = ca.get(field), cb.get(field)
-            if va == vb:
+            # type-strict (ROADMAP #199): 1 vs 1.0, or True vs 1, is a change
+            if type(va) is type(vb) and va == vb:
                 continue
             if field == "retrieved_at" and ca.get("kind") in RUN_STAMPED_KINDS:
                 continue

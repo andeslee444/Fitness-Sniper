@@ -120,3 +120,13 @@ def test_cli_passes_and_fails(tmp_path):
     assert main(["--a", str(a), "--b", str(b), "--report", str(tmp_path / "r.json")]) == 0
     assert json.loads((tmp_path / "r.json").read_text())["sidecars"]["gained"]["pb2026"] == 1
     assert main(["--a", str(b), "--b", str(a)]) == 1
+
+
+def test_the_docstring_says_decade_absent_is_checked_for_presence_only():
+    # ROADMAP #199: s4_report compares decade_absent's presence, not its
+    # value; site gate 21 leg k value-checks it. The docstring says so.
+    import era.s4_report as s4_report
+
+    doc = " ".join(s4_report.__doc__.split())
+    assert "decade_absent is compared for presence only" in doc
+    assert "gate 21 leg k" in doc

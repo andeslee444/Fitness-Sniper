@@ -9,6 +9,12 @@ A2 = a second run of A's chain on another clone of the snapshot: the control. A 
 Consumer audit: see the Task 9 table in the families piece 1 plan; no published reader takes era-edition 9999999999 rows.
 data/research/edition_manifest.json budget_lines counts are load-time records (no gate reads them) and stay at their pre-S1b values.
 
+*Correction (2026-10-04, families piece-1 follow-ups design §6.1, ROADMAP #199; nothing above
+reworded).* The exports ran under e25945b7 ("feat(jbooks): load the era P-1 Classified
+Programs line under 9999999999 …"), not the 99ebde61 the `Code:` line names. 99ebde61 is the
+next commit and adds only a test (`git diff --stat e25945b7 99ebde61` lists
+`tests/jbooks/test_era_keys.py` alone), so the source the proof ran is identical.
+
 ## Summary (2026-10-03)
 
 **Outcome.** Live Postgres `govbudget` gained exactly the 409 rows the parse predicts. Nothing else changed: the

@@ -9,6 +9,14 @@ A = S0 + migration 021, then jbooks export-facts (id order), govbudget build, ex
 B = A + scripts/era/s1_reload_era_p1.py --apply, then the same three steps.
 Live = the shared database and lake after the same migrate/apply/export-facts.
 
+*Correction (2026-10-04, families piece-1 follow-ups design §6.1, ROADMAP #199; nothing
+above reworded).* "Values equal to 12 significant digits" is not the whole float rule this
+proof ran under. `govbudget proof diff` (`src/govbudget/proof.py`, `_float_close`) treats
+two floats as noise when their relative difference is at most 1e-12 (`_FLOAT_REL_TOL`) OR
+their absolute difference is at most 1e-6 (`_FLOAT_ABS_TOL`), and applies the same rule to
+numeric text. On a total above about $1T, the relative tolerance alone can absorb a dollar
+or more per trillion.
+
 ## Summary (2026-10-03)
 
 **Result.** V1 was CLEAN before any write. The scratch rehearsal (B) and the live run each committed one

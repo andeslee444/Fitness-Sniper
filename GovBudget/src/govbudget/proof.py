@@ -572,6 +572,20 @@ def _json_noise(a, b, *, group: str | None = None, mode: "_Mode | None" = None,
     return total
 
 
+#: Public names for proof scripts outside this module (scripts/era/
+#: fact_stability.py; ROADMAP #199): the diff's own noise rules, so a script
+#: never reaches into a private helper whose shape may change.
+NoiseMode = _Mode
+
+
+def json_noise(a, b, *, group: str | None = None, mode: "_Mode | None" = None,
+               key_pointer: str = "") -> int | None:
+    """The JSON noise rule diff_trees applies (see _json_noise): how many
+    leaves of a and b differ by float, numeric-text or JSON-in-string noise
+    only, or None when they differ in any other way."""
+    return _json_noise(a, b, group=group, mode=mode, key_pointer=key_pointer)
+
+
 def _row_noise(ra: tuple, rb: tuple, lenient: list[tuple[int, str, str]],
                group: str | None, mode: "_Mode | None") -> int | None:
     """How many columns differ between two rows by noise only, or None.
