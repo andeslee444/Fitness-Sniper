@@ -79,6 +79,14 @@ Gates (CLI: verify-phase5b1):
                           citations exist but none carries page provenance
                           (the pre-5F state).
 
+  5. narrative printed-in (#195) — govbudget.verify_jbook_narratives, run by
+                          the CLI with config.PG_DSN: EVERY jbook_narrative
+                          citation names a volume of its book set that prints
+                          the passage (paged: opening on the page, closing
+                          within three pages, else 'opening_only' up to a
+                          ratcheted ceiling; pageless: no volume locates it).
+                          Its own pypdf text pass over every book set.
+
 All gate functions take explicit paths — never read config.
 No network access in any gate.
 """

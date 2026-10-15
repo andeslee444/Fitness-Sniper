@@ -2106,6 +2106,22 @@ def cmd_verify_phase5b1(args) -> None:
             print(f"  FAIL {fid}: {reason}")
     gates_ok = gates_ok and g4_ok
 
+    # Gate 5: narrative printed-in, the full population (#195; families
+    # piece-1 follow-ups Task 24). Reads Postgres (the book sets) and the PDFs.
+    from govbudget.verify_jbook_narratives import format_report, verify_jbook_narratives
+
+    try:
+        vj = verify_jbook_narratives(site_dir, pg_dsn=config.PG_DSN)
+    except (FileNotFoundError, LookupError) as e:
+        g5_ok = False
+        print(f"gate 5 narrative printed-in: {e} → FAIL")
+    else:
+        g5_ok = vj["ok"]
+        print(f"gate 5 narrative printed-in: → {'PASS' if g5_ok else 'FAIL'}")
+        for line in format_report(vj):
+            print(f"  {line}")
+    gates_ok = gates_ok and g5_ok
+
     # Gate 3: coverage (non-gating)
     cr = coverage_report5b1(site_dir)
     total = cr.get("total_details", 0)
@@ -2122,6 +2138,23 @@ def cmd_verify_phase5b1(args) -> None:
 
     print("verify-phase5b1:", "PASS" if gates_ok else "FAIL")
     sys.exit(0 if gates_ok else 1)
+
+
+def cmd_verify_jbook_narratives(args) -> None:
+    """#195 (families piece-1 follow-ups Task 24): every jbook_narrative
+    citation names a document that prints the passage. Exit 0 PASS, 1 FAIL,
+    2 when an input is missing."""
+    from govbudget.verify_jbook_narratives import format_report, verify_jbook_narratives
+
+    try:
+        report = verify_jbook_narratives(args.site_dir, pg_dsn=args.pg_dsn)
+    except (FileNotFoundError, LookupError) as e:
+        print(f"verify-jbook-narratives: ERROR — {e}")
+        sys.exit(2)
+    for line in format_report(report):
+        print(line)
+    print("verify-jbook-narratives:", "PASS" if report["ok"] else "FAIL")
+    sys.exit(0 if report["ok"] else 1)
 
 
 def cmd_verify_phase5e(args) -> None:
@@ -3379,6 +3412,14 @@ def main(argv=None) -> None:
 
     v5b1 = sub.add_parser("verify-phase5b1", help="phase 5B-1 acceptance gates (citation export)")
     v5b1.set_defaults(func=cmd_verify_phase5b1)
+    vjn = sub.add_parser(
+        "verify-jbook-narratives",
+        help="#195: every jbook_narrative citation names a volume that prints it"
+             " (full population; also verify-phase5b1 gate 5)",
+    )
+    vjn.add_argument("--site-dir", type=Path, default=config.SITE_DIR, dest="site_dir")
+    vjn.add_argument("--pg-dsn", default=config.PG_DSN, dest="pg_dsn")
+    vjn.set_defaults(func=cmd_verify_jbook_narratives)
 
     v5b2 = sub.add_parser(
         "verify-phase5b2",

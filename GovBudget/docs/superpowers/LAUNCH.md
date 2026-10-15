@@ -326,6 +326,12 @@ govbudget verify-phase5b1
 
 Expected: `verify-phase5b1: PASS`
 
+Since #195 (families piece-1 follow-ups, Task 24) gate 5, `gate 5 narrative
+printed-in`, also reads Postgres (`GOVBUDGET_PG_DSN`: the book set of each
+narrative's document) and the raw J-book PDFs the site does not host, and runs
+a pypdf text pass over every narrative book set (about 100 PDFs, a few minutes
+on 8 processes). `govbudget verify-jbook-narratives` runs the same check alone.
+
 ---
 
 ## Step 4 — Upload assets to R2 ✅ DONE 2026-07-02 · RE-SYNCED 2026-07-04
