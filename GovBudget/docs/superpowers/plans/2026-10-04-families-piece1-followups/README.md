@@ -65,7 +65,7 @@
   - the build stops prerendering `/families/f-15` with `[f15-related-programs] 0604003F: receipt URL, page or XML identity differs from the reviewed evidence` (`validateF15RelatedPrograms`), and `src/__tests__/f15-related-programs-data.test.ts` (which now expects 30 paged rows, not 16) fails to load with the same error;
   - `src/__tests__/jbook-narrative-card.test.tsx` fails "shows the actual F-15EX retrofit passage on the page that prints it…" (`expected null to be 215`): it now pins `cb4796e48126e4a7` on Aircraft Procurement Vol II p.215.
 
-  Build and test the site only against `.proofs/fu2-Bpost` (Task 25c Step 5, the data links repointed) or the release-2 export (Task 26a Step 8). Task 25c2 measured both directions on the fu2 clones: the new seed and pins fail on fu2-B (release-1 narrative citations) and pass on fu2-Bpost.
+  Build and test the site only against `.proofs/fu2-Bpost` (Task 25c Step 5, the data links repointed) or the release-2 export (Task 26a Step 8). Task 25c2 measured both directions on the fu2 clones: the new seed and pins fail on fu2-B (release-1 narrative citations) and pass on fu2-Bpost. If Task 26a takes its abort path (release 1's `data/site` restored), the window does not close: it stays open until the seed re-pin and the two vitest pins are reverted, or until a later release-2 export (controller note, 2026-10-15).
 - **Seed-ahead-of-warehouse window (Task 10 → Task 22b).**
   - `era-map check --strict` fails between Task 10's `propose` and its `ratify`.
   - From the ratify on, verify-era-map leg b reports `O&M|0390D||2017-2023` as a stale build.
