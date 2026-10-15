@@ -75,7 +75,7 @@ The `/years/` totals chart's balanced panel grew from 524 to
 was told on 2026-10-04 that the panel would grow from 524 to 1,056 programs and the
 change move from +9.3% to about −2.5%, and did not object; the deploy go-ahead named
 the measured figures, which differ because the seven org-split rows #207 fixed
-joined the panel). *Owner, 2026-10-14 (23:37 EDT), after the deploy:* "yes please
+joined the panel). *Owner, 2026-10-14 (23:37 EDT), after the deploy go-ahead:* "yes please
 on all three" — publish release 1 and remove its proof copies, build release 2
 (#195), then start families piece 2; the same reply approved release 2's second
 ratchet, `PAGELESS_OPENING_SEEN_CEILING = 77` (follow-ups Task 24 Step 0).
