@@ -279,7 +279,13 @@ export const PAGE_WEIGHT_BUDGET = [
   // abff1e97 on B@fu-post: the F015E0 gloss and row aria-label (#206 T9, Q17,
   // Q21); gate 1's weigh(), zlib level 9): 703,427 / 68,538 -> 703,623 /
   // 68,615. CEILINGS UNCHANGED; 21,377 raw / 1,385 gzip left.
-  { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "703,623 / 68,615" },
+  // RE-MEASURED 2026-10-15 (Task 25c2, the release-2 proof build of 5af5746d
+  // plus Task 25c2's F-15 seed re-pin, built at ba505d75 on fu2-Bpost: #195
+  // gives the page's own F-15 narrative citations their Vol II/III printing
+  // pages; the re-pinned seed is a lazily loaded chunk and adds nothing to
+  // the HTML; gate 1's weigh(), zlib level 9): 703,623 / 68,615 -> 705,056 /
+  // 69,328. CEILINGS UNCHANGED; 19,944 raw / 672 gzip left (99.0% of gzip).
+  { label: "/families/f-15/", file: "families/f-15/index.html", maxRaw: 725_000, maxGzip: 70_000, measured: "705,056 / 69,328" },
   // New page, ROADMAP #29(c) — the lineage identity map. 32 family diagrams
   // (80 identity boxes, 49 stated ribbons), 3 candidate diagrams, and two
   // table views totalling 86 identity rows and 52 link rows. The weight is
@@ -886,7 +892,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // 2026-09-25 gate-fix wave, built 2026-09-25T20:39:57Z; gate 1's own
   // weigh()): 1,111,532 / 142,888 -> 1,157,926 / 145,603. CEILINGS UNCHANGED;
   // 22,074 raw / 5,397 gzip left.
-  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,157,926 / 145,603 (/program/0601102A/)" },
+  // RE-MEASURED 2026-10-15 (Task 25c, the release-2 proof build of 5af5746d
+  // plus Task 25c2's F-15 seed re-pin, built at ba505d75: #195 gives the
+  // page's narrative citations their printing pages; gate 1's weigh(), zlib
+  // level 9): 1,157,926 / 145,603 -> 1,169,983 / 147,319.
+  // CEILINGS UNCHANGED; 10,017 raw / 3,681 gzip left.
+  { label: "/program/*/ (heaviest)", dir: "program", maxRaw: 1_180_000, maxGzip: 151_000, measured: "1,169,983 / 147,319 (/program/0601102A/)" },
   // RE-MEASURED 2026-09-25 (integration, build of 42eed1e4 plus the
   // 2026-09-25 gate-fix wave, built 2026-09-25T20:39:57Z; gate 1's own
   // weigh()): 378,429 / 23,417 -> 383,439 / 24,779. CEILINGS UNCHANGED;

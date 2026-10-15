@@ -282,6 +282,82 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
 
 ## Findings log (what we learned; feeds future phases)
 
+- **2026-10-15: Families piece-1 follow-ups, release-2 proof (#195) — the
+  narrative relocation on one snapshot.** Snapshot `.proofs/fu2`
+  (`govbudget proof snapshot`, 2026-10-15T16:55:46.174070+00:00; DuckDB
+  295a04ce176254b1f78d63ef030961d72be24888c6fdee78739b10dc6b6fc3c5 at copy;
+  site 2c00a7c9ea57533c056d93352a462601de53d1bd2e69b4002b20dbc29eb72c77;
+  raw_docs 320c7d9106b8422277fd965bdb26b2fcc94a67f71dab49d0a9798704fc7f3f27;
+  Postgres dump 39d57e34426882f4c85121e11c22c5b4162514850026e8529213505eccb15014
+  restored as `govbudget_proof_fu2`) [snapshot-shas.json]. Migration 022 on the
+  scratch database left its state digest at the live value
+  3e61258310ef4ce9a7fae630daf8eb62 [digest-pre.txt].
+  P2: the code at `6d5ac884` (release 1, proved equal to the deployed
+  e362c0a7 [a-vs-live.txt]) and at `5af5746d` exported the migrated database
+  identically (`proof diff: EQUAL`) [diff-p2.txt]. The rehearsed writes, in the
+  release's order: `jbooks narrative-provenance --lineage-evidence` built the 19
+  lineage-evidence narrative rows that never had one (all in their own volume),
+  digest 474918138d7ce2569ff29de1d042f2a0; `scripts/fu/s195_narratives.py --apply`
+  relocated 4,386 rows (located 4,158, relocated 228; kept 5,776; opening_only 111;
+  unresolved 1,444), digest 188856e4e0d4a1e0a0ef809059e1c810
+  [scratch-s195-apply.log]. P1 passed the release-2 rule
+  list (`expected-diff-r2-narratives.json`) [diff-p1.txt], every rule matched as
+  measured: rules 0 and 11 (`sha256`, `retrieved_at`) 4,206; rules 1, 9 and 10
+  (`page_number`, `hosted_pdf_url`, `official_url`) 4,405; rules 2–5 (the
+  first-line box `x0` / `x1` / `top_pt` / `bottom_pt`) 4,185 / 4,192 / 4,386 /
+  4,386 (only 8 of the 228 relocated rows move `x0` and 15 move `x1`); rules 6–7
+  (page size) 4,177; rule 8 (`resolution`) 4,340; rule 12 (the cite shards)
+  51,470; rules 13, 14, 16 and 17 once each; rule 15, 20 PDFs only B hosts; rule
+  18, 166 rail entries. Field by field, 4,177
+  narrative citations gained a page and 228 moved, none changed outside the
+  location fields, 20 superseded PB2026 volumes (162,040,168 B) became hosted,
+  the F015E0 note receipt stayed on Vol I p.71, the JLTV continuation sentence
+  (#195's case) now cites the BA1 book p.100 and the F-15EX example
+  033016199ca94aa7 Vol II p.215 [relocation-report.json]. The relocation report
+  took two review fix rounds before the run (Task 25a): `253d84ca` compares A's
+  and B's lineage rails beyond the evidence pages (a dropped stated edge and a
+  relation/fy change on another had passed), and `5af5746d` gates Task 25b Step
+  10 on the report alone (the export's rail count, 84, also walks lineage blocks
+  no sidecar carries; the sidecars' rail pages that moved number 83). Its first
+  run on the real pair failed on export noise alone, so Task 25b2 (`5b0594d9`)
+  gave it `--noise-from`: the two trees are separate export runs, and it now
+  judges noise outside the narratives with the control's classes, as release 1's
+  `fact_stability.py` does (122 fields: 52 derived `inputs` and 69 usaspending
+  `query_body` reorders and one `recorded_value` numeric-text flip, exactly the
+  122 the literal comparison failed on). Task 25c2 made its non-narrative
+  pre-filter type-strict (`1` vs `1.0` is a change, #199), and the re-run gave the
+  same report, key for key [relocation-report-25c2.json].
+  verify-jbook-narratives:
+  FAIL before (339 opening-only, 4,177 pageless narratives a volume locates),
+  PASS after (10,162 printed, 111 opening-only, 1,444 pageless: 77 whose opening
+  alone is printed, 1,367 printed nowhere) [vjn-*.txt]; verify-phase5b1 (gate 5
+  included), verify-lineage, verify-phase5e, verify-era-map PASS; the F-15 history
+  matches its pin; link coverage unchanged. `--revert` restored 4,386 rows and
+  digest 474918138d7ce2569ff29de1d042f2a0 on the scratch database and left the 19
+  new rows; a second apply reproduced 188856e4e0d4a1e0a0ef809059e1c810
+  [scratch-revert.log, scratch-s195-reapply.log]. The first site build on the
+  proven export stopped at `/families/f-15`: the page's reviewed related-programs
+  seed (`site/src/lib/f15-related-programs.seed.json`) pinned 14 receipts as
+  release 1 cites them, pageless in Vol I, and its build-time validator refused
+  #195's printing volumes [site-build-25c-failed.log]. Task 25c2 (`ba505d75`,
+  controller ruling 2026-10-15: the owner-approved #195 fix reaching a reviewed
+  seed) re-pinned those 14 rows' URL and page from the proven export, locators
+  and excerpts unchanged, and with them two vitest pins: 30 paged seed rows, not
+  16, and the F-15EX retrofit passage `cb4796e48126e4a7` on Aircraft Procurement
+  Vol II p.215 (every F-15 family narrative is paged after #195). That opens the
+  F-15 seed window: until release 2's export, a site build or `npm test` against
+  release 1's `data/site` fails the seed validator and those pins (the plan
+  README's Known red windows). Site build at `ba505d75` (B's code; `site/`
+  differs from B only by that re-pin) on the proven export: `npm run verify`
+  overall PASS, all 27 gates, after the two page-weight re-stamps below
+  [site-verify.log]; `npm test` 2,891 + 3 passed [site-vitest.log].
+  `/program/0601102A/` 1,169,983 / 147,319 against 1,180,000 / 151,000 (ceilings
+  unchanged; 10,017 raw / 3,681 gzip left). `/families/f-15/` 705,056 / 69,328
+  against 725,000 / 70,000 (ceilings unchanged): 19,944 raw / 672 gzip left,
+  99.0% of its gzip ceiling. Its own F-15 narrative citations now carry their
+  Vol II/III pages; the re-pinned seed is a lazily loaded chunk and adds nothing
+  to the HTML. Release 2's deploy go-ahead names that 672-byte headroom.
+
 - **2026-10-14: Families piece-1 follow-ups, release 1.** Proven on two snapshots
   of one live state, `.proofs/fu-pre` and `.proofs/fu-post` (equal pins: DuckDB at
   copy, every parquet file but `sam/`, the site and raw_docs digests, each Postgres
