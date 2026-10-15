@@ -89,6 +89,31 @@ def test_a_rail_page_that_follows_its_citation_passes(pg_dsn, exports, capsys):
     assert "rail evidence pages moved: 1" in capsys.readouterr().out
 
 
+def test_the_export_also_counts_rail_pages_that_no_sidecar_carries(pg_dsn, exports):
+    """Task 25b Step 10: the export's `lineage: <k> rail evidence page(s)` count
+    walks every block _emit_lineage builds, one per PE an edge touches, but a
+    sidecar carries a block only on a page the export writes. An edge whose other
+    end has no page (0101101F, 2026-10-15) moves one sidecar entry and two block
+    entries, so rail_pages_moved <= k and Step 10 gates on the report alone."""
+    from govbudget.export_site import _rail_evidence_pages_from_citations
+
+    _book, a, b, fid = exports
+    ca, cb = _cites(a), _cites(b)
+    pageless = "0605199TST"
+    lineage = {SLUG: {"rail": {"predecessors": [_edge(ca, fid["N1"], pe=pageless)], "successors": []}},
+               pageless: {"rail": {"predecessors": [], "successors": [_edge(ca, fid["N1"], pe=SLUG)]}}}
+
+    def rows(cites):
+        return [(f, c.get("kind"), None, None, c.get("page_number")) + (None,) * 22 for f, c in cites.items()]
+
+    assert _rail_evidence_pages_from_citations(json.loads(json.dumps(lineage)), rows(ca)) == 0
+    _write_rail(a, *lineage[SLUG]["rail"]["predecessors"])
+    k = _rail_evidence_pages_from_citations(lineage, rows(cb))
+    _write_rail(b, *lineage[SLUG]["rail"]["predecessors"])
+    report = compare(a, b, pg_dsn=pg_dsn)
+    assert report["violations"] == [] and (report["counts"]["rail_pages_moved"], k) == (1, 2)
+
+
 RAIL_CHANGES = {
     "an edge dropped": lambda c, fid: [_edge(c, fid["N1"])],
     "an edge added": lambda c, fid: [*_rail(c, fid), _edge(c, fid["N2"], pe="0605103TST")],

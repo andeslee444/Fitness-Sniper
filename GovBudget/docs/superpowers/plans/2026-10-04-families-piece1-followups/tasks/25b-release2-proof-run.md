@@ -152,8 +152,8 @@ K=$(grep -oE '^lineage: [0-9]+ rail evidence page' "$P/fu2-logs/export-fu2-Bpost
 import json, sys
 report, k = json.load(open(sys.argv[1])), int(sys.argv[2])
 moved = report["counts"]["rail_pages_moved"]
-print(f"rail_pages_moved {moved} (export-fu2-Bpost: {k}); report ok {report['ok']}")
-sys.exit(0 if report["ok"] and moved == k >= 1 else 1)
+print(f"rail_pages_moved {moved} (export-fu2-Bpost rewrote {k}, information only); report ok {report['ok']}")
+sys.exit(0 if report["ok"] and moved >= 1 else 1)
 PY
 echo "rail check exit=$?"
 ```
@@ -161,7 +161,7 @@ Expected:
 
 ```
 narrative citations 11717: unchanged 7312, located 4177, relocated 228
-rail evidence pages moved: <k>
+rail evidence pages moved: <m>
 PDFs only B hosts: 20 (162,040,168 bytes)
   e7d5bcfb4a30f458: A {'sha256': '528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e', 'page_number': 71} -> B {'sha256': '528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e', 'page_number': 71}
   136baeef904dd052: A {'sha256': 'a0b31f94ab70ce33e1b4300355ad55d2efd7e2722876998e39bf2c99b7b1a87f', 'page_number': None} -> B {'sha256': '184228d828aab1d64819d05f7cd66f24de5e7e28fbeccacf89db50fa15078195', 'page_number': 100}
@@ -169,7 +169,7 @@ PDFs only B hosts: 20 (162,040,168 bytes)
   906bcdda2a0660d1: A {'sha256': 'f68f0afc0cb65fda994610b350f8e2fca4877986c9a0e3438fa3ee02b11a0aa6', 'page_number': None} -> B {'sha256': '1623a79d35fd922ba6c87e8e8cbe12f0e960accdef00395d00efff0dfb35b559', 'page_number': 185}
 narrative-relocation: PASS
 exit=0
-rail_pages_moved <k> (export-fu2-Bpost: <k>); report ok True
+rail_pages_moved <m> (export-fu2-Bpost rewrote <k>, information only); report ok True
 rail check exit=0
 ```
-(4,177 located = Task 23c's 4,158 plus the 19 lineage-evidence rows; 7,312 = 11,717 − 4,177 − 228. The 20 PDFs are the 20 superseded PB2026 volumes of Task 23c Step 6's list. `<k>` is Step 7's `lineage: <k> rail evidence page(s) …` figure, read from the report's `counts['rail_pages_moved']`: the report requires every program sidecar's rail to be the same in fu2-B and fu2-Bpost with each `evidence.page` masked, so the pages that move are exactly the rail entries the B export took from a moved citation — 22 of the 92 evidence narratives move, and `<k>` counts rail entries, not narratives, since an edge can be listed on both its endpoints' sidecars.) A FAIL lists its violations (`rail of <slug> changed beyond evidence pages`, `rail of <slug> only in A|B` among them), and `rail check exit=1` means the report failed or its count is not the export's: stop.
+(4,177 located = Task 23c's 4,158 plus the 19 lineage-evidence rows; 7,312 = 11,717 − 4,177 − 228. The 20 PDFs are the 20 superseded PB2026 volumes of Task 23c Step 6's list. `<m>` is the report's `counts['rail_pages_moved']`. The report requires every program sidecar's rail to be the same in fu2-B and fu2-Bpost with each `evidence.page` masked. It then counts the rail entries of the written sidecars whose evidence page moved. 22 of the 92 evidence narratives move, and `<m>` counts rail entries, not narratives, since an edge can be listed on both its endpoints' sidecars. `<k>` is Step 7's `lineage: <k> rail evidence page(s) …` figure, printed for information only, and it counts a larger set. The export rewrites the rail of every lineage block it builds, and `_emit_lineage` builds one for every PE an edge touches. A sidecar carries a block only when the export writes that PE's page, and never on a split code. After Step 5's `0`, every entry that moves is one the fu2-Bpost export rewrote. So `<m>` ≤ `<k>`, and `<k>` − `<m>` is the moved entries on PEs that publish no lineage block: out-of-universe endpoints and split codes. Re-measured 2026-10-15, read-only on the live lake and `data/site`: 12 of the 196 stated rail entries sit on 9 PEs that have no sidecar, `0101101F` among them, so `<k>` − `<m>` ≤ 12. Their evidence fact IDs are `595b7bc230776350`, `72ad8e95e94d6276` and `fdd59f96ff88ac92`. `72ad8e95e94d6276` (edge `0101101F`→`0604033F`) is pageless today, so if Task 23b's located narratives include it, `<k>` is at least `<m>` + 1. A `<k>` that differs from `<m>` is not a failure.) A FAIL lists its violations (`rail of <slug> changed beyond evidence pages`, `rail of <slug> only in A|B` among them), and `rail check exit=1` means the report failed or no rail page moved: stop.

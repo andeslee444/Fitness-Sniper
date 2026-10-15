@@ -9,10 +9,10 @@
 - Create: `docs/superpowers/plans/2026-10-04-families-piece1-followups/expected-diff-r2-narratives.json`
 
 **Interfaces:**
-Consumes: `provenance_pages.book_set` (Task 23a); `scripts/fu/s195_narratives.main` (Task 23c); `tests/jbooks/narrative_volumes.py` (`seed_book_set`, `seed_pre_195_rows`, `xml_path`); `tests/jbooks/test_export_site_5f._export(pg_dsn, tmp_path)` (writes `<tmp_path>/site` and `<tmp_path>/wh.duckdb`); `export_site.fact_id_narrative`; Task 2's `govbudget.proof.load_expectations` (rule keys `path, why, status, pointer, change, required`; `*` is the only glob character and crosses `/`; 16-hex fact-ID pointer segments read `{fid}`).
+Consumes: `provenance_pages.book_set` (Task 23a); `scripts/fu/s195_narratives.main` (Task 23c); `tests/jbooks/narrative_volumes.py` (`seed_book_set`, `seed_pre_195_rows`, `xml_path`); `tests/jbooks/test_export_site_5f._export(pg_dsn, tmp_path)` (writes `<tmp_path>/site` and `<tmp_path>/wh.duckdb`); `export_site.fact_id_narrative`; `export_site._rail_evidence_pages_from_citations` (Task 23b); Task 2's `govbudget.proof.load_expectations` (rule keys `path, why, status, pointer, change, required`; `*` is the only glob character and crosses `/`; 16-hex fact-ID pointer segments read `{fid}`).
 Produces: `scripts/fu/narrative_relocation_report.py` — `RUN_STAMPED_KINDS`, `LOCATION_FIELDS`, `compare(a_site, b_site, *, pg_dsn, unchanged=(), watch=()) -> dict` (`{"ok", "counts": {"narrative_citations", "unchanged", "located", "relocated", "rail_pages_moved"}, "new_pdfs": {sha: bytes}, "new_pdf_bytes", "by_volume", "watched", "violations"}`; `rail_pages_moved` counts the stated-edge rail entries whose `evidence.page` differs between A's and B's program sidecars, whose rails must otherwise be equal), `main(argv=None) -> int` (CLI `--a A_SITE --b B_SITE --pg-dsn DSN [--unchanged FID]… [--watch FID]… [--report FILE]`; lines `narrative citations <n>: unchanged <u>, located <l>, relocated <r>`, `rail evidence pages moved: <m>`, `PDFs only B hosts: <k> (<bytes> bytes)`, one per watched fact ID, `  violation: …`, last line `narrative-relocation: PASS|FAIL`, exit 0/1); the P1 rule list (19 rules). Tasks 25b and 26a run them.
 
-**Measured now** (2026-10-13): the report and the rule list were exercised on two exports of the synthetic book set, before and after `s195 --apply`, on a scratch copy of the tree with Tasks 23a–24 applied against a private Postgres 17 cluster: the tests below pass (4 then; 12 after review fix round 1 of 2026-10-15, which added the A-vs-B rail check: a dropped stated edge plus a relation/fy change on another passed `proof diff` with rule 18 matched 3, and the report did not compare A's rails with B's); `proof diff` with the rule list matched rules 0–13 and 15–17 there (2 and 17 citation-field differences, both PDFs only B hosts, `pdf_count` in both files) and left rules 14 (the receipts audit, which a bare `export_site()` call does not write) and 18 (no lineage in the synthetic book) unmet, as expected; on the real exports both match (Task 23b measured 22 evidence narratives moving; the CLI export runs the receipts step). No other file of `data/site` embeds a citation record: `grep -l hosted_pdf_url` over `data/site/json` finds only `citations.json` (and its shards) besides the receipt shards, which carry no narrative.
+**Measured now** (2026-10-13): the report and the rule list were exercised on two exports of the synthetic book set, before and after `s195 --apply`, on a scratch copy of the tree with Tasks 23a–24 applied against a private Postgres 17 cluster: the tests below pass (4 then; 12 after review fix round 1 of 2026-10-15, which added the A-vs-B rail check: a dropped stated edge plus a relation/fy change on another passed `proof diff` with rule 18 matched 3, and the report did not compare A's rails with B's; 13 after fix round 2 of 2026-10-15, which pins that the export's `lineage: <k> rail evidence page(s)` count also covers lineage blocks no sidecar carries, so `rail_pages_moved` ≤ `<k>` and Task 25b Step 10 gates on the report alone); `proof diff` with the rule list matched rules 0–13 and 15–17 there (2 and 17 citation-field differences, both PDFs only B hosts, `pdf_count` in both files) and left rules 14 (the receipts audit, which a bare `export_site()` call does not write) and 18 (no lineage in the synthetic book) unmet, as expected; on the real exports both match (Task 23b measured 22 evidence narratives moving; the CLI export runs the receipts step). No other file of `data/site` embeds a citation record: `grep -l hosted_pdf_url` over `data/site/json` finds only `citations.json` (and its shards) besides the receipt shards, which carry no narrative.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -108,6 +108,31 @@ def test_a_rail_page_that_follows_its_citation_passes(pg_dsn, exports, capsys):
     assert report["violations"] == [] and report["counts"]["rail_pages_moved"] == 1
     assert main(["--a", str(a), "--b", str(b), "--pg-dsn", pg_dsn]) == 0
     assert "rail evidence pages moved: 1" in capsys.readouterr().out
+
+
+def test_the_export_also_counts_rail_pages_that_no_sidecar_carries(pg_dsn, exports):
+    """Task 25b Step 10: the export's `lineage: <k> rail evidence page(s)` count
+    walks every block _emit_lineage builds, one per PE an edge touches, but a
+    sidecar carries a block only on a page the export writes. An edge whose other
+    end has no page (0101101F, 2026-10-15) moves one sidecar entry and two block
+    entries, so rail_pages_moved <= k and Step 10 gates on the report alone."""
+    from govbudget.export_site import _rail_evidence_pages_from_citations
+
+    _book, a, b, fid = exports
+    ca, cb = _cites(a), _cites(b)
+    pageless = "0605199TST"
+    lineage = {SLUG: {"rail": {"predecessors": [_edge(ca, fid["N1"], pe=pageless)], "successors": []}},
+               pageless: {"rail": {"predecessors": [], "successors": [_edge(ca, fid["N1"], pe=SLUG)]}}}
+
+    def rows(cites):
+        return [(f, c.get("kind"), None, None, c.get("page_number")) + (None,) * 22 for f, c in cites.items()]
+
+    assert _rail_evidence_pages_from_citations(json.loads(json.dumps(lineage)), rows(ca)) == 0
+    _write_rail(a, *lineage[SLUG]["rail"]["predecessors"])
+    k = _rail_evidence_pages_from_citations(lineage, rows(cb))
+    _write_rail(b, *lineage[SLUG]["rail"]["predecessors"])
+    report = compare(a, b, pg_dsn=pg_dsn)
+    assert report["violations"] == [] and (report["counts"]["rail_pages_moved"], k) == (1, 2)
 
 
 RAIL_CHANGES = {
@@ -469,7 +494,7 @@ GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . p
 uv run --project . python -c "from govbudget.proof import load_expectations; print(len(load_expectations('docs/superpowers/plans/2026-10-04-families-piece1-followups/expected-diff-r2-narratives.json')), 'rules')"
 uvx --offline ruff check --isolated --select F,E9 scripts/fu/narrative_relocation_report.py tests/jbooks/test_fu_narrative_relocation_report.py
 ```
-Expected: `12 passed`; `19 rules`; `All checks passed!`. Then:
+Expected: `13 passed`; `19 rules`; `All checks passed!`. Then:
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families && git add GovBudget/scripts/fu/narrative_relocation_report.py GovBudget/tests/jbooks/test_fu_narrative_relocation_report.py GovBudget/docs/superpowers/plans/2026-10-04-families-piece1-followups/expected-diff-r2-narratives.json && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "test(fu): release-2 proof tools — the narrative relocation report and the P1 rule list (#195)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
