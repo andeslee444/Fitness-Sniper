@@ -517,3 +517,102 @@ def test_amount_links_uncited_fact_gets_no_link(pg_dsn, tmp_path):
     det = json.loads(
         (site / "json" / "program_details" / f"{_PE}.json").read_text())
     assert "amount_links" not in det["narratives"][0]
+
+
+# ---------------------------------------------------------------------------
+# #195 (families piece-1 follow-ups, Task 23b) — a located narrative cites the
+# volume of its book set that prints it, and that volume is hosted
+# ---------------------------------------------------------------------------
+
+import datetime as _dt  # noqa: E402
+
+from jbooks.narrative_volumes import BODIES, seed_book_set, xml_path  # noqa: E402
+
+
+def _book_export(pg_dsn, tmp_path):
+    book = seed_book_set(pg_dsn, tmp_path)
+    assert build_narrative_provenance(pg_dsn) == 6
+    return book, _export(pg_dsn, tmp_path)
+
+
+def _fid(book, key, pe_bli):
+    return fact_id_narrative(book["sha"]["BA1"], pe_bli, "mission", xml_path(key))
+
+
+def test_located_narrative_cites_the_printing_volume(pg_dsn, tmp_path):
+    book, site = _book_export(pg_dsn, tmp_path)
+    ba2 = book["sha"]["BA2"]
+    row = _narr_citation_row(site, _fid(book, "N1", "0605001TST"))
+    assert (row["sha256"], row["page_number"], row["resolution"]) == (ba2, 2, "unique")
+    assert row["hosted_pdf_url"] == f"https://cdn.example/pdfs/{ba2}.pdf#page=2"
+    assert row["official_url"] == "https://example.mil/BA2.pdf#page=2"
+    assert _dt.datetime.fromisoformat(row["retrieved_at"]) == _dt.datetime(
+        2026, 7, 2, tzinfo=_dt.UTC)
+    assert row["xml_path"] == xml_path("N1") and row["pe_bli"] == "0605001TST"
+    across = _narr_citation_row(site, _fid(book, "N2", "0605002TST"))
+    assert (across["sha256"], across["page_number"]) == (book["sha"]["BA3"], 1)
+
+
+def test_the_fact_and_its_narrative_row_keep_the_attached_document(pg_dsn, tmp_path):
+    book, site = _book_export(pg_dsn, tmp_path)
+    narr = site / "data" / "jbook_narratives.parquet"
+    rows = dict(duckdb.sql(
+        f"select fact_id, document_sha256 from read_parquet('{narr}')").fetchall())
+    for key, (pe_bli, _body) in BODIES.items():
+        assert rows[_fid(book, key, pe_bli)] == book["sha"]["BA1"]
+
+
+def test_unlocated_and_attached_narratives_keep_their_citation(pg_dsn, tmp_path):
+    book, site = _book_export(pg_dsn, tmp_path)
+    ba1 = book["sha"]["BA1"]
+    nowhere = _narr_citation_row(site, _fid(book, "N3", "0605003TST"))
+    assert (nowhere["sha256"], nowhere["page_number"], nowhere["hosted_pdf_url"]) == (ba1, None, None)
+    assert nowhere["official_url"] == "https://example.mil/BA1.pdf"
+    own = _narr_citation_row(site, _fid(book, "N4", "0605004TST"))
+    assert (own["sha256"], own["page_number"]) == (ba1, 2)
+    assert own["hosted_pdf_url"] == f"https://cdn.example/pdfs/{ba1}.pdf#page=2"
+
+
+def test_superseded_volumes_a_citation_names_are_hosted_and_no_others(pg_dsn, tmp_path):
+    book, site = _book_export(pg_dsn, tmp_path)
+    hosted = {p.stem for p in (site / "pdfs").glob("*.pdf")}
+    assert hosted == {book["sha"][v] for v in ("BA1", "BA2", "BA3", "NAVY")}
+    assert json.loads((site / "manifest.json").read_text())["pdf_count"] == 4
+    assert json.loads((site / "json" / "site_meta.json").read_text())["pdf_count"] == 4
+
+
+def test_a_volume_outside_the_book_set_fails_the_export(pg_dsn, tmp_path):
+    book = seed_book_set(pg_dsn, tmp_path)
+    assert build_narrative_provenance(pg_dsn) == 6
+    with psycopg.connect(pg_dsn, autocommit=True) as con:
+        con.execute(
+            "update provenance_pages set printed_document_sha256 = %s"
+            " where pe_bli = '0605004TST'", (book["sha"]["NAVY"],))
+    try:
+        _export(pg_dsn, tmp_path)
+    except ValueError as e:
+        assert "not a volume of" in str(e)
+    else:
+        raise AssertionError("an export naming another org's volume must fail")
+
+
+def test_rail_evidence_pages_follow_the_narrative_citations():
+    from govbudget.export_site import _rail_evidence_pages_from_citations
+
+    pad = (None,) * 21
+    rows = [("f1", "jbook_narrative", None, None, 421) + pad,
+            ("f2", "jbook_narrative", None, None, 7) + pad,
+            ("f3", "workbook", None, None, 9) + pad]
+    lineage = {
+        "P1": {"rail": {
+            "predecessors": [{"pe": "P0", "evidence": {"fact_id": "f1", "page": 332, "sentence": "s"}}],
+            "successors": [{"pe": "P2", "evidence": None},
+                           {"pe": "P3", "evidence": {"fact_id": "f2", "page": None, "sentence": "t"}}],
+        }},
+        "P9": {"family": {"id": 1}},
+    }
+    assert _rail_evidence_pages_from_citations(lineage, rows) == 2
+    assert lineage["P1"]["rail"]["predecessors"][0]["evidence"]["page"] == 421
+    assert lineage["P1"]["rail"]["successors"][1]["evidence"]["page"] == 7
+    assert lineage["P1"]["rail"]["successors"][0]["evidence"] is None
+    assert _rail_evidence_pages_from_citations(lineage, rows) == 0

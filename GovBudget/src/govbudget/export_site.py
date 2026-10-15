@@ -3061,14 +3061,46 @@ def export_site(
         # -----------------------------------------------------------------------
         # 3. Documents: copy PDFs and workbooks
         # -----------------------------------------------------------------------
+        # #195 (families piece-1 follow-ups, Task 23b): a narrative's provenance
+        # row may name the SUPERSEDED volume of its book set that prints it
+        # (printed_document_sha256). Every such volume a citation of THIS export
+        # names is copied too, so its #page=N anchor opens a hosted PDF; a
+        # superseded volume no citation names stays unhosted.
+        _cited_narr_keys = {
+            (r[9], r[1], r[3], r[6]) for r in narr_rows_with_fid if r[0] and r[6]
+        }
+        printed_volume_shas = sorted({
+            printed
+            for (p_sha, p_pe, p_kind, p_xml, printed) in pg.execute(
+                """
+                select document_sha256, pe_bli, narrative_kind, xml_path,
+                       printed_document_sha256
+                from provenance_pages
+                where target_kind = 'narrative'
+                  and printed_document_sha256 is not null
+                  and page_number is not null
+                  and resolution in ('unique', 'ambiguous_first')
+                """
+            ).fetchall()
+            if (p_sha, p_pe, p_kind, p_xml) in _cited_narr_keys
+        })
         doc_rows = pg.execute(
             """
             select sha256, file_path, source_url, downloaded_at
             from jbook_documents
-            where status = 'downloaded' and sha256 is not null
+            where sha256 is not null
+              and (status = 'downloaded'
+                   or (status = 'superseded' and sha256 = any(%s)))
             order by sha256
-            """
+            """,
+            (printed_volume_shas,),
         ).fetchall()
+        _unhosted = sorted(set(printed_volume_shas) - {r[0] for r in doc_rows})
+        if _unhosted:
+            raise ValueError(
+                f"#195: {len(_unhosted)} narrative printing volume(s) are neither"
+                f" downloaded nor superseded documents: {_unhosted[:5]}"
+            )
 
     n_pdfs = 0
     n_workbooks = 0
@@ -3433,10 +3465,11 @@ def export_site(
     # pageless shape — the ambiguity flag, never a fake location.
     with psycopg.connect(dsn) as pg_narr:
         narr_doc_lookup = {
-            r[0]: (r[1], r[2])
+            r[0]: (r[1], r[2], (r[3], r[4], r[5]))
             for r in pg_narr.execute(
                 """
-                select distinct on (sha256) sha256, source_url, downloaded_at
+                select distinct on (sha256) sha256, source_url, downloaded_at,
+                       fiscal_year, org, exhibit_family
                 from jbook_documents
                 where sha256 is not null
                 order by sha256, id
@@ -3445,11 +3478,13 @@ def export_site(
         }
         narr_prov: dict[tuple, tuple] = {}
         for (p_sha, p_pe, p_kind, p_xml, page_number, x0, x1, top_pt,
-             bottom_pt, page_width, page_height, resolution) in pg_narr.execute(
+             bottom_pt, page_width, page_height, resolution,
+             printed_sha) in pg_narr.execute(
             """
             select document_sha256, pe_bli, narrative_kind, xml_path,
                    page_number, x0, x1, top_pt, bottom_pt,
-                   page_width, page_height, resolution
+                   page_width, page_height, resolution,
+                   printed_document_sha256
             from provenance_pages
             where target_kind = 'narrative'
             """
@@ -3459,19 +3494,33 @@ def export_site(
                     int(page_number),
                     float(x0), float(x1), float(top_pt), float(bottom_pt),
                     float(page_width), float(page_height), resolution,
+                    printed_sha or p_sha,
                 )
 
     for (fid, pe_bli, pn, kind, title, body, xml_path, org, fy, sha) in narr_rows_with_fid:
         if fid is None or not xml_path:
             continue  # skip rows without a resolvable xml_path
-        src_url, dl_at = narr_doc_lookup.get(sha, (None, None))
+        hit = narr_prov.get((sha, pe_bli, kind, xml_path))
+        # #195 (Task 23b): a located narrative cites the volume that PRINTS it
+        # (printed_document_sha256, else the attached document) — its sha256,
+        # hosted copy, official URL and retrieval time. The fact_id keeps
+        # hashing the attached document (fact_id_narrative), so lineage and
+        # verify-lineage see the same identities.
+        cited_sha = hit[8] if hit is not None else sha
+        if cited_sha != sha and (
+                narr_doc_lookup.get(cited_sha, (None, None, None))[2]
+                != narr_doc_lookup.get(sha, (None, None, None))[2]):
+            raise ValueError(
+                f"#195: narrative {fid} is located in {cited_sha}, which is not"
+                f" a volume of {sha}'s book set (edition, org, exhibit family)"
+            )
+        src_url, dl_at, _book = narr_doc_lookup.get(cited_sha, (None, None, None))
         official_url = src_url or None
         ret_at = dl_at.isoformat() if dl_at else None
-        hit = narr_prov.get((sha, pe_bli, kind, xml_path))
         if hit is not None:
             (page_number, x0, x1, top_pt, bottom_pt,
-             page_width, page_height, resolution) = hit
-            hosted_pdf_url = f"{pdf_base_url}/{sha}.pdf#page={page_number}"
+             page_width, page_height, resolution, _printed) = hit
+            hosted_pdf_url = f"{pdf_base_url}/{cited_sha}.pdf#page={page_number}"
             if official_url:
                 official_url = f"{official_url}#page={page_number}"
         else:
@@ -3486,7 +3535,7 @@ def export_site(
             None,   # sheet
             None,   # cells
             None,   # amount_thousands
-            sha,    # sha256 (document fingerprint for integrity check)
+            cited_sha,  # sha256: the printing volume (#195), else the attached document
             hosted_pdf_url,
             official_url,  # official_url (#page=N when located)
             xml_path,      # xml_path (J-book XML locator)
@@ -11199,6 +11248,31 @@ def _assert_lineage_flow_has_no_era_amount(
         )
 
 
+def _rail_evidence_pages_from_citations(lineage_by_pe: dict, citation_rows: list) -> int:
+    """#195 (families piece-1 follow-ups, Task 23b): a stated lineage edge's
+    evidence page is the page its narrative citation names.
+
+    program_lineage.evidence_page was copied from provenance_pages when the
+    lineage was built, and it names a page of the ATTACHED volume; once a
+    narrative is located in another volume (or newly located), the citation's
+    page is the true one and the sidecar must not disagree with it. Rewrites
+    the rail entries' evidence pages in place; returns how many changed.
+    citation_rows are export_site's 27-column citation tuples (index 4 is
+    page_number).
+    """
+    pages = {row[0]: row[4] for row in citation_rows if row[1] == "jbook_narrative"}
+    changed = 0
+    for block in lineage_by_pe.values():
+        rail = block.get("rail") or {}
+        for side in ("predecessors", "successors"):
+            for entry in rail.get(side) or []:
+                evidence = entry.get("evidence")
+                if evidence and evidence.get("page") != pages.get(evidence["fact_id"]):
+                    evidence["page"] = pages.get(evidence["fact_id"])
+                    changed += 1
+    return changed
+
+
 def _emit_lineage(
     *,
     edges: list,
@@ -13493,6 +13567,15 @@ def _write_all_sidecars(
         cited_fact_ids=_cited_fact_ids,
         era_grain_fids=era_grain_fids,
     )
+
+    # #195 (Task 23b): rail evidence pages follow the narrative citations.
+    _rail_pages_moved = _rail_evidence_pages_from_citations(lineage_by_pe, citation_rows)
+    if _rail_pages_moved:
+        print(
+            f"lineage: {_rail_pages_moved} rail evidence page(s) taken from the"
+            " narrative citations (#195: a narrative located in another volume"
+            " or newly located)"
+        )
 
     # ROADMAP #29(c) — the /lineage/ identity diagram payload. Built from the
     # SAME edges/families/titles/decade points _emit_lineage just used, so the
