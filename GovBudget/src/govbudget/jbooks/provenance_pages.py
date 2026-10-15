@@ -37,7 +37,9 @@ Cached: already-built (sha, pe_bli, project, scenario, amount) keys are skipped.
 """
 from __future__ import annotations
 
+import os
 import re
+from dataclasses import dataclass
 from decimal import Decimal
 from itertools import groupby
 from pathlib import Path
@@ -486,15 +488,324 @@ def find_narrative_page(pdf_path: Path, *, pe_bli: str, body: str,
             pdf_handle.close()
 
 
+# ---------------------------------------------------------------------------
+# #195 — the volume that PRINTS a narrative (families piece-1 follow-ups,
+# design §5.6, Task 23a)
+# ---------------------------------------------------------------------------
+#
+# service_fetch.dedup_service_master_dups keeps one volume per embedded master
+# XML and marks the rest superseded; every narrative of the master is attached
+# to the kept volume, which prints only its own budget activities. Until #195
+# a narrative was searched in that volume alone, by its opening only: 4,157 of
+# the 5,601 PB2026 narratives it could not place, and 339 placed ones sat on a
+# page that prints the opening but not the paragraph (measured 2026-10-13).
+# A narrative is now placed on the first page, in book-set order, that prints
+# its opening, its closing within three pages and its PE/BLI anchor.
+
+# BINDING, like NARRATIVE_OPENING_WORDS: the closing-word count shared by the
+# relocation below and verify-jbook-narratives (Task 24). Changing it changes
+# which stored narrative rows count as printed where they are cited.
+NARRATIVE_CLOSING_WORDS = 12
+# BINDING: a paragraph may run over a page break, so its closing words may sit
+# on the opening's page or on either of the next two.
+NARRATIVE_CLOSING_SPAN_PAGES = 3
+
+
+def narrative_closing(body: str, n_words: int = NARRATIVE_CLOSING_WORDS) -> str:
+    """A narrative's closing: its last n_words, whitespace-normalized."""
+    return " ".join(body.split()[-n_words:])
+
+
+def narrative_printed_at(norm_texts: list[str], page_idx: int,
+                         opening: str, closing: str) -> bool:
+    """True when page page_idx prints the opening and the closing follows on
+    that page or the next NARRATIVE_CLOSING_SPAN_PAGES - 1 pages (the window's
+    normalized texts joined by one space). BINDING for verify-jbook-narratives'
+    paged rule."""
+    if not opening or not closing or not 0 <= page_idx < len(norm_texts):
+        return False
+    if opening not in norm_texts[page_idx]:
+        return False
+    window = " ".join(norm_texts[page_idx:page_idx + NARRATIVE_CLOSING_SPAN_PAGES])
+    return closing in window
+
+
+def narrative_located_at(norm_texts: list[str], page_idx: int, opening: str,
+                         closing: str, anchor: str | None) -> bool:
+    """narrative_printed_at, and the opening's page also prints the fact's
+    PE/BLI anchor (fact_anchor). The bar for giving a narrative a NEW location:
+    an opening and closing alone recur under other program elements (#195's
+    033016199ca94aa7 is the case), so a location must also name the program.
+    BINDING for verify-jbook-narratives' pageless rule."""
+    return (bool(anchor)
+            and narrative_printed_at(norm_texts, page_idx, opening, closing)
+            and anchor in norm_texts[page_idx])
+
+
+@dataclass(frozen=True)
+class Volume:
+    """One PDF of a narrative's book set (#195)."""
+    document_id: int
+    sha256: str
+    file_path: str
+    status: str
+    title: str
+
+
+_BOOK_SET_SQL = """
+    select o.id, o.sha256, o.file_path, o.status, o.title
+    from jbook_documents d
+    join jbook_documents o
+      on o.fiscal_year = d.fiscal_year and o.org = d.org
+     and o.exhibit_family = d.exhibit_family
+    where d.id = %s
+      and o.sha256 is not null and o.file_path is not null
+      and lower(o.file_path) like '%%.pdf'
+      and o.status in ('downloaded', 'superseded')
+    order by (o.id <> d.id), (o.status <> 'downloaded'), o.title, o.id
+"""
+
+
+def book_set(con, document_id: int) -> list[Volume]:
+    """The attached volume first, then every other PDF volume of the same PB
+    edition, organization and exhibit family, downloaded before superseded,
+    then by title and id.
+
+    Not only the volumes sharing one master-XML sha: two volumes can embed
+    regenerated copies of the same master (Army RDT&E Vol 1, docs 344 and 351,
+    hold the same 1,189 narratives under masters with different bytes), and
+    each prints the other's budget activities.
+    """
+    return [Volume(*row) for row in con.execute(_BOOK_SET_SQL, (document_id,)).fetchall()]
+
+
+def _page_texts_job(path: str) -> list[str]:
+    return _page_texts(Path(path))
+
+
+def page_texts_parallel(paths: list[str], *,
+                        workers: int | None = None) -> dict[str, list[str]]:
+    """pypdf page texts for several PDFs, one worker process per PDF (pypdf is
+    pure Python, so processes, not threads). Keyed by the path as given; the
+    texts equal _page_texts' for each path."""
+    from concurrent.futures import ProcessPoolExecutor
+
+    unique = sorted(set(paths))
+    if not unique:
+        return {}
+    workers = workers or min(8, os.cpu_count() or 1, len(unique))
+    if workers <= 1:
+        return {p: _page_texts_job(p) for p in unique}
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        return dict(zip(unique, pool.map(_page_texts_job, unique)))
+
+
+def resolve_printed_narrative(volumes: list[Volume], texts: dict, plumber_for, *,
+                              opening: str, closing: str, pe_bli: str,
+                              project_number: str | None,
+                              exhibit_family: str | None,
+                              words_cache: dict) -> dict | None:
+    """The first volume, in book-set order, with a page where the narrative is
+    located (narrative_located_at), resolved to that page's first-line bbox.
+
+    texts maps sha256 -> (raw page texts, normalized page texts); plumber_for
+    maps sha256 -> an open pdfplumber handle; words_cache is keyed by
+    (sha256, page index); pe_bli is the fact anchor. Within a volume the
+    existing tie-breaks narrow the located pages (source exhibit, then project
+    token) and the honesty vocabulary is unchanged: 'unique' only when one page
+    locates it or the tie-breaks narrowed to exactly the page the words
+    confirm. candidate_pages is the RAW count of pages in that volume carrying
+    the opening, as for every narrative row. Returns None when no volume
+    locates the narrative or no word span confirms it.
+    """
+    for vol in volumes:
+        raw, norm = texts[vol.sha256]
+        located = [i for i in range(len(norm))
+                   if narrative_located_at(norm, i, opening, closing, pe_bli)]
+        if not located:
+            continue
+        preferred = _preferred_candidates(raw, located, project_number=project_number,
+                                          exhibit_family=exhibit_family)
+        ordered = preferred + [i for i in located if i not in preferred]
+        for idx in ordered:
+            key = (vol.sha256, idx)
+            if key not in words_cache:
+                page = plumber_for(vol.sha256).pages[idx]
+                words_cache[key] = (page.extract_words(), float(page.width),
+                                    float(page.height))
+            words, page_width, page_height = words_cache[key]
+            span = _find_word_span(words, opening)
+            if span:
+                uniquely = len(located) == 1 or (
+                    len(preferred) == 1 and idx == preferred[0])
+                return {
+                    "page_number": idx + 1,
+                    **_first_line_bbox(words, span),
+                    "page_width": page_width, "page_height": page_height,
+                    "resolution": "unique" if uniquely else "ambiguous_first",
+                    "candidate_pages": sum(1 for t in norm if opening in t),
+                    "search_text": opening,
+                    "printed_sha256": vol.sha256,
+                }
+    return None
+
+
+# The columns a relocation writes, in provenance_pages order. Everything else
+# on a narrative row (its identity, amount_text = the searched opening, the
+# amount columns) is never written by it.
+RELOCATION_COLUMNS = ("page_number", "x0", "x1", "top_pt", "bottom_pt",
+                      "page_width", "page_height", "resolution",
+                      "candidate_pages", "printed_document_sha256")
+_GEOMETRY = ("x0", "x1", "top_pt", "bottom_pt", "page_width", "page_height")
+
+_RELOCATION_ROWS_SQL = """
+    select p.id, j.id, j.sha256, n.pe_bli, n.project_number, n.kind,
+           n.xml_path, n.body, j.exhibit_family,
+           p.page_number, p.x0, p.x1, p.top_pt, p.bottom_pt, p.page_width,
+           p.page_height, p.resolution, p.candidate_pages,
+           {printed} as printed_document_sha256
+    from detail_narratives n
+    join jbook_documents j on j.id = n.document_id
+    join provenance_pages p
+      on p.target_kind = 'narrative' and p.document_sha256 = j.sha256
+     and p.pe_bli = n.pe_bli and p.narrative_kind = n.kind
+     and p.xml_path = n.xml_path
+    where not n.superseded and j.sha256 is not null
+      and (%(fy)s::int[] is null or j.fiscal_year = any(%(fy)s::int[]))
+    order by p.id
+"""
+
+
+def _stored_location(row) -> dict:
+    return dict(zip(RELOCATION_COLUMNS, row[9:19]))
+
+
+def _as_stored(hit: dict, attached_sha: str) -> dict:
+    """A resolve_printed_narrative hit in provenance_pages' column shape."""
+    printed = hit["printed_sha256"]
+    return {
+        "page_number": hit["page_number"], "x0": hit["x0"], "x1": hit["x1"],
+        "top_pt": hit["top_pt"], "bottom_pt": hit["bottom_pt"],
+        "page_width": hit["page_width"], "page_height": hit["page_height"],
+        "resolution": hit["resolution"], "candidate_pages": hit["candidate_pages"],
+        "printed_document_sha256": None if printed == attached_sha else printed,
+    }
+
+
+def same_location(a: dict, b: dict) -> bool:
+    """Equal relocation columns; the box within 1e-6 pt (numeric vs float)."""
+    for col in RELOCATION_COLUMNS:
+        x, y = a[col], b[col]
+        if col in _GEOMETRY:
+            if (x is None) != (y is None) or (
+                    x is not None and abs(float(x) - float(y)) > 1e-6):
+                return False
+        elif x != y:
+            return False
+    return True
+
+
+def plan_narrative_relocations(con, *, fiscal_years: list[int] | None = None,
+                               texts_for=None, printed_column: bool = True,
+                               log=print) -> dict:
+    """Which narrative provenance rows are not located where the narrative is
+    printed, and where they belong (#195). Reads only.
+
+    Scope: every narrative provenance row of a non-superseded narrative, in
+    the given PB editions (all editions when fiscal_years is None).
+
+    A row is KEPT when its stored page prints the narrative
+    (narrative_printed_at on the stored volume: printed_document_sha256, or the
+    attached document when that is null). Every other row - unresolved, or
+    paged where only the opening is printed - is re-resolved across the
+    attached document's book set with resolve_printed_narrative. A hit that
+    differs from the stored location is a change: 'located' (was pageless) or
+    'relocated' (was paged). A paged row with no hit keeps its page and counts
+    'opening_only'; an unresolved row with no hit stays 'unresolved'.
+
+    texts_for(paths) -> {path: raw page texts}, default page_texts_parallel.
+    printed_column=False reads printed_document_sha256 as null: a read-only
+    plan of a database that migration 022 has not reached yet.
+    """
+    import pdfplumber
+
+    texts_for = texts_for or page_texts_parallel
+    sql = _RELOCATION_ROWS_SQL.format(
+        printed="p.printed_document_sha256" if printed_column else "null::text")
+    rows = con.execute(sql, {"fy": fiscal_years}).fetchall()
+    sets: dict[int, list[Volume]] = {}
+    for row in rows:
+        if row[1] not in sets:
+            sets[row[1]] = book_set(con, row[1])
+    paths = {v.sha256: v.file_path for vols in sets.values() for v in vols}
+    for sha, path in paths.items():
+        if not Path(path).exists():
+            raise FileNotFoundError(f"document {sha} missing on disk: {path}")
+    raw_by_path = texts_for(sorted(paths.values()))
+    texts = {sha: (raw_by_path[p], [normalize_ws(t) for t in raw_by_path[p]])
+             for sha, p in paths.items()}
+    handles: dict[str, object] = {}
+
+    def plumber_for(sha):
+        if sha not in handles:
+            handles[sha] = pdfplumber.open(paths[sha])
+        return handles[sha]
+
+    words_cache: dict = {}
+    changes: list[dict] = []
+    counts = {"rows": len(rows), "kept": 0, "located": 0, "relocated": 0,
+              "opening_only": 0, "unresolved": 0}
+    printed: dict[str, dict] = {}
+    try:
+        for row in rows:
+            (pid, doc_id, sha, pe_bli, project_number, kind, xml_path, body,
+             exhibit_family) = row[:9]
+            stored = _stored_location(row)
+            opening, closing = narrative_opening(body), narrative_closing(body)
+            stored_sha = stored["printed_document_sha256"] or sha
+            paged = (stored["page_number"] is not None
+                     and stored["resolution"] in ("unique", "ambiguous_first"))
+            if paged and stored_sha in texts and narrative_printed_at(
+                    texts[stored_sha][1], stored["page_number"] - 1, opening, closing):
+                counts["kept"] += 1
+                continue
+            hit = resolve_printed_narrative(
+                sets[doc_id], texts, plumber_for, opening=opening, closing=closing,
+                pe_bli=fact_anchor(pe_bli), project_number=project_number,
+                exhibit_family=exhibit_family, words_cache=words_cache)
+            if hit is None:
+                counts["opening_only" if paged else "unresolved"] += 1
+                continue
+            after = _as_stored(hit, sha)
+            if same_location(stored, after):
+                counts["kept"] += 1
+                continue
+            change_kind = "relocated" if paged else "located"
+            counts[change_kind] += 1
+            changes.append({"id": pid, "fact_key": [sha, pe_bli, kind, xml_path],
+                            "kind": change_kind, "before": stored, "after": after})
+            vol = next(v for v in sets[doc_id] if v.sha256 == hit["printed_sha256"])
+            entry = printed.setdefault(vol.sha256, {"title": vol.title,
+                                                    "status": vol.status, "rows": 0})
+            entry["rows"] += 1
+    finally:
+        for handle in handles.values():
+            handle.close()
+    scope = "all editions" if fiscal_years is None else f"PB{fiscal_years}"
+    log(f"narrative relocation ({scope}): {counts}")
+    return {"changes": changes, "counts": counts, "printed_volumes": printed}
+
+
 def build_narrative_provenance(
     dsn: str, *, fiscal_year: int | None = None, keys=None
 ) -> int:
     """Resolve every non-superseded narrative lacking a narrative provenance row.
 
     Identity is (document_sha256, pe_bli, narrative_kind, xml_path) — the same
-    key fact_id_narrative hashes. Grouped by document (one text pass per PDF;
-    per-document word cache since narratives of one book share pages). Returns
-    rows actually inserted. Missing document files raise loudly.
+    key fact_id_narrative hashes. Grouped by document; each volume's text is
+    extracted once per run (page_texts_parallel) and word boxes are cached per
+    (volume, page). Returns rows actually inserted. Missing document files
+    raise loudly.
 
     fiscal_year scopes the run to one PB edition's documents (Phase 5G
     per-service backfill — mirrors build_provenance_pages); None keeps the
@@ -507,15 +818,32 @@ def build_narrative_provenance(
     all of them costs hours of pdfplumber for pages nothing links to. Scoping
     changes only WHICH rows are attempted, never how one is resolved, so a
     scoped row is identical to the row a whole-edition run would write.
+
+    #195 (families piece-1 follow-ups, Task 23a): a narrative is located on
+    the first page of its document's book set (book_set: the attached volume
+    first) where narrative_located_at holds, and printed_document_sha256 names
+    that volume when it is not the attached one. Only when no volume locates it
+    does the pre-#195 rule decide (its opening alone, in the attached volume),
+    so the rows plan_narrative_relocations would write are the rows this
+    builder writes.
     """
     import pdfplumber
 
     inserted = 0
+    texts: dict[str, tuple[list[str], list[str]]] = {}
+    paths: dict[str, str] = {}
+    handles: dict[str, object] = {}
+
+    def plumber_for(sha):
+        if sha not in handles:
+            handles[sha] = pdfplumber.open(paths[sha])
+        return handles[sha]
+
     with psycopg.connect(dsn) as con:
         rows = con.execute(
             """
             select j.sha256, j.file_path, n.pe_bli, n.project_number, n.kind,
-                   n.xml_path, n.body, j.exhibit_family
+                   n.xml_path, n.body, j.exhibit_family, j.id
             from detail_narratives n
             join jbook_documents j on j.id = n.document_id
             where not n.superseded and j.sha256 is not null
@@ -534,41 +862,52 @@ def build_narrative_provenance(
             wanted = {tuple(k) for k in keys}
             # row is (sha256, file_path, pe_bli, project_number, kind, xml_path, …)
             rows = [r for r in rows if (r[0], r[2], r[4], r[5]) in wanted]
-        for sha, doc_group in groupby(rows, key=lambda r: r[0]):
-            narratives = list(doc_group)
-            pdf_path = Path(narratives[0][1])
-            if not pdf_path.exists():
-                raise FileNotFoundError(f"document {sha} missing on disk: {pdf_path}")
-            texts = _page_texts(pdf_path)
-            norm_texts = [normalize_ws(t) for t in texts]
-            words_cache: dict = {}
-            pdf_handle = None
-
-            def plumber(path=pdf_path):
-                nonlocal pdf_handle
-                if pdf_handle is None:
-                    pdf_handle = pdfplumber.open(path)
-                return pdf_handle
-
-            try:
+        try:
+            for sha, doc_group in groupby(rows, key=lambda r: r[0]):
+                narratives = list(doc_group)
+                pdf_path = Path(narratives[0][1])
+                if not pdf_path.exists():
+                    raise FileNotFoundError(f"document {sha} missing on disk: {pdf_path}")
+                volumes = book_set(con, narratives[0][8])
+                todo = [v for v in volumes if v.sha256 not in texts]
+                for vol in todo:
+                    if not Path(vol.file_path).exists():
+                        raise FileNotFoundError(
+                            f"document {vol.sha256} missing on disk: {vol.file_path}")
+                raw_by_path = page_texts_parallel([v.file_path for v in todo])
+                for vol in todo:
+                    raw = raw_by_path[vol.file_path]
+                    texts[vol.sha256] = (raw, [normalize_ws(t) for t in raw])
+                    paths[vol.sha256] = vol.file_path
+                words_cache: dict = {}      # (sha256, page index) -> words: book set
+                attached_words: dict = {}   # page index -> words: the opening-only rule
                 for (_, _, pe_bli, project_number, kind, xml_path, body,
-                     exhibit_family) in narratives:
-                    hit = _resolve_narrative(
-                        texts, norm_texts, plumber,
-                        snippet=narrative_opening(body),
-                        pe_bli=fact_anchor(pe_bli),
-                        project_number=project_number,
-                        exhibit_family=exhibit_family,
-                        words_cache=words_cache,
+                     exhibit_family, _doc_id) in narratives:
+                    opening = narrative_opening(body)
+                    hit = resolve_printed_narrative(
+                        volumes, texts, plumber_for,
+                        opening=opening, closing=narrative_closing(body),
+                        pe_bli=fact_anchor(pe_bli), project_number=project_number,
+                        exhibit_family=exhibit_family, words_cache=words_cache,
                     )
+                    if hit is None:
+                        hit = _resolve_narrative(
+                            texts[sha][0], texts[sha][1], lambda: plumber_for(sha),
+                            snippet=opening, pe_bli=fact_anchor(pe_bli),
+                            project_number=project_number,
+                            exhibit_family=exhibit_family,
+                            words_cache=attached_words,
+                        )
+                    printed = hit.get("printed_sha256")
                     cur = con.execute(
                         """
                         insert into provenance_pages
                           (target_kind, document_sha256, pe_bli, project_number,
                            narrative_kind, xml_path, amount_text, page_number,
                            x0, x1, top_pt, bottom_pt, page_width, page_height,
-                           resolution, candidate_pages)
-                        values ('narrative',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                           resolution, candidate_pages, printed_document_sha256)
+                        values ('narrative',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                                %s,%s,%s)
                         on conflict (document_sha256, pe_bli, narrative_kind,
                                      xml_path)
                           where target_kind = 'narrative' do nothing
@@ -577,11 +916,12 @@ def build_narrative_provenance(
                          hit["search_text"], hit["page_number"], hit["x0"],
                          hit["x1"], hit["top_pt"], hit["bottom_pt"],
                          hit["page_width"], hit["page_height"],
-                         hit["resolution"], hit["candidate_pages"]),
+                         hit["resolution"], hit["candidate_pages"],
+                         None if printed in (None, sha) else printed),
                     )
                     inserted += cur.rowcount
-            finally:
-                if pdf_handle is not None:
-                    pdf_handle.close()
+        finally:
+            for handle in handles.values():
+                handle.close()
         con.commit()
     return inserted
