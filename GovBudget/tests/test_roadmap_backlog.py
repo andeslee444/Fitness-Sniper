@@ -244,16 +244,31 @@ FAMILIES_FOLLOW_UPS = [
 ]
 
 
+# The piece-1 follow-ups release 1 (docs/superpowers/plans/2026-10-04-families-
+# piece1-followups/tasks/22e-*) closed four of the five; #195 stays open until
+# release 2. A closed entry keeps its old marker relabelled "Status (<date>):"
+# below the new plain one, so each entry still has exactly one grep-able line.
+FAMILIES_FOLLOW_UPS_STILL_OPEN = {"JLTV continuation sentence"}
+
+
 @pytest.mark.parametrize("subject", FAMILIES_FOLLOW_UPS)
-def test_the_families_piece_1_follow_ups_are_filed_once_and_open(subject):
+def test_the_families_piece_1_follow_ups_are_filed_once_and_stamped(subject):
     hits = [(num, body) for num, body in entries() if subject in body]
     assert len(hits) == 1, f"{subject!r} filed {len(hits)} times, want 1"
     num, body = hits[0]
     assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
     assert POINTER_RE.search(body), f"#{num} names no source path"
-    assert body.rstrip().endswith("**Status:** open (2026-10-02)."), (
-        f"#{num} does not end with its open-status line"
-    )
+    plain = [line.strip() for line in body.splitlines() if "**Status:**" in line]
+    assert len(plain) == 1, f"#{num} has {len(plain)} plain Status lines"
+    if subject in FAMILIES_FOLLOW_UPS_STILL_OPEN:
+        assert body.rstrip().endswith("**Status:** open (2026-10-02)."), (
+            f"#{num} does not end with its open-status line"
+        )
+    else:
+        assert plain[0].startswith("**Status:** CLOSED "), f"#{num} is not stamped CLOSED"
+        assert "**Status (2026-10-02):** open (2026-10-02)." in body, (
+            f"#{num} lost its earlier marker"
+        )
 
 
 # Families piece-1 follow-ups (docs/superpowers/specs/2026-10-04-families-piece1-
@@ -268,6 +283,43 @@ FOLLOW_UPS_2026_10_04 = [
 
 @pytest.mark.parametrize("subject", FOLLOW_UPS_2026_10_04)
 def test_the_follow_ups_adjacent_defects_are_filed_once(subject):
+    hits = [(num, body) for num, body in entries() if subject in body]
+    assert len(hits) == 1, f"{subject!r} filed {len(hits)} times, want 1"
+    num, body = hits[0]
+    assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
+    assert POINTER_RE.search(body), f"#{num} names no source path"
+
+
+# Filed by the piece-1 follow-ups release 1 stamp (tasks/22e-*; design Q23): the
+# alias table the search seeds do not check, left for the families registry
+# (piece 2). Only the filing is pinned, so the test survives its closure.
+Q23_SUBJECT = "the search seeds disagree on B-21"
+
+
+def test_the_aliases_ts_follow_up_is_filed_once_for_piece_2():
+    hits = [(num, body) for num, body in entries() if Q23_SUBJECT in body]
+    assert len(hits) == 1, f"{Q23_SUBJECT!r} filed {len(hits)} times, want 1"
+    num, body = hits[0]
+    assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
+    assert POINTER_RE.search(body), f"#{num} names no source path"
+
+
+# Also filed by that stamp: five findings of the release-1 proof, review and gates
+# (the analyst's DATE crash on eval q042, W1's test-output noise, the 0390DOM
+# page's shared "P-1/R-1 workbook" prose, the flows tiebreak's exact-equality
+# limit, gate 23 leg f4's sheet table). Only the filing is pinned, as for Q23;
+# each phrase sits on one line of its entry.
+RELEASE_1_FINDINGS = [
+    "The analyst agent crashes on a DATE value",
+    "W1 test output is noisy",
+    "phrases remain on /program/0390DOM/",
+    "The flows top-12 tiebreak acts only on exactly equal sums",
+    "Gate 23 leg f4 knows two exhibit sheets",
+]
+
+
+@pytest.mark.parametrize("subject", RELEASE_1_FINDINGS)
+def test_the_release_1_findings_are_filed_once(subject):
     hits = [(num, body) for num, body in entries() if subject in body]
     assert len(hits) == 1, f"{subject!r} filed {len(hits)} times, want 1"
     num, body = hits[0]

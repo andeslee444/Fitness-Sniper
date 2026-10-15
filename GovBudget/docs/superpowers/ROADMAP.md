@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-10-14 (families piece-1 follow-ups release 1 deployed at e362c0a7; SAM #10 status; Q23 filed for piece 2; release-1 findings #210–#214 filed); 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
@@ -67,6 +67,18 @@ as owner batch B7; #195 gets the full re-attribution fix as a second release;
 the F015E0 gloss names the exhibit exactly, "[the PB2026 F-15EX AP (F015EX)
 P-40]". The design's other recommendations stand (its Q2, Q4–Q16, Q18,
 Q20–Q23, Q25, Q26), and the Chem Demil write gets a `--revert` mode (Q24 (b)).
+**Follow-ups release 1 deployed (2026-10-14, e362c0a7):** #193, #194 and
+#196–#208 are closed or partial with their dated reasons; #195 ships as release 2.
+The `/years/` totals chart's balanced panel grew from 524 to
+1,063 programs and its FY2024A→FY2026R change turned from
++9.34% to −2.61%, its first→last change from +108.17% to +103.71% (Q15: the owner
+was told on 2026-10-04 that the panel would grow from 524 to 1,056 programs and the
+change move from +9.3% to about −2.5%, and did not object; the deploy go-ahead named
+the measured figures, which differ because the seven org-split rows #207 fixed
+joined the panel). *Owner, 2026-10-14 (23:37 EDT), after the deploy:* "yes please
+on all three" — publish release 1 and remove its proof copies, build release 2
+(#195), then start families piece 2; the same reply approved release 2's second
+ratchet, `PAGELESS_OPENING_SEEN_CEILING = 77` (follow-ups Task 24 Step 0).
 
 **F-15 family funding correction (2026-09-24):** replace the largest single
 program's request with a cited history of the identified F-15 development and
@@ -231,6 +243,7 @@ dated findings and original backlog descriptions below remain historical records
 | PM-S2 | PM-review Sprint 2 — usability & credibility (spec `2026-07-30-pm-review.md` §P1-2..§P1-11). **P1-4 search:** alphanumeric normalization (F35→F-35, B21, KC46), magnitude-blended ranking (Sentinel→GBSD above Sentinel Mods), a corpus-verified alias table with "also known as" chips, readable filing titles ("LOCKHEED MARTIN — PENN AVENUE PARTNERS, 2024 Q1") — **search-eval 29/32 (91%) → 36/37 (97%)**. **P1-5 data truth:** `/data/`'s row counts were hardcoded literals frozen at 5B-2 values (8 of 15 wrong — dim_programs claimed 326 against a 1,739-row parquet, jbook_details 4,421 against 21,028) while the parquets themselves were always correct — the page lied about its own data, not the data about itself; now every count + row-grain scope comes from an exporter-emitted manifest, plus one canonical corpus statement on the four pages that disagreed. **Found in passing: `budget_lines_decade` (32,642 rows) was not merely undocumented but UNQUERYABLE** — missing from the Explorer's registry, a whole shipped dataset invisible. Same defect class then closed on `/methodology/` §3 (197 test functions/42 modules/21 dbt assertions/45 eval pairs/≥41 — every literal rotted; real: 87 dbt, 24 gates, 48, 44 — now derived from dbt's compiled manifest, the verify.mjs registry, the eval set and the gate's own threshold constant; pytest/vitest totals deliberately REMOVED rather than re-hardcoded, since neither derives honestly at export). **P1-6/P1-7:** currency ladder through T (`$3657.4B` → `$3.66T`), data-derived FY ranges replacing three inconsistent statements, deterministic sorts on every table (filings 2024/2026/2025 → 2026/2025/2024). **P1-9 workbook drawer** (the weakest citation tier): `5,565,655 USD thousands (= $5.57B)`, a per-cell arithmetic line, and a build-time cell preview with context rows — cell data measured at +25.7% on cite-shards if inlined, so routed to lazy per-fact sidecars (22.1 MB, fetched on open). **P1-2/P1-3/P1-10/P1-11:** dossier-hoisted WHAT-IT-IS cards with their fact chips (field-generated fallback for non-dossier programs), the Raytheon/RTX split merged into **one RTX family at #3, $68.9B** (was #4 + #6) behind a hand-curated, source-audited events table on its own page, GAO department-level qualifier, `/programs/` filter + Org sort + CSV. | gate 24 "datatruth" legs a–g (dataset cards, rendered row counts, Explorer picker, corpus statement, /methodology/ build-checks, declared table sorts, curated-family merge) + gate 4 test 3 rebuilt (workbook drawer contract, 35,940 citations) + gate 21 leg f (dossier cards) | ✅ COMPLETE 2026-08-04 (live-verified) | **Visual judging FAILED first at 3/3/3, passed on re-judge at 4/4/4** — the fix round is the substance of this row. Round-1 majors, all real: mobile clipped the payload of three separate fixes (`/companies/` money column, `/data/` scope prose, the search alias chip truncating "Ground Bas…"), the alias table shipped to ⌘K **only** so `/programs/` returned the exact wrong "Sentinel" answer the sprint set out to kill, the deepest citation tier dropped the basis label Sprint 1 added everywhere else, and a merged $68.9B total showed no addends in the same sprint that added "how the cells combine" arithmetic. **Worst: two factual errors in our own curated data** — Exelis labeled "acquired 2019" (Harris acquired it May 2015; 2019 was the L3Harris merger) and Rockwell Collins "renamed 2023" (it entered by acquisition, UTC 2018). The source audit that followed re-opened all 17 rows against their filings and found the Exelis row's **source URL never supported the date it was cited for** (a pre-close shareholder-approval 8-K, replaced with the Item 2.01 completion filing), reclassified 3 events to the wrong `kind`, dropped 3 dollar figures the sources never stated, and caught a curator hazard where `normalize_name("United Technologies Corporation")` would have merged an unrelated $1.5M family into RTX. Schema gained `evidence`/`source_form`/`source_date`/`source_verified`; 2 rows are labelled name-inferred **on the row**; events are now annotated **per former name** (EXELIS acquired 2015 · ROCKWELL COLLINS acquired by UTC 2018 · RAYTHEON COMPANY merged 2020), each deep-linking to its `/families/` row. A re-judge independently spot-checked six curated dates and found **every one correct**. Final polish also fixed a regression the fix round itself introduced (arithmetic line and preview table disagreed on sign convention — now `+ O840 (−246,702)` substitutable straight from the row) and `/families/` at 390px (98px overflow with the **Source column entirely off-screen**, on the page whose whole argument is sourcing). 1,477 pytest / 748 vitest / tsc clean / **24/24 gates**. | 
 | PM-S3 | PM-review Sprint 3 — reach & self-description (spec `2026-07-30-pm-review.md` §P1-8, §P2-1..§P2-8, §Coverage). Eight tasks: a **390×844 mobile gate leg** built first (backlog #31 — Sprint 2 passed 24/24 and then failed judging on mobile clipping no gate exercised); **withdrawal of 87 false "zeroed out in FY2026" feed claims** (absence in an edition is not a zero — and the investigation surfaced backlog #32, a PB2026 taxonomy renumber the corpus cannot express); **RSS/Atom + 123 program and 55 company watch feeds** with a dollar magnitude on every card and a per-item linkage basis; **§P2-1 page weight** — `/programs/` 5,875,345 → 2,733,056 bytes (−53.5%; the spec blamed `/years/`, which measured as a 28 KB shell) — plus **§P2-2 `/years/` opens on money** and a mobile column-chip disclosure; **§P2-3/§P2-6 chart a11y** — accessible names, computed descriptions, "View as table" on 5 charts, a Sankey paint-order fix (gate 22 leg f), and a scope-vs-caution note vocabulary; **§P2-4/5/7/8 display** — company title-casing, distinct `0`/`<0.05`/`—` cell states, reproducible derivation strips, count notation; a **rebuilt `entity_xwalk`** correcting a ~73% understatement on 201 pages; and a new **build-derived `/coverage/`** page (12 rows, every figure recomputed at build time, 8 dated targets and 4 reasoned refusals) plus a **`/flow/` two-rivers reframe**. | gate 3 mobile leg (m1/m2, then **m3** added in the fix round) + gate 6 chart legs + gate 22 leg f + gate 24 leg h | ✅ **COMPLETE** 2026-08-05 (third panel 4/4/4 at both widths; live) — *Status corrected 2026-08-24. This cell read "GATES COMPLETE, VISUAL BAR NOT MET … NOT deployed" until then, contradicting this same file ~1,215 lines below, where the third judging panel is recorded at **390 → 4/4/4, 1440 → 4/4/4, unanimously and without a split** (commit `b87acbf`, "third judging panel clears the bar — 4/4/4 at both widths", 2026-08-05). The first two panels genuinely DID fail (2/2/2, then 3/3/3) and that history stays in the evidence section below — it is the substance of this row. The deploy claim is stale by construction: live HEAD is `c984d9c`, which contains `b87acbf`. What the panels left OPEN (#42 layout spine, #43 Fact-ID chip weight, Sankey labelling) remains open and is tracked there, not here.* *Re-checked 2026-09-25: #42 layout spine — closed 2026-09-01 (`f02deb0c`, with `db065c0c` and `29ab46be`; the `<dd>` and marker-less-list residue `dd86f8e7`, 2026-09-11); #43 — closed 2026-08-27 in its entry; Sankey labelling — every label plated and its value set against the node face, gate 22 leg (h) (`3111eae2`, 2026-09-12; `ecff0d6c`, 2026-09-18). Of the next cell's findings left unfixed: the 1440 Sankey value labels are that same work; the `/flow/` vs `/district/` counts are one registry published on `/coverage/#crosswalk` (`a1e8dc86`, 2026-09-18); filing pages case LDA names and keep the filed string beside them (`156a8e26`, 2026-09-18); and on the 2026-09-25 build the only U+2212 minus before a figure is the "FY N−1" prose on `/methodology/`. The 390 scroll-edge clipping was not re-measured here.* | **Visual judging FAILED twice: round 1 unanimous 2/2/2 at 390 and 3/3/3 at 1440; round 2, after the fix round, unanimous 3/3/3 at BOTH widths. Median never reached the ≥4 bar, and this row says so rather than rounding up.** Round 1's majors were all invisible to a 24/24 suite: **the home page painted the program title straight over its dollar delta** ("Test & Evaluation Science & Te**+$1.34B**ogy" — two of five figures on the front door unreadable); `/feed/` kept its desktop two-column row at 390, leaving ~110px for the headline (one or two words per line, ~1.4 cards per screen); **`/flow/`'s "View as table" — the sprint's own accessibility affordance — pushed the AMOUNT column out of its scroll box, so the fallback the chart's caption sends readers to carried no dollars at all**; and §P2-2 sorted the ROWS but not the viewport, so `/years/` still opened on FY2015A, empty for exactly the newest programs the new sort promotes, with the sorted column off-screen at both widths. **The gate work is the durable part.** (m3) — a label must not be painted over its value — was written, run against a deliberately-broken artifact, and **PASSED**, because it measured `getBoundingClientRect()` on a flex item that shrinks while its inline text overflows: the boxes never intersected, only the glyphs did. Rebuilt on painted extent (element + descendants + text line-boxes) it reproduces the shipped defect verbatim ("4/5 mover title vs change figure pair(s) collide — '0605238FGround Based Strategic Deterrent EMD' overprints '+$2.14B' by 59x20px"). The `/years/` leg was **strengthened, not relaxed**: it had pinned the LEFTMOST cell — a proxy that was passing on a column of em-dashes — and now reads the sorted key from the table's own `data-sorted-col` and measures that column (proof-can-fail: "300/300 sorted-column amount cell(s) are outside the 390px viewport — row 0: '7,696.9' left=993"). `/`, `/feed/` and `/flow/` joined the value-bearing sample; `/` had been in it but overflow-only, so the front page's sole assertion was one the defect could not trip. Round 2's majors were surfaces holding the answer in their own payload and not rendering it: **four different filings naming one PE in one quarter rendered as four identical rows** (registrant now on the row; the filing × program × matched-word grain also collapsed, Lockheed 1,296 → 1,219); **"Budget-Linked Awards" named no budget line** while `pe_bli` sat untyped in the sidecar; the chart table showed "RDT&E, Air Force" at $36.1B *and* $26.2B with no parent (now "from Air Force / Space Force" vs "from Classified Programs", 93/95 rows); the decade card claimed **"Ten fiscal years" on a five-year grid**; and `/companies/` said "total federal obligations" against a DoD-only lake. **Gate 1 then caught the fix's own cost** — naming the program on 318 award rows blew the page-weight ceiling by 172KB; the table was capped at 50 with its total stated (717,690 → 289,878 bytes) and **the ceiling was not touched**. Loop at final HEAD: 1,497 pytest / 853 vitest / tsc clean / eslint 0 errors / **24/24 gates** / verify-lineage PASS (31·53·22·528·34) / verify-phase5 assembly 8/8. **Live eval: FAILED first at citation 42/43 (q011 answered correctly through literal/echo SQL — `touched_tables` empty), PASSED on an immediate re-run at accuracy 47/48 and citation 43/43**; q011 has flaked twice before, so this is agent nondeterminism against a 100% bar, filed as backlog #36. The one persistent miss is q022 = backlog #34 (eval wording, not a regression; the gate passes on it). Findings left unfixed and why: the 390 Sankey still clips node values at the scroll edge (inherent to an 840px chart in a 356px scroller — mitigated by a swipe cue and the table view, not removed); 1440 Sankey value labels still sit on node bars and are crossed by de-obligation hairlines (chart-geometry work, not a copy fix); **`/data/` reports `dim_programs` at 1,739 against a site-wide claim of 1,741 — the parquet is right and the corpus number is two lines generous (backlog #35), which means the site currently overstates its own detail-grade coverage on the number `/coverage/` leads with**; `/flow/` "10 of 24 crosswalked PEs" vs `/district/` "17 of 1,741" unreconciled; filing pages keep their source ALL-CAPS registrant names; minus glyphs differ across pages. Commits a323b15→7734004 (7). |
 | Families-1 | Procurement history before FY2024 (platform families piece 1): PB2017–PB2023 P-1 points on procurement program pages through dated owner decisions on the printed budget code — `line_item_code` captured on every era P-1 row (migration 021), `p1_era_line_map` (6,927 era keys; class rulings R-DEC-ERA-SAME/EXCLUDE/HISTORY + owner batches R-DEC-ERA-B1…B6), `fct_program_decade_series`; F-15 fenced; F015E0 relabeled with its cited Lot 1 sentence | verify-era-map (legs a–f, in verify-phase5) + V5 F-15 identity + S4 A/B proof (diff = spec §10) + link-coverage V9 | ✅ DEPLOYED 2026-10-04 at 916ae88e (rollback tag 2026-10-04T210918Z) | 811/892 PB2026 + 79/89 decade-only procurement pages gain era points (629 and 42 of them with all seven editions), 16,494 points; citations 125,409 → 143,841 (+18,345 era, +87 SAM #10); era P-1 receipts complete PB2017–PB2023 2,205/2,232 · 2,322/2,355 · 2,368/2,403 · 2,465/2,496 · 2,553/2,622 · 2,670/2,697 · 2,658/2,697; F-15 default cells 67/67; gates: npm verify overall PASS (27/27), verify-phase5 PASS (eval 47/48, the miss q007 on the Lockheed Martin family's confidence level; citations 43/43), 5b1/5e/lineage/era-map PASS, link-coverage PASS, evals check PASS |
+| Families-1 FU-1 | Piece-1 follow-ups, release 1: `/years/` sharded (schema-2 core + lazy decade and detail shards) with its era fence lifted (#193, #206 T4, #207, #208); the 0390D Chem Demil O&M line under the route-safe key 0390DOM with a rollup-tier page and the era O&M chain as owner batch R-DEC-ERA-B7, the RDT&E line recorded as an R-1 restatement of 0708081D + 0708083D (#194); `p1_era_line_map.decided_on` (#206 T6); the v1 receipt files removed (#196); JASSM/C-130J search aliases (#197); one "tier pending" definition (T7); the F015E0 gloss (T9); verify-era-map legs g and h (T11); hardening #198–#205 | P1/P2/P2b/P3 proofs on snapshots fu-pre/fu-post, the write rehearsed on fu-post and fu-pre and its `--revert` on fu-pre ([proof](reviews/fu-release1-proof.md)) + yearsmatrix leg j + verify-era-map a–h + link-coverage V9 | ✅ DEPLOYED 2026-10-14 at e362c0a7 (rollback tag 2026-10-15T033621Z) | /years/ +14,985 era cells and the org-split rows' 63 modern cells, leg j 0 mismatches, core 1,100,823 / 344,303 gzip (budget 780,074), decade 1,390,739 / 433,932, detail 1,231,643 / 284,230 [p2b-report.json]; /program/0390DOM/ with 21 points before PB2024 [p1-content.txt]; totals chart panel 524 → 1,063 programs, FY2024A→FY2026R +9.34% → −2.61%, first→last +108.17% → +103.71% (Q15; told 2026-10-04: 524 → 1,056 and +9.3% → about −2.5%) [p2b-report.json]; citations 143,841 → 143,893 (+37 0390DOM, +15 SAM #10) [fu-release-counts.json]; 256 v1 receipt files gone; universe 385,268,393 → 385,271,636 ($385.3B); dbt assertions 196 → 199; gates: npm verify overall PASS, verify-phase5 PASS (eval 46/48, the misses q007, piece 1's, and q042, an analyst error filed as #210; citations 43/43), 5b1/5e/lineage/era-map a–h PASS, link-coverage PASS, evals check PASS; live: all 236 live-asset assertions and every live check passed [release-deploy.log, live-checks.txt] |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog — refresh orchestrator shipped 2026-09-18 (#8: `govbudget refresh`, sync shrink guards, launchd templates; loading the scheduler is the owner's action); accounts/alerts tier and the public analyst surface still backlog | — |
 
 ## Evaluator framework (how each thing is judged)
@@ -268,6 +281,60 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
    *Used by: every phase's final review; 5B-4's NL eval (≥90% + REFUSE handling).*
 
 ## Findings log (what we learned; feeds future phases)
+
+- **2026-10-14: Families piece-1 follow-ups, release 1.** Proven on two snapshots
+  of one live state, `.proofs/fu-pre` and `.proofs/fu-post` (equal pins: DuckDB at
+  copy, every parquet file but `sam/`, the site and raw_docs digests, each Postgres
+  table's row count and row md5 — two `pg_dump` archives of one database differ in
+  their header, so the dump sha is not a pin). On fu-post the Chem Demil write
+  committed once after a dry run (its revert file kept); on fu-pre, after its
+  exports, the same write equalled fu-post's, ids included, the two revert files'
+  pre-write rows were equal, `--revert` returned every Postgres pin to fu-pre's
+  pre-write pins, and a second `--revert` found nothing to revert; the abort
+  path's lake rebuild by the deployed code, rehearsed on a clone of fu-post,
+  equalled fu-pre's lake. The live write's pre-image rows equalled the
+  rehearsals'. One `dbt build` of the seeds and
+  `stg_budget_lines+` built the map before the program table and ran the
+  conservation test after both. The re-paired proofs held: P2 (A@fu-pre vs B@fu-pre,
+  code only) moved no fact; P2b put 14,985 era and 63 modern cells on /years/ with
+  0 mismatches against the program pages; P1 (B@fu-pre vs B@fu-post, lake only)
+  added 37 facts, every one traced to 0390DOM, and moved exactly eleven
+  derived aggregates by +3,243 — the design's §4.7 named five; the other six are
+  the flow chart's "Other" nodes and edges on the same path; P3 moved the F-15
+  history only in F015E0's note ([proof](reviews/fu-release1-proof.md)). A fresh
+  snapshot before the write carried fu-pre's pins; after it, the live lake equalled
+  fu-post (`scripts/fu/lake_parity.py`), and the release export equalled B@fu-post
+  (`proof diff` with the control's noise classes: changed 0, and no SAM rule
+  matched, because the daily job had stored the registrations below before the
+  snapshots were taken).
+  The export also shipped 15 SAM.gov registrations stored since 916ae88e
+  (`companies_with_sam` 149 → 164, one derived citation each; citations 143,841 →
+  143,893 = +37 0390DOM +15 SAM). Deployed by `deploy.sh` from the families
+  worktree (rollback tag 2026-10-15T033621Z; all 236 live-asset assertions
+  passed); live: `/.build-meta.json` e362c0a7, the three
+  /years/ files share one `build_id`, a /years/ load fetches only the core,
+  `/program/0390DOM/` 200, `/json/budget-pdf-receipts/00.json` 404, sitemap 4,350,
+  the JASSM and C-130J aliases on their #55 pages, F01500's FY2015 actuals
+  (`3bd9c921b2397209`) on /years/. The totals chart's panel is
+  1,063, not the design's 1,056: the design's simulation left the
+  seven org-split rows without cells, and #207's fix gives them all twelve
+  default decade columns. It gives them nothing more: their `fy_2025_total`,
+  `fy2526_change` and `fy2526_pct_change` stay empty, because the trajectory
+  mart has no `fy2025_total` for account 0300D, so the plan's decision 11 did
+  not hold (the proof note's P2b). The proof stopped twice and each stop was
+  fixed at its cause, then re-run (the proof note's "Two stops and their
+  fixes"): two tied $1,500,000.00 awards swapped places in
+  `json/flows/0605502E.json` after the lake rebuild, so Task 21f2 gave the flows
+  top-12 query a total order (`order by dollars desc, piid, recipient_uei,
+  pop_state, pop_district, family_key`) and added one optional P2 code rule (rule
+  24), and no noise class; and /program/0390DOM/'s TOA chips rendered "P-1/R-1
+  TOA", so Task 21h2 made them read "P-1 TOA", the exhibit every figure on the
+  page cites, guarded by gate 23 leg f4 (superseding contract note G2-6, which
+  had expected the generic chip). The 0390DOM row also enters
+  `fct_budget_trajectory` (1,988 → 1,989; eval q017 refreshed in `e362c0a7`),
+  and the dbt assertion count moved 196 → 199. verify-phase5 scored eval 46/48
+  (citations 43/43): q007 is piece 1's miss, and q042 ended in an analyst error,
+  "Object of type date is not JSON serializable" (#210).
 
 - **2026-10-04: Families piece 1 released.** Release export from the main lake
   (pre-release copy `.proofs/release-pre-site`); against it, in the program
@@ -4852,7 +4919,17 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   then lift the era fence. Source: `src/govbudget/export_site.py`
   (`_YEARS_MATRIX_MAX_BYTES`, `_emit_years_matrix`),
   `site/src/app/years/page.tsx`. Effort: days.
-  **Status:** open (2026-10-02).
+  **Status:** CLOSED 2026-10-14 — follow-ups release 1 (deployed e362c0a7,
+  rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): /years/ ships as a schema-2
+  core `json/years_matrix.json` (1,100,823 bytes, 344,303 gzip, under the
+  780,074 budget) plus the lazy `json/years_matrix/decade.json` and
+  `json/years_matrix/detail.json`, each under the unchanged 4 MiB cap measured
+  on the bytes written; the era fence is lifted, adding the 14,985
+  PB2017–PB2023 cells the program pages carry (yearsmatrix leg j: 0 mismatches
+  against the sidecars). #206 T4 closes with it.
+  *(Earlier marker below.)*
+  **Status (2026-10-02):** open (2026-10-02).
 
 - **#194 The P-1 loader drops 0390D's real Chem Demil O&M and RDT&E lines
   as section headers.** `_is_valid_pe_bli`
@@ -4898,7 +4975,20 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   PEs. The O&M line loads under the route-safe key `0390DOM` with a page, and
   its era chain joins that page as owner batch B7
   (`docs/superpowers/specs/2026-10-04-families-piece1-followups-design.md` §4).
-  **Status:** open (2026-10-02).
+  **Status:** CLOSED 2026-10-14 — follow-ups release 1 (deployed e362c0a7,
+  rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): the O&M line loads under the
+  route-safe key 0390DOM (the printed code O&M stays in `line_item_code`;
+  `dbt/seeds/p1_route_safe_codes.csv`) with the rollup-tier page
+  /program/0390DOM/; the RDT&E line is recorded as an R-1 restatement of
+  0708081D + 0708083D and gets no page (owner, Q1 (a)); the era O&M chain
+  joins 0390DOM as owner batch R-DEC-ERA-B7 and the era RDT&E chain keeps
+  `exclude_route_unsafe` (Q4); the 0390D account's PB2026 FY24A / FY25E /
+  FY26R are now the P-1's own 1,089,964 / 775,507 / 213,282;
+  `scripts/clean_junk_pe_bli.py` is retired;
+  `assert_budget_lines_route_safe_pe_bli` guards `budget_lines`.
+  *(Earlier marker below.)*
+  **Status (2026-10-02):** open (2026-10-02).
 
 - **#195 The JLTV continuation sentence is cited to a book that does not
   print it.** Narrative fact `136baeef904dd052` (5731D15610, the
@@ -4942,7 +5032,15 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   `prepare-assets.mjs`. Found by the families piece-1 review. Source:
   `src/govbudget/budget_pdf_receipts.py`,
   `site/scripts/prepare-assets.mjs`. Effort: hours.
-  **Status:** open (2026-10-02).
+  **Status:** CLOSED 2026-10-14 — follow-ups release 1 (deployed e362c0a7,
+  rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md):
+  `export_budget_pdf_receipts`, its two helpers, nine unused imports and
+  `data-seeds/f15_budget_pdf_sources.json` are removed; the export deletes the
+  256 v1 shards and `prepare-assets.mjs` copies only `v2/`; live
+  /json/budget-pdf-receipts/00.json answers 404 while `v2/` answers 200.
+  *(Earlier marker below.)*
+  **Status (2026-10-02):** open (2026-10-02).
 
 - **#197 `data-seeds/search_aliases.csv` still routes JASSM and C-130J to
   the pages #55 moved them off.** Its line 3 sends a search for "JASSM" to
@@ -4959,7 +5057,14 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   source. Source: `data-seeds/search_aliases.csv`,
   `dbt/seeds/program_aliases.csv`, `src/govbudget/export_site.py` (the
   search-aliases block). Effort: hours.
-  **Status:** open (2026-10-02).
+  **Status:** CLOSED 2026-10-14 — follow-ups release 1 (deployed e362c0a7,
+  rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): `search_aliases.csv` routes
+  JASSM to /program/0207325F/ and C-130J to /program/0401132F/, as #55 did; a
+  test requires every search term that matches a `program_aliases` alias to
+  target a member of that alias's target set.
+  *(Earlier marker below.)*
+  **Status (2026-10-02):** open (2026-10-02).
 
 - **#198 Era-map review tooling: guards and test gaps the families piece 1
   reviews deferred.** `era-map propose`/`ratify` and the owner-review renderer
@@ -4977,7 +5082,26 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   Source: `src/govbudget/jbooks/era_map.py`, `scripts/era/review_batch_page.py`,
   `docs/superpowers/plans/2026-10-02-era-procurement-history/tasks/12-ratify-check-cli.md`.
   Effort: days.
-  **Status:** open (2026-10-04).
+  **Status:** PARTIAL 2026-10-14 — follow-ups Task 4, shipped in follow-ups
+  release 1 (deployed e362c0a7, rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): rule 4(b) runs in `propose`;
+  a class result that differs from a seeded decision goes to review (how B7
+  reached the owner); `propose` writes its five outputs atomically;
+  `--decided-on` defaults to `CLASS_RULINGS_DECIDED_ON`; literal successors
+  first; evidence quotes escaped; `EraKeyConflict` lives in `era_keys`;
+  `ratify` reads chains.csv only for successors and reports every error per
+  row; the review page records review.csv's sha256 and refuses a changed file;
+  ratify's success message names the one build invocation; tests pin that a
+  mere mention is not a successor and that `propose` opens the lake read-only;
+  and (Task 8) UNSAFE narrows to the unaliased (0390D, RDT&E) pair, any other
+  unsafe code raising. Not done (owner, Q22, 2026-10-04): the successor search
+  for the 133 digits-only chains ($20,293,971K, all history_only, so no page
+  changes) and the dict field in the frozen `Chain` (never hashed). Still open
+  (neither scheduled nor closed by the follow-ups design): titles containing
+  ' | ' read as drift (fails safe), and the test gaps None in a present key, a
+  multi-page collision chain and per-edition R3.
+  *(Earlier marker below.)*
+  **Status (2026-10-04):** open (2026-10-04).
 
 - **#199 Proof tooling and proof notes: hardening deferred from families
   piece 1.** `govbudget proof snapshot|diff`, `scripts/era/fact_stability.py`
@@ -4998,7 +5122,22 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   `scripts/era/s4_report.py`, `docs/superpowers/reviews/families-s1-proof.md`,
   `docs/superpowers/plans/2026-10-02-era-procurement-history/tasks/03-proof-tooling.md`.
   Effort: days.
-  **Status:** open (2026-10-04).
+  **Status:** CLOSED 2026-10-14 — follow-ups Task 2, used by follow-ups
+  release 1 (deployed e362c0a7, rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): snapshot hermeticity checked
+  by resolved path, the SAM window over the whole copy, the symlink scan and
+  digests before `create database` (a failure drops only the tool's own
+  database), a quoted env.sh default, a DSN with a password refused, the
+  untested refusals tested, non-finite JSON-in-string values kept as text,
+  noise file schema 2 with tree digests (a DIFFERENT control deletes a stale
+  file), `fact_stability.py` on a public proof API, the `s4_report` docstring,
+  and dated notes on families-s1-proof.md and families-s1b-proof.md. Not done
+  (owner, Q22, 2026-10-04): `measured_on` masked at any depth, dotted numeric
+  text, two noisy lenient columns (fails safe), the 16-hex `{fid}` rule (no
+  live segments), a repeatable `--noise-from`, and expected-diff rules 5–8,
+  17, 33 and 35 (built when piece 2's proof needs them).
+  *(Earlier marker below.)*
+  **Status (2026-10-04):** open (2026-10-04).
 
 - **#200 link-coverage (V9) fails open in four corners.** All four are outside
   the release path today (see the families piece 1 final review):
@@ -5008,7 +5147,15 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   - Task 5: errors end in a traceback, not "link-coverage: FAIL", and non-string inputs raise TypeError.
   Source: `src/govbudget/link_coverage.py`, `src/govbudget/cli.py`
   (`cmd_link_coverage`). Effort: hours.
-  **Status:** open (2026-10-04).
+  **Status:** CLOSED 2026-10-14 — follow-ups Task 5, run in follow-ups release
+  1 (deployed e362c0a7, rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): link-coverage fails when the
+  baseline recorded `receipts_match_citations` and the report has none,
+  compares before it writes and refuses one path for both, counts a summary
+  card with a value and no citation as (d), and reports the detail cards cited
+  by XML path with no fact ID as their own count (Q20); tool errors exit 2.
+  *(Earlier marker below.)*
+  **Status (2026-10-04):** open (2026-10-04).
 
 - **#201 F-15 snapshot and pin tooling, and the /families/f-15/ F015E0 note.**
   - Task 4: f15-page-snapshot skips prose outside the matrix (coverage paragraph, row meta, Partial badge).
@@ -5021,7 +5168,21 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   Source: `site/scripts/f15-page-snapshot.mjs`, `site/scripts/gates/family-history.mjs`,
   `site/src/components/family-funding-history.tsx`, `site/scripts/gates/build.mjs`.
   Effort: hours.
-  **Status:** open (2026-10-04).
+  **Status:** CLOSED 2026-10-14 — follow-ups Tasks 20 and 21h, shipped in
+  follow-ups release 1 (deployed e362c0a7, rollback tag 2026-10-15T033621Z;
+  proof docs/superpowers/reviews/fu-release1-proof.md): realpath direct-run
+  guards in the five scripts; the page snapshot captures the coverage
+  paragraph, total-row header, Partial badges, matrix note and notes list
+  (re-pinned in Task 21h); the capture rebuilds from the round-tripped fixture
+  and writes atomically; the family-history gate checks the note href and the
+  receipt's page, sha and `#page=`; the F015E0 row header carries the
+  `aria-label` "BLI F015E0 F-15e (FY2020 F-15EX Lot 1 aircraft) Procurement ·
+  Historical code" (Q21); verify.mjs prints "+N more notes". Not done (owner,
+  Q22, 2026-10-04): trimming /families/f-15/ now (1,390 gzip bytes are left
+  after T9, measured on the release build); the lazy narratives wait for piece
+  2.
+  *(Earlier marker below.)*
+  **Status (2026-10-04):** open (2026-10-04).
 
 - **#202 P-1 loader tripwires for an era re-load.**
   - Task 6: the era grouping key includes account_title and budget_activity_title, which the upsert key does not. A title variation would send two groups to one DB row, and the last write wins (0 cases in the 20 workbooks). The p1_loader.py:179 comment is inaccurate. Add a P1Row upsert-key uniqueness check.
@@ -5030,7 +5191,14 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   - Task 9: the `EMPTY_ORG` comment in crosswalk.py dates S1b 2026-10-02; the live write ran 2026-10-03.
   Source: `src/govbudget/jbooks/p1_loader.py`, `src/govbudget/jbooks/crosswalk.py`.
   Effort: hours.
-  **Status:** open (2026-10-04).
+  **Status:** CLOSED 2026-10-14 — follow-ups Task 3, ahead of follow-ups
+  release 1 (deployed e362c0a7, rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): `P1KeyConflict` when two
+  groups share the full upsert key (amount_type included; 0 across the 20
+  workbooks), a modern P-1 test for `line_item_code`, the classified-title
+  tripwire test, and the p1_loader comment and the crosswalk S1b date fixed.
+  *(Earlier marker below.)*
+  **Status (2026-10-04):** open (2026-10-04).
 
 - **#203 verify-era-map and the era dbt tests: coverage gaps.**
   - Task 13: unit-test gaps. There is no account-collision fixture row, and the complete, one_code and P-1R count legs are uncovered (live planted defects fire).
@@ -5041,20 +5209,47 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   - Task 14: leg a's classified-row filter has no unit test. Failure branches are untested (wrong sha, wrong line number, non-era parse, multi-identity key, stale build). A bad --legs value ends in a traceback.
   Source: `dbt/tests/assert_p1_era_map_collision_pinned.sql`,
   `src/govbudget/verify_era_map.py`, `tests/test_dbt_build.py`. Effort: hours.
-  **Status:** open (2026-10-04).
+  **Status:** CLOSED 2026-10-14 — follow-ups Task 9, shipped in follow-ups
+  release 1 (deployed e362c0a7, rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md):
+  `assert_p1_era_map_collision_pinned` requires both pins; the full era-key
+  regex at all ten sites; `_ERA_KEY_RE` anchored with `\Z`; the four unplanted
+  legs planted; leg a's classified filter and failure branches tested; a bad
+  `--legs` exits 2; `ensure_lake_columns` unlinks its temporary file. Not done
+  (owner, Q22, 2026-10-04): a sheet name in `source_cells` (every era row
+  comes from "Exhibit P-1", and the change would alter a published dataset).
+  *(Earlier marker below.)*
+  **Status (2026-10-04):** open (2026-10-04).
 
 - **#204 Era fences rely on optional arguments.**
   - Task 18: `era_grain_fids` defaults to `frozenset()` in `_emit_lineage`, the two sidecar writers and `_emit_years_matrix`. A future second caller that omits it would put era points on a fenced surface silently.
   - Task 18: `build_lineage_flow` is protected only by its FY2026-only rule (`AMOUNT_FY`).
   Fix: make the parameter required (13 call sites including tests) and add the invariant comment at the `build_lineage_flow` call.
   Source: `src/govbudget/export_site.py`, `src/govbudget/lineage/flow.py`. Effort: hours.
-  **Status:** open (2026-10-04).
+  **Status:** CLOSED 2026-10-14 — follow-ups Task 16, shipped in follow-ups
+  release 1 (deployed e362c0a7, rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): `era_grain_fids` is a
+  required keyword-only argument of `_emit_lineage`, `_emit_json_sidecars` and
+  `_write_all_sidecars` (an `inspect.signature` test pins it);
+  `_emit_years_matrix` no longer takes it (#193 lifted that fence); an
+  invariant at the `build_lineage_flow` call asserts that no chosen amount fid
+  is an era grain.
+  *(Earlier marker below.)*
+  **Status (2026-10-04):** open (2026-10-04).
 
 - **#205 `npm ci` refuses the site lockfile, and two gate comments are stale.**
   - Task 1: `site/package-lock.json` locks @emnapi/wasi-threads 1.2.2 where 1.2.3 is required. `npm ci` exits EUSAGE (reproduced 2026-10-04; same files on dc801fdb). Worktrees clone main's node_modules instead. Vercel does not build the site, so deploys are unaffected.
   - Task 5: the /methodology/ and /coverage/ entries in build.mjs still say the era table is "decided in Task 19". It was decided: /downloads/.
   Source: `site/package-lock.json`, `site/scripts/gates/build.mjs`. Effort: hours.
-  **Status:** open (2026-10-04).
+  **Status:** CLOSED 2026-10-14 — follow-ups Task 1, used by follow-ups
+  release 1 (deployed e362c0a7, rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): `site/package-lock.json`
+  locks @emnapi/wasi-threads 1.2.3 and `npm ci` passes; the two build.mjs
+  comments say the era table was decided on 2026-10-02 at plan review:
+  /downloads/. Not done (owner, Q22, 2026-10-04): a `package.json` overrides
+  pin, unless the one-entry fix breaks again.
+  *(Earlier marker below.)*
+  **Status (2026-10-04):** open (2026-10-04).
 
 - **#206 Families piece 1: copy and claims the final review left open.**
   The final review's truthfulness lens (2026-10-04) fixed the home trust
@@ -5070,7 +5265,18 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   `site/src/app/methodology/page.tsx`, `site/src/app/about/page.tsx`,
   `site/src/components/era-map-table.tsx`, `src/govbudget/f15_funding_history.py`,
   `src/govbudget/verify_era_map.py`. Effort: days.
-  **Status:** open (2026-10-04).
+  **Status:** CLOSED 2026-10-14 — follow-ups release 1 (deployed e362c0a7,
+  rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): T4 by #193 (yearsmatrix leg
+  j proves "absent means absent"; the Q13 clause on /methodology/); T6
+  `p1_era_line_map` publishes `decided_on` (column 14 of 18; verify-era-map
+  leg b compares it with the seed); T7 one definition of "tier pending" on
+  /methodology/ and /about/ (the Q16 strings); T9 the F015E0 note reads "This
+  exhibit [the PB2026 F-15EX AP (F015EX) P-40] does not include …" (the
+  owner's string, Q17); T11 verify-era-map legs g (era minters) and h (era
+  book diffs).
+  *(Earlier marker below.)*
+  **Status (2026-10-04):** open (2026-10-04).
 
 - **#207 Org-split rows get no decade cells on /years/, and /programs/ shows
   "—" for them.** `_emit_years_matrix` (`src/govbudget/export_site.py`) builds
@@ -5088,7 +5294,18 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   ROADMAP #45, inside #193's work; the /years/ sidecar-parity gate leg proves
   it. Source: `src/govbudget/export_site.py` (`_acct_key` in
   `_emit_years_matrix`). Effort: hours.
-  **Status:** open (2026-10-04).
+  **Status:** CLOSED 2026-10-14 — follow-ups Task 13, shipped in follow-ups
+  release 1 (deployed e362c0a7, rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): `_acct_key` gates the
+  account on `is_account_split`, so the seven org-split rows gain their 63
+  modern and 147 era decade cells on /years/ (P2b) and fill all twelve default
+  decade columns; /programs/ shows their FY24 and FY26. Their non-decade
+  /years/ cells are unchanged: `fy_2025_total`, `fy2526_change` and
+  `fy2526_pct_change` stay empty, because the trajectory mart has no
+  `fy2025_total` for account 0300D (the proof note's P2b; the plan's decision
+  11 had expected them).
+  *(Earlier marker below.)*
+  **Status (2026-10-04):** open (2026-10-04).
 
 - **#208 /agency/[org]/ looks decade cells up by the bare `pe_bli`, so its
   split-key rows show "—".** `getProgramDecadeCells` keys the cells by
@@ -5102,7 +5319,111 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   slug that differs from `pe_bli`). Fix: look up by `slug ?? pe_bli`, inside
   #193's island work. Source: `site/src/app/agency/[org]/page.tsx`,
   `site/src/lib/data.ts` (`getProgramDecadeCells`). Effort: hours.
-  **Status:** open (2026-10-04).
+  **Status:** CLOSED 2026-10-14 — follow-ups Task 14, shipped in follow-ups
+  release 1 (deployed e362c0a7, rollback tag 2026-10-15T033621Z; proof
+  docs/superpowers/reviews/fu-release1-proof.md): /agency/[org]/ looks decade
+  cells up by `slug ?? pe_bli`, so the 27 split-key rows render their cells.
+  *(Earlier marker below.)*
+  **Status (2026-10-04):** open (2026-10-04).
+
+- **#209 `site/src/lib/aliases.ts` and the search seeds disagree on B-21.**
+  The chip table `PROGRAM_ALIASES` in `site/src/lib/aliases.ts` maps B-21 to
+  0604015F (the Long Range Strike - Bomber RDT&E line) as well as B02100, under
+  different chip semantics, while `dbt/seeds/program_aliases.csv` sends B-21 to
+  B02100 alone. #197's cross-seed test (`tests/test_dossiers_research.py`)
+  checks only `data-seeds/search_aliases.csv` against
+  `dbt/seeds/program_aliases.csv`; the owner chose not to extend it to
+  `aliases.ts` and to leave this for the families registry (piece 2), which
+  becomes the single source of program aliases (follow-ups design Q23,
+  2026-10-04; re-read 2026-10-14). Source: `site/src/lib/aliases.ts`. Effort: hours.
+  **Status:** open (2026-10-14) — for piece 2.
+
+- **#210 The analyst agent crashes on a DATE value in a query result.**
+  `run` in `src/govbudget/analyst/agent.py` hands each `run_sql` result back
+  to the model as `json.dumps(payload)` with no `default`, and only `SqlError`
+  is caught, so a query whose rows hold a DATE raises `TypeError` and the
+  question ends in an agent error, neither an answer nor a refusal. The
+  follow-ups release 1's verify-phase5 (2026-10-14, eval 46/48, still PASS)
+  scored q042 (`evals/phase5_questions.yaml`, expected REFUSE) an ERROR,
+  "Object of type date is not JSON serializable"; the other miss, q007, is
+  piece 1's. The analyst is an internal tool (the public analyst surface is
+  still backlog). Fix: dump dates and any other non-JSON scalar as ISO text
+  in the tool result, with a test that runs a DATE column through the loop.
+  Source: `src/govbudget/analyst/agent.py`. Effort: hours.
+  **Status:** open (2026-10-14).
+
+- **#211 W1 test output is noisy, and one gate script cannot run alone.**
+  The follow-ups release-1 runs pass but print warnings no gate reads
+  (2026-10-14; `release-site-vitest.log`, `dbt-build-live.log` under
+  `.proofs/fu-logs/`, copied to the plan ledger): vitest prints 114 React
+  "not wrapped in act(...)" warnings, chiefly from the `company-cite-shards`,
+  `district-cite-shards`, `workbook-card` and `f15-family-browser` tests, and
+  `<AssetConfigProvider>` (`site/src/components/asset-config.tsx`) fetches
+  `/config.json` unmocked under jsdom ("Failed to load /config.json — falling
+  back to default '/assets'", 8 times); each `dbt build` of the release and its
+  proofs prints 25
+  `MissingArgumentsPropertyInGenericTestDeprecation` warnings (generic-test
+  arguments not nested under `arguments:`, e.g. `accepted_values` on
+  `dim_entities` in `dbt/models/marts/schema.yml`); and
+  `node site/scripts/gates/basis.mjs` run directly throws `ReferenceError:
+  Cannot access 'RECON_BADGE_VERDICT' before initialization`, because its
+  `isDirectRun` block runs before that `const` is defined (`npm run verify`
+  imports the module and is unaffected). Fix: await the async renders, mock
+  `/config.json` in the vitest setup, nest the generic-test arguments, and
+  move the direct-run block to the end of `basis.mjs`. Source:
+  `site/src/__tests__/`, `site/src/components/asset-config.tsx`,
+  `dbt/models/marts/schema.yml`, `site/scripts/gates/basis.mjs`.
+  Effort: hours.
+  **Status:** open (2026-10-14).
+
+- **#212 Four "P-1/R-1 workbook" phrases remain on /program/0390DOM/.**
+  The follow-ups release 1 (Task 21h2) made the page's TOA chips read "P-1
+  TOA · PB2026", the exhibit every figure on it cites (sheet "Exhibit P-1"),
+  but four phrases from templates every program page shares still name both
+  exhibits there: the meta description's "(P-1/R-1 workbook total obligation
+  authority)" (`site/src/app/program/[peBli]/page.tsx`), the budget-line
+  section's caption "P-1/R-1 workbook Total Obligation Authority basis"
+  (`site/src/components/program-budget-lines.tsx`), the decade view's caption
+  "Decade view — P-1/R-1 workbook TOA basis"
+  (`site/src/components/program-figures.tsx`), and the derived FY2026 change
+  formula "(P-1/R-1 workbook toa basis, USD thousands; summary union)"
+  (`src/govbudget/export_site.py`). None is a chip, so gate 23 does not read
+  them. For the owner: narrow them to P-1 on an `om` page (the smaller true
+  claim), or keep the shared wording. Found by the Task 21h2 review
+  (2026-10-14). Source: `site/src/app/program/[peBli]/page.tsx`.
+  Effort: hours.
+  **Status:** open (2026-10-14).
+
+- **#213 The flows top-12 tiebreak acts only on exactly equal sums.**
+  Follow-ups Task 21f2 (`21bebdfb`) orders a flows sidecar's awards by
+  `dollars desc, piid, recipient_uei, pop_state, pop_district, family_key`
+  (`src/govbudget/export_site.py`), so two awards whose DOUBLE sums are equal
+  (0605502E's $1,500,000.00 pair) always publish in one order. Two sums that
+  differ only in float noise are not equal, so such a near-tie could still
+  reorder after a lake rebuild; none exists today (the proof found no
+  adjacent awards within a cent that were not equal,
+  `docs/superpowers/reviews/fu-release1-proof.md`). If a release diff ever
+  shows one, round `dollars` to the cent inside the ORDER BY; never widen a
+  proof rule or add a noise class for it. Source:
+  `src/govbudget/export_site.py` (the flows top-12 query),
+  `tests/test_export_site_flow_awards_order.py`. Effort: hours.
+  **Status:** open (2026-10-14).
+
+- **#214 Gate 23 leg f4 knows two exhibit sheets and pairs a chip with the
+  figure before it.** Leg f4 (`site/scripts/gates/basis.mjs`,
+  `SHEET_BY_CHIP_CLAIM`, added by follow-ups Task 21h2) holds each
+  single-exhibit TOA chip on an `om` page to the citation sheet of the figure
+  it sits on, and its table names only "Exhibit P-1" and "Exhibit R-1": a
+  figure cited to sheet "Exhibit P-1R" (403 `budget_lines` rows in the
+  release export, none on an `om` page today) would fail the leg. "Sits on"
+  means the nearest preceding `[data-amount]` in document order, so a chip
+  rendered before its own figure would be judged against another figure's
+  citation. It covers one page today, /program/0390DOM/ (on the proof build
+  it resolved 5 chips there, each on a figure citing "Exhibit P-1",
+  `gate23-basis-direct.log`). Fix: add "Exhibit P-1R" to the table and tie
+  each chip to its figure explicitly. Found by the Task 21h2 review
+  (2026-10-14). Source: `site/scripts/gates/basis.mjs`. Effort: hours.
+  **Status:** open (2026-10-14).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
@@ -5384,7 +5705,17 @@ docs/superpowers/ROADMAP.md`.
 10. **SAM entity extract / Splink** entity-resolution upgrade (deferred with
     evidence since Phase 2).
 
-    **Status:** PARTIAL 2026-10-04 — 149 registrations are live (87 more
+    **Status:** PARTIAL 2026-10-14 — 164 registrations are live (15 more
+    than the 149 of 916ae88e), shipped with the piece-1 follow-ups release 1 at
+    e362c0a7 (rollback tag 2026-10-15T033621Z): the daily job stored them after the
+    2026-10-04 export and the release export carried them (`json/sam` 149 → 164
+    receipts, `site_meta.counts.companies_with_sam` 149 → 164, one derived
+    citation each). All 200 published families have a stored SAM answer
+    (`data/parquet/sam/daily/state.json`, read 2026-10-14); the Splink
+    entity-resolution upgrade is still open.
+    *(Earlier markers below.)*
+
+    **Status (2026-10-04):** PARTIAL 2026-10-04 — 149 registrations are live (87 more
     than the 62 of aa714d7f), shipped with the families piece 1 deploy at
     916ae88e (rollback tag 2026-10-04T210918Z): the daily job stored them after the
     2026-10-02 export and the release export carried them (`json/sam` 62 → 149
