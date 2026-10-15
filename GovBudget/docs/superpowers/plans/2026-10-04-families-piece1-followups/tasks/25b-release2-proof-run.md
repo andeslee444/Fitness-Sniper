@@ -140,7 +140,7 @@ cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/familie
 P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs
 uv run --project . python -m govbudget proof diff "$P/fu2-B/site" "$P/fu2-Bpost/site" --noise-from "$P/fu2-logs/noise-fu2.json" --expect docs/superpowers/plans/2026-10-04-families-piece1-followups/expected-diff-r2-narratives.json --report "$P/fu2-logs/p1-report.json" > "$P/fu2-logs/diff-p1.txt" 2>&1; echo "exit=$?"; grep -E "^  rule |UNEXPECTED|UNMET|^proof diff:" "$P/fu2-logs/diff-p1.txt"
 ```
-Expected: `exit=0`; 19 rule lines — rule 0 (`sha256`) matched 4206, rule 1 (`page_number`) 4405, rules 2–5 (`x0`, `x1`, `top_pt`, `bottom_pt`) about 4331 / 4378 / 4401 / 4401, rules 6–7 (`page_width`, `page_height`) 4177, rule 8 (`resolution`) 4340, rules 9–10 (`hosted_pdf_url`, `official_url`) 4405, rule 11 (`retrieved_at`) 4206, rule 12 (the cite shards) the sum of the twelve (about 51,832), rule 13 (`citations.parquet`) 1, rule 14 (the audit's `citation_sha256`) 1, rule 15 (`pdfs/*.pdf` only in B) 20, rules 16–17 (`pdf_count`) 1 each, rule 18 (sidecar rails) ≥ 1; no `UNEXPECTED differences` and no `UNMET required rule`; last line `proof diff: PASS`. A FAIL names each unexpected path: stop and explain it; never widen the list without the owner.
+Expected: `exit=0`; 19 rule lines — rule 0 (`sha256`) matched 4206, rule 1 (`page_number`) 4405, rules 2–5 (`x0`, `x1`, `top_pt`, `bottom_pt`) about 4331 / 4378 / 4401 / 4401, rules 6–7 (`page_width`, `page_height`) 4177, rule 8 (`resolution`) 4340, rules 9–10 (`hosted_pdf_url`, `official_url`) 4405, rule 11 (`retrieved_at`) 4206, rule 12 (the cite shards) the sum of the twelve (about 51,832), rule 13 (`citations.parquet`) 1, rule 14 (the audit's `citation_sha256`) 1, rule 15 (`pdfs/*.pdf` only in B) 20, rules 16–17 (`pdf_count`) 1 each, rule 18 (sidecar rails) ≥ 1 (a removed and an added rail entry per moved evidence page, so twice Step 10's `rail_pages_moved`; rule 18 alone cannot tell a moved page from a dropped, added or changed edge, so the moved-page figure is read in Step 10 from the report, which compares the rails); no `UNEXPECTED differences` and no `UNMET required rule`; last line `proof diff: PASS`. A FAIL names each unexpected path: stop and explain it; never widen the list without the owner.
 
 - [ ] **Step 10: The relocation, field by field**
 
@@ -148,11 +148,20 @@ Expected: `exit=0`; 19 rule lines — rule 0 (`sha256`) matched 4206, rule 1 (`p
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
 P=/Users/andeslee/Documents/Cursor-Projects/GovBudget/.proofs
 (source "$P/fu2/env.sh" && uv run --project . python scripts/fu/narrative_relocation_report.py --a "$P/fu2-B/site" --b "$P/fu2-Bpost/site" --pg-dsn "$GOVBUDGET_PG_DSN" --unchanged e7d5bcfb4a30f458 --watch 136baeef904dd052 --watch 033016199ca94aa7 --watch 906bcdda2a0660d1 --report "$P/fu2-logs/relocation-report.json"); echo "exit=$?"
+K=$(grep -oE '^lineage: [0-9]+ rail evidence page' "$P/fu2-logs/export-fu2-Bpost.log" | cut -d' ' -f2); uv run --project . python - "$P/fu2-logs/relocation-report.json" "${K:?no lineage line in export-fu2-Bpost.log}" <<'PY'
+import json, sys
+report, k = json.load(open(sys.argv[1])), int(sys.argv[2])
+moved = report["counts"]["rail_pages_moved"]
+print(f"rail_pages_moved {moved} (export-fu2-Bpost: {k}); report ok {report['ok']}")
+sys.exit(0 if report["ok"] and moved == k >= 1 else 1)
+PY
+echo "rail check exit=$?"
 ```
 Expected:
 
 ```
 narrative citations 11717: unchanged 7312, located 4177, relocated 228
+rail evidence pages moved: <k>
 PDFs only B hosts: 20 (162,040,168 bytes)
   e7d5bcfb4a30f458: A {'sha256': '528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e', 'page_number': 71} -> B {'sha256': '528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e', 'page_number': 71}
   136baeef904dd052: A {'sha256': 'a0b31f94ab70ce33e1b4300355ad55d2efd7e2722876998e39bf2c99b7b1a87f', 'page_number': None} -> B {'sha256': '184228d828aab1d64819d05f7cd66f24de5e7e28fbeccacf89db50fa15078195', 'page_number': 100}
@@ -160,5 +169,7 @@ PDFs only B hosts: 20 (162,040,168 bytes)
   906bcdda2a0660d1: A {'sha256': 'f68f0afc0cb65fda994610b350f8e2fca4877986c9a0e3438fa3ee02b11a0aa6', 'page_number': None} -> B {'sha256': '1623a79d35fd922ba6c87e8e8cbe12f0e960accdef00395d00efff0dfb35b559', 'page_number': 185}
 narrative-relocation: PASS
 exit=0
+rail_pages_moved <k> (export-fu2-Bpost: <k>); report ok True
+rail check exit=0
 ```
-(4,177 located = Task 23c's 4,158 plus the 19 lineage-evidence rows; 7,312 = 11,717 − 4,177 − 228. The 20 PDFs are the 20 superseded PB2026 volumes of Task 23c Step 6's list.) A FAIL lists its violations: stop.
+(4,177 located = Task 23c's 4,158 plus the 19 lineage-evidence rows; 7,312 = 11,717 − 4,177 − 228. The 20 PDFs are the 20 superseded PB2026 volumes of Task 23c Step 6's list. `<k>` is Step 7's `lineage: <k> rail evidence page(s) …` figure, read from the report's `counts['rail_pages_moved']`: the report requires every program sidecar's rail to be the same in fu2-B and fu2-Bpost with each `evidence.page` masked, so the pages that move are exactly the rail entries the B export took from a moved citation — 22 of the 92 evidence narratives move, and `<k>` counts rail entries, not narratives, since an edge can be listed on both its endpoints' sidecars.) A FAIL lists its violations (`rail of <slug> changed beyond evidence pages`, `rail of <slug> only in A|B` among them), and `rail check exit=1` means the report failed or its count is not the export's: stop.

@@ -19,7 +19,10 @@ the release-2 writes, B after them — and that it changed nothing else.
     citations name (reported with their bytes), and B hosts every PDF A hosts;
   * data/jbook_narratives.parquet has the same rows in A and B;
   * every stated-edge rail evidence page in B's program sidecars equals the
-    page of its citation in B;
+    page of its citation in B, and every sidecar's lineage rail is the same
+    in A and B with each evidence.page masked: a rail on one side only, or
+    an edge added, dropped or changed in any other field, FAILS; the
+    evidence pages that move are counted (rail_pages_moved);
   * --unchanged FID must be identical in A and B; --watch FID is reported.
 
 Usage: narrative_relocation_report.py --a A_SITE --b B_SITE --pg-dsn DSN
@@ -60,15 +63,29 @@ def _narrative_rows(site: Path) -> dict[str, tuple]:
     ).fetchall()}
 
 
-def _rail_pages(site: Path) -> list[tuple[str, str, object]]:
-    out = []
+def _rails(site: Path) -> dict[str, dict]:
+    """slug -> the lineage rail of its program sidecar (a sidecar without one is absent)."""
+    out = {}
     for path in sorted((site / "json" / "program_details").glob("*.json")):
-        rail = (json.loads(path.read_text()).get("lineage") or {}).get("rail") or {}
-        for side in ("predecessors", "successors"):
-            for entry in rail.get(side) or []:
-                if entry.get("evidence"):
-                    out.append((path.stem, entry["evidence"]["fact_id"], entry["evidence"]["page"]))
+        rail = (json.loads(path.read_text()).get("lineage") or {}).get("rail")
+        if rail is not None:
+            out[path.stem] = rail
     return out
+
+
+def _evidence(rail: dict) -> list:
+    """Each rail entry's evidence (None on an inferred edge), predecessors first."""
+    return [entry.get("evidence") for side in ("predecessors", "successors")
+            for entry in rail.get(side) or []]
+
+
+def _page_masked(rail: dict) -> dict:
+    """The rail with every evidence.page masked: all the relocation may not change."""
+    masked = json.loads(json.dumps(rail))
+    for evidence in _evidence(masked):
+        if evidence:
+            evidence["page"] = None
+    return masked
 
 
 def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=()) -> dict:
@@ -99,7 +116,8 @@ def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=()) 
                 sets[sha] = {v.sha256 for v in book_set(con, docs[sha]["id"])} if sha in docs else set()
             return sets[sha]
 
-        counts = {"narrative_citations": 0, "unchanged": 0, "located": 0, "relocated": 0}
+        counts = {"narrative_citations": 0, "unchanged": 0, "located": 0, "relocated": 0,
+                  "rail_pages_moved": 0}
         cited_b: set[str] = set()
         by_volume: dict[str, int] = {}
         for fid in sorted(set(a) & set(b)):
@@ -157,10 +175,21 @@ def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=()) 
                 violations.append(f"cited PDF {sha} is not hosted in B")
             elif sha in new_pdfs and _sha_file(path) != sha:
                 violations.append(f"pdfs/{sha}.pdf does not hash to its name")
-    rail_bad = [(slug, fid, page) for slug, fid, page in _rail_pages(b_site)
-                if page != b.get(fid, {}).get("page_number")]
-    violations += [f"rail evidence {fid} on {slug}: page {page} is not its citation's page"
-                   for slug, fid, page in rail_bad]
+    rails_a, rails_b = _rails(a_site), _rails(b_site)
+    for slug in sorted(set(rails_a) ^ set(rails_b)):
+        violations.append(f"rail of {slug} only in {'A' if slug in rails_a else 'B'}")
+    for slug in sorted(set(rails_a) & set(rails_b)):
+        if _page_masked(rails_a[slug]) != _page_masked(rails_b[slug]):
+            violations.append(f"rail of {slug} changed beyond evidence pages")
+            continue
+        counts["rail_pages_moved"] += sum(
+            (ev_a or {}).get("page") != (ev_b or {}).get("page")
+            for ev_a, ev_b in zip(_evidence(rails_a[slug]), _evidence(rails_b[slug])))
+    for slug, rail in sorted(rails_b.items()):
+        for ev in _evidence(rail):
+            if ev and ev.get("page") != b.get(ev["fact_id"], {}).get("page_number"):
+                violations.append(f"rail evidence {ev['fact_id']} on {slug}: page {ev.get('page')}"
+                                  " is not its citation's page")
     for fid in unchanged:
         if a.get(fid) != b.get(fid):
             violations.append(f"{fid} changed but must not")
@@ -190,6 +219,7 @@ def main(argv=None) -> int:
     c = report["counts"]
     print(f"narrative citations {c['narrative_citations']}: unchanged {c['unchanged']},"
           f" located {c['located']}, relocated {c['relocated']}")
+    print(f"rail evidence pages moved: {c['rail_pages_moved']}")
     print(f"PDFs only B hosts: {len(report['new_pdfs'])} ({report['new_pdf_bytes']:,} bytes)")
     for fid, w in report["watched"].items():
         print(f"  {fid}: A {w['a']} -> B {w['b']}")

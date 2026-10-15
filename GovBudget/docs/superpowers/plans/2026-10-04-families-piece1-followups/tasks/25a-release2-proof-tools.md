@@ -10,9 +10,9 @@
 
 **Interfaces:**
 Consumes: `provenance_pages.book_set` (Task 23a); `scripts/fu/s195_narratives.main` (Task 23c); `tests/jbooks/narrative_volumes.py` (`seed_book_set`, `seed_pre_195_rows`, `xml_path`); `tests/jbooks/test_export_site_5f._export(pg_dsn, tmp_path)` (writes `<tmp_path>/site` and `<tmp_path>/wh.duckdb`); `export_site.fact_id_narrative`; Task 2's `govbudget.proof.load_expectations` (rule keys `path, why, status, pointer, change, required`; `*` is the only glob character and crosses `/`; 16-hex fact-ID pointer segments read `{fid}`).
-Produces: `scripts/fu/narrative_relocation_report.py` — `RUN_STAMPED_KINDS`, `LOCATION_FIELDS`, `compare(a_site, b_site, *, pg_dsn, unchanged=(), watch=()) -> dict` (`{"ok", "counts": {"narrative_citations", "unchanged", "located", "relocated"}, "new_pdfs": {sha: bytes}, "new_pdf_bytes", "by_volume", "watched", "violations"}`), `main(argv=None) -> int` (CLI `--a A_SITE --b B_SITE --pg-dsn DSN [--unchanged FID]… [--watch FID]… [--report FILE]`; lines `narrative citations <n>: unchanged <u>, located <l>, relocated <r>`, `PDFs only B hosts: <k> (<bytes> bytes)`, one per watched fact ID, `  violation: …`, last line `narrative-relocation: PASS|FAIL`, exit 0/1); the P1 rule list (19 rules). Tasks 25b and 26a run them.
+Produces: `scripts/fu/narrative_relocation_report.py` — `RUN_STAMPED_KINDS`, `LOCATION_FIELDS`, `compare(a_site, b_site, *, pg_dsn, unchanged=(), watch=()) -> dict` (`{"ok", "counts": {"narrative_citations", "unchanged", "located", "relocated", "rail_pages_moved"}, "new_pdfs": {sha: bytes}, "new_pdf_bytes", "by_volume", "watched", "violations"}`; `rail_pages_moved` counts the stated-edge rail entries whose `evidence.page` differs between A's and B's program sidecars, whose rails must otherwise be equal), `main(argv=None) -> int` (CLI `--a A_SITE --b B_SITE --pg-dsn DSN [--unchanged FID]… [--watch FID]… [--report FILE]`; lines `narrative citations <n>: unchanged <u>, located <l>, relocated <r>`, `rail evidence pages moved: <m>`, `PDFs only B hosts: <k> (<bytes> bytes)`, one per watched fact ID, `  violation: …`, last line `narrative-relocation: PASS|FAIL`, exit 0/1); the P1 rule list (19 rules). Tasks 25b and 26a run them.
 
-**Measured now** (2026-10-13): the report and the rule list were exercised on two exports of the synthetic book set, before and after `s195 --apply`, on a scratch copy of the tree with Tasks 23a–24 applied against a private Postgres 17 cluster: the 4 tests below pass; `proof diff` with the rule list matched rules 0–13 and 15–17 there (2 and 17 citation-field differences, both PDFs only B hosts, `pdf_count` in both files) and left rules 14 (the receipts audit, which a bare `export_site()` call does not write) and 18 (no lineage in the synthetic book) unmet, as expected; on the real exports both match (Task 23b measured 22 evidence narratives moving; the CLI export runs the receipts step). No other file of `data/site` embeds a citation record: `grep -l hosted_pdf_url` over `data/site/json` finds only `citations.json` (and its shards) besides the receipt shards, which carry no narrative.
+**Measured now** (2026-10-13): the report and the rule list were exercised on two exports of the synthetic book set, before and after `s195 --apply`, on a scratch copy of the tree with Tasks 23a–24 applied against a private Postgres 17 cluster: the tests below pass (4 then; 12 after review fix round 1 of 2026-10-15, which added the A-vs-B rail check: a dropped stated edge plus a relation/fy change on another passed `proof diff` with rule 18 matched 3, and the report did not compare A's rails with B's); `proof diff` with the rule list matched rules 0–13 and 15–17 there (2 and 17 citation-field differences, both PDFs only B hosts, `pdf_count` in both files) and left rules 14 (the receipts audit, which a bare `export_site()` call does not write) and 18 (no lineage in the synthetic book) unmet, as expected; on the real exports both match (Task 23b measured 22 evidence narratives moving; the CLI export runs the receipts step). No other file of `data/site` embeds a citation record: `grep -l hosted_pdf_url` over `data/site/json` finds only `citations.json` (and its shards) besides the receipt shards, which carry no narrative.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -55,17 +55,92 @@ def _tamper(site, fid, **fields):
     path.write_text(json.dumps(cites))
 
 
+def _cites(site):
+    return json.loads((site / "json" / "citations.json").read_text())
+
+
+SLUG, OTHER = "0605101TST", "0605102TST"
+
+
+def _edge(cites, fid, **fields):
+    """A stated predecessor rail entry (export_site._emit_lineage's shape) whose
+    evidence is narrative fid, on the page its citation in `cites` names."""
+    return {"pe": "0605100TST", "title": "Alpha Radar (old line)", "ba": "BA 5", "fy": 2026,
+            "relation": "renamed", "confidence": "stated", "resolved": True,
+            "evidence": {"fact_id": fid, "page": cites[fid]["page_number"],
+                         "sentence": "The Alpha program fields a new radar for the fleet."},
+            **fields}
+
+
+def _rail(cites, fid):
+    """N1 is relocated (its page moves with the citation); N4 is kept."""
+    return [_edge(cites, fid["N1"]), _edge(cites, fid["N4"], pe=OTHER)]
+
+
+def _write_rail(site, *predecessors, slug=SLUG):
+    path = site / "json" / "program_details" / f"{slug}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sidecar = json.loads(path.read_text()) if path.exists() else {"pe_bli": slug}
+    sidecar["lineage"] = {"rail": {"predecessors": list(predecessors), "successors": []}}
+    path.write_text(json.dumps(sidecar))
+
+
 def test_the_relocation_is_accounted_for(pg_dsn, exports, capsys):
     book, a, b, fid = exports
     report = compare(a, b, pg_dsn=pg_dsn, unchanged=[fid["N4"]])
     assert report["violations"] == [] and report["ok"]
-    assert report["counts"] == {"narrative_citations": 6, "unchanged": 4, "located": 1, "relocated": 1}
+    assert report["counts"] == {"narrative_citations": 6, "unchanged": 4, "located": 1, "relocated": 1,
+                                "rail_pages_moved": 0}
     assert set(report["new_pdfs"]) == {book["sha"]["BA2"], book["sha"]["BA3"]}
     assert report["new_pdf_bytes"] == sum(book["path"][v].stat().st_size for v in ("BA2", "BA3"))
     assert main(["--a", str(a), "--b", str(b), "--pg-dsn", pg_dsn, "--watch", fid["N1"]]) == 0
     out = capsys.readouterr().out
     assert "narrative citations 6: unchanged 4, located 1, relocated 1" in out
+    assert "rail evidence pages moved: 0" in out
     assert out.rstrip().endswith("narrative-relocation: PASS")
+
+
+def test_a_rail_page_that_follows_its_citation_passes(pg_dsn, exports, capsys):
+    _book, a, b, fid = exports
+    _write_rail(a, *_rail(_cites(a), fid))
+    _write_rail(b, *_rail(_cites(b), fid))
+    report = compare(a, b, pg_dsn=pg_dsn)
+    assert report["violations"] == [] and report["counts"]["rail_pages_moved"] == 1
+    assert main(["--a", str(a), "--b", str(b), "--pg-dsn", pg_dsn]) == 0
+    assert "rail evidence pages moved: 1" in capsys.readouterr().out
+
+
+RAIL_CHANGES = {
+    "an edge dropped": lambda c, fid: [_edge(c, fid["N1"])],
+    "an edge added": lambda c, fid: [*_rail(c, fid), _edge(c, fid["N2"], pe="0605103TST")],
+    "relation": lambda c, fid: [_edge(c, fid["N1"], relation="split"), _edge(c, fid["N4"], pe=OTHER)],
+    "fy": lambda c, fid: [_edge(c, fid["N1"], fy=2027), _edge(c, fid["N4"], pe=OTHER)],
+    "confidence": lambda c, fid: [_edge(c, fid["N1"], confidence="inferred"),
+                                  _edge(c, fid["N4"], pe=OTHER)],
+    "evidence.fact_id": lambda c, fid: [_edge(c, fid["N2"]), _edge(c, fid["N4"], pe=OTHER)],
+}
+
+
+@pytest.mark.parametrize("change", sorted(RAIL_CHANGES))
+def test_a_rail_change_beyond_evidence_pages_fails(pg_dsn, exports, change):
+    _book, a, b, fid = exports
+    _write_rail(a, *_rail(_cites(a), fid))
+    _write_rail(b, *RAIL_CHANGES[change](_cites(b), fid))
+    assert compare(a, b, pg_dsn=pg_dsn)["violations"] == [f"rail of {SLUG} changed beyond evidence pages"]
+
+
+def test_a_rail_on_one_side_only_or_off_its_citation_fails(pg_dsn, exports):
+    _book, a, b, fid = exports
+    ca, cb = _cites(a), _cites(b)
+    _write_rail(a, *_rail(ca, fid))
+    _write_rail(a, _edge(ca, fid["N4"]), slug="0605104TST")
+    _write_rail(b, _edge(cb, fid["N1"]), _edge(cb, fid["N4"], pe=OTHER, evidence={
+        "fact_id": fid["N4"], "page": 3, "sentence": "The Alpha program fields a new radar for the fleet."}))
+    _write_rail(b, _edge(cb, fid["N4"]), slug="0605105TST")
+    assert cb[fid["N4"]]["page_number"] != 3
+    assert sorted(compare(a, b, pg_dsn=pg_dsn)["violations"]) == sorted([
+        "rail of 0605104TST only in A", "rail of 0605105TST only in B",
+        f"rail evidence {fid['N4']} on {SLUG}: page 3 is not its citation's page"])
 
 
 def test_a_change_outside_the_location_fields_fails(pg_dsn, exports):
@@ -123,7 +198,10 @@ the release-2 writes, B after them — and that it changed nothing else.
     citations name (reported with their bytes), and B hosts every PDF A hosts;
   * data/jbook_narratives.parquet has the same rows in A and B;
   * every stated-edge rail evidence page in B's program sidecars equals the
-    page of its citation in B;
+    page of its citation in B, and every sidecar's lineage rail is the same
+    in A and B with each evidence.page masked: a rail on one side only, or
+    an edge added, dropped or changed in any other field, FAILS; the
+    evidence pages that move are counted (rail_pages_moved);
   * --unchanged FID must be identical in A and B; --watch FID is reported.
 
 Usage: narrative_relocation_report.py --a A_SITE --b B_SITE --pg-dsn DSN
@@ -164,15 +242,29 @@ def _narrative_rows(site: Path) -> dict[str, tuple]:
     ).fetchall()}
 
 
-def _rail_pages(site: Path) -> list[tuple[str, str, object]]:
-    out = []
+def _rails(site: Path) -> dict[str, dict]:
+    """slug -> the lineage rail of its program sidecar (a sidecar without one is absent)."""
+    out = {}
     for path in sorted((site / "json" / "program_details").glob("*.json")):
-        rail = (json.loads(path.read_text()).get("lineage") or {}).get("rail") or {}
-        for side in ("predecessors", "successors"):
-            for entry in rail.get(side) or []:
-                if entry.get("evidence"):
-                    out.append((path.stem, entry["evidence"]["fact_id"], entry["evidence"]["page"]))
+        rail = (json.loads(path.read_text()).get("lineage") or {}).get("rail")
+        if rail is not None:
+            out[path.stem] = rail
     return out
+
+
+def _evidence(rail: dict) -> list:
+    """Each rail entry's evidence (None on an inferred edge), predecessors first."""
+    return [entry.get("evidence") for side in ("predecessors", "successors")
+            for entry in rail.get(side) or []]
+
+
+def _page_masked(rail: dict) -> dict:
+    """The rail with every evidence.page masked: all the relocation may not change."""
+    masked = json.loads(json.dumps(rail))
+    for evidence in _evidence(masked):
+        if evidence:
+            evidence["page"] = None
+    return masked
 
 
 def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=()) -> dict:
@@ -203,7 +295,8 @@ def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=()) 
                 sets[sha] = {v.sha256 for v in book_set(con, docs[sha]["id"])} if sha in docs else set()
             return sets[sha]
 
-        counts = {"narrative_citations": 0, "unchanged": 0, "located": 0, "relocated": 0}
+        counts = {"narrative_citations": 0, "unchanged": 0, "located": 0, "relocated": 0,
+                  "rail_pages_moved": 0}
         cited_b: set[str] = set()
         by_volume: dict[str, int] = {}
         for fid in sorted(set(a) & set(b)):
@@ -261,10 +354,21 @@ def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=()) 
                 violations.append(f"cited PDF {sha} is not hosted in B")
             elif sha in new_pdfs and _sha_file(path) != sha:
                 violations.append(f"pdfs/{sha}.pdf does not hash to its name")
-    rail_bad = [(slug, fid, page) for slug, fid, page in _rail_pages(b_site)
-                if page != b.get(fid, {}).get("page_number")]
-    violations += [f"rail evidence {fid} on {slug}: page {page} is not its citation's page"
-                   for slug, fid, page in rail_bad]
+    rails_a, rails_b = _rails(a_site), _rails(b_site)
+    for slug in sorted(set(rails_a) ^ set(rails_b)):
+        violations.append(f"rail of {slug} only in {'A' if slug in rails_a else 'B'}")
+    for slug in sorted(set(rails_a) & set(rails_b)):
+        if _page_masked(rails_a[slug]) != _page_masked(rails_b[slug]):
+            violations.append(f"rail of {slug} changed beyond evidence pages")
+            continue
+        counts["rail_pages_moved"] += sum(
+            (ev_a or {}).get("page") != (ev_b or {}).get("page")
+            for ev_a, ev_b in zip(_evidence(rails_a[slug]), _evidence(rails_b[slug])))
+    for slug, rail in sorted(rails_b.items()):
+        for ev in _evidence(rail):
+            if ev and ev.get("page") != b.get(ev["fact_id"], {}).get("page_number"):
+                violations.append(f"rail evidence {ev['fact_id']} on {slug}: page {ev.get('page')}"
+                                  " is not its citation's page")
     for fid in unchanged:
         if a.get(fid) != b.get(fid):
             violations.append(f"{fid} changed but must not")
@@ -294,6 +398,7 @@ def main(argv=None) -> int:
     c = report["counts"]
     print(f"narrative citations {c['narrative_citations']}: unchanged {c['unchanged']},"
           f" located {c['located']}, relocated {c['relocated']}")
+    print(f"rail evidence pages moved: {c['rail_pages_moved']}")
     print(f"PDFs only B hosts: {len(report['new_pdfs'])} ({report['new_pdf_bytes']:,} bytes)")
     for fid, w in report["watched"].items():
         print(f"  {fid}: A {w['a']} -> B {w['b']}")
@@ -364,7 +469,7 @@ GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . p
 uv run --project . python -c "from govbudget.proof import load_expectations; print(len(load_expectations('docs/superpowers/plans/2026-10-04-families-piece1-followups/expected-diff-r2-narratives.json')), 'rules')"
 uvx --offline ruff check --isolated --select F,E9 scripts/fu/narrative_relocation_report.py tests/jbooks/test_fu_narrative_relocation_report.py
 ```
-Expected: `4 passed`; `19 rules`; `All checks passed!`. Then:
+Expected: `12 passed`; `19 rules`; `All checks passed!`. Then:
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families && git add GovBudget/scripts/fu/narrative_relocation_report.py GovBudget/tests/jbooks/test_fu_narrative_relocation_report.py GovBudget/docs/superpowers/plans/2026-10-04-families-piece1-followups/expected-diff-r2-narratives.json && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "test(fu): release-2 proof tools — the narrative relocation report and the P1 rule list (#195)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
