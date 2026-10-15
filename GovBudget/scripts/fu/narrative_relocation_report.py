@@ -4,7 +4,8 @@ narrative relocation changed between two exports of ONE snapshot — A before
 the release-2 writes, B after them — and that it changed nothing else.
 
   * A and B publish the same fact IDs; every citation that is not a
-    jbook_narrative citation is equal field by field (retrieved_at excepted on
+    jbook_narrative citation is equal field by field, type-strict (1 vs 1.0
+    is a change, ROADMAP #199; Task 25c2) (retrieved_at excepted on
     the kinds each export stamps with its own run time, RUN_STAMPED_KINDS,
     as in piece 1's scripts/era/fact_stability.py);
   * a jbook_narrative citation that differs, differs only in LOCATION_FIELDS,
@@ -152,7 +153,8 @@ def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=(),
                 bad = []
                 for k in sorted(set(ca) | set(cb)):
                     va, vb = ca.get(k), cb.get(k)
-                    if va == vb or (k == "retrieved_at" and ca.get("kind") in RUN_STAMPED_KINDS):
+                    # type-strict (ROADMAP #199, as fact_stability.py): 1 vs 1.0 is a change
+                    if (type(va) is type(vb) and va == vb) or (k == "retrieved_at" and ca.get("kind") in RUN_STAMPED_KINDS):
                         continue
                     if mode is not None and _is_noise(fid, k, va, vb, mode):
                         noise[k] += 1

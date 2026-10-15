@@ -244,3 +244,22 @@ def test_a_noise_file_never_excuses_a_real_change(pg_dsn, exports, change):
     _tamper(b, fid, **{field: value})
     assert compare(a, b, pg_dsn=pg_dsn, noise_classes=[INPUTS_CLASS])["violations"] == [
         f"{fid} (derived): ['{field}'] changed"]
+
+
+def test_a_type_change_is_a_change_not_equality(pg_dsn, exports, capsys):
+    """Task 25c2 (#199, as scripts/era/fact_stability.py): the non-narrative
+    pre-filter is type-strict, so 1 vs 1.0 is a change, with or without the
+    noise file (proof diff's rules never call a type change noise)."""
+    _book, a, b, _fid = exports
+    for site, amount in ((a, 1), (b, 1.0)):
+        path = site / "json" / "citations.json"
+        cites = json.loads(path.read_text())
+        cites[FLIPPED] = {**DERIVED, "recorded_value": "10.000", "inputs": '["w3"]', "amount_thousands": amount}
+        path.write_text(json.dumps(cites))
+    assert type(_cites(a)[FLIPPED]["amount_thousands"]) is int
+    assert type(_cites(b)[FLIPPED]["amount_thousands"]) is float
+    expected = [f"{FLIPPED} (derived): ['amount_thousands'] changed"]
+    assert compare(a, b, pg_dsn=pg_dsn)["violations"] == expected
+    assert compare(a, b, pg_dsn=pg_dsn, noise_classes=[INPUTS_CLASS])["violations"] == expected
+    assert main(["--a", str(a), "--b", str(b), "--pg-dsn", pg_dsn]) == 1
+    assert capsys.readouterr().out.rstrip().endswith("narrative-relocation: FAIL")

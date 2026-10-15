@@ -26,7 +26,9 @@ describe("reviewed F-15 shared-program evidence", () => {
   });
 
   it("preserves exact public receipt identities, source pages and source-edition limits", () => {
-    expect(rows.filter(row => row.pageNumber !== null)).toHaveLength(16);
+    // Release 2 (#195): the 14 receipts that sat pageless in their attached
+    // Vol I now cite the volume that prints them, so every receipt has a page.
+    expect(rows.filter(row => row.pageNumber !== null)).toHaveLength(30);
     for (const row of rows) {
       if (row.factId === null) {
         expect(row.sourceEdition).toBeLessThan(2026);

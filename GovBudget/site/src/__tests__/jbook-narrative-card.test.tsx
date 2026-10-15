@@ -161,21 +161,28 @@ describe("JbookNarrativeCard — unpaged (8 unresolved narratives)", () => {
 });
 
 describe("JbookNarrativeCard — verbatim page-local source passages", () => {
-  it("shows the actual unpaged F-15EX retrofit passage with its XML anchor and original source", () => {
+  // Release 2 (#195): this passage was pageless in its attached Aircraft
+  // Procurement Vol I; it now cites Vol II, which prints it on p.215. Every
+  // F-15 family narrative is paged after #195, so the unpaged form has no
+  // family example left: the same passage, its assertions inverted.
+  it("shows the actual F-15EX retrofit passage on the page that prints it, with its XML anchor and original source", async () => {
+    getDocumentMock.mockReturnValue({ promise: Promise.resolve(makeFakePdf()), destroy: () => Promise.resolve() });
     const factId = "cb4796e48126e4a7";
     const family = getF15FamilyData();
     const citation = family.citations[factId] as JbookNarrativeCitation;
     const original = getProgramDetails("F015EX").narratives.find((item) => item.fact_id === factId)!;
-    expect(citation.page_number).toBeNull();
+    expect(citation.page_number).toBe(215);
     render(<JbookNarrativeCard citation={citation} />);
+    expect(screen.getByTestId("jbook-narrative-card")).toHaveAttribute("data-paged", "true");
     const passage = screen.getByRole("region", { name: "Source passage" });
     expect(within(passage).getByRole("heading", { name: original.title })).toBeVisible();
     expect(passage.querySelector("p")?.textContent).toBe(original.body);
     expect(passage).toHaveAttribute("data-source-text", "narrative");
     expect(passage).toHaveAttribute("data-xml-path", citation.xml_path);
     expect(passage.querySelectorAll("[data-amount]")).toHaveLength(0);
-    expect(screen.getByTestId("jbook-narrative-source-link")).toHaveAttribute("href", citation.official_url);
-    expect(screen.queryByTestId("pdf-highlight")).toBeNull();
+    expect(screen.queryByTestId("jbook-narrative-source-link")).toBeNull();
+    expect(screen.getByText(/Open official source at p\.215/i).closest("a")).toHaveAttribute("href", citation.official_url);
+    await waitFor(() => expect(screen.getByTestId("pdf-highlight")).toBeInTheDocument());
     const xmlLabel = screen.getByText("XML location");
     expect(passage.compareDocumentPosition(xmlLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });

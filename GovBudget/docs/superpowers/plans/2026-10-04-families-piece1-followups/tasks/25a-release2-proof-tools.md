@@ -12,7 +12,7 @@
 Consumes: `provenance_pages.book_set` (Task 23a); `scripts/fu/s195_narratives.main` (Task 23c); `tests/jbooks/narrative_volumes.py` (`seed_book_set`, `seed_pre_195_rows`, `xml_path`); `tests/jbooks/test_export_site_5f._export(pg_dsn, tmp_path)` (writes `<tmp_path>/site` and `<tmp_path>/wh.duckdb`); `export_site.fact_id_narrative`; `export_site._rail_evidence_pages_from_citations` (Task 23b); Task 2's `govbudget.proof.load_expectations` (rule keys `path, why, status, pointer, change, required`; `*` is the only glob character and crosses `/`; 16-hex fact-ID pointer segments read `{fid}`); Task 2's public noise rules `govbudget.proof.NoiseMode`, `json_noise` and `load_noise_classes` (Task 25b2, used as `scripts/era/fact_stability.py` uses them).
 Produces: `scripts/fu/narrative_relocation_report.py` — `RUN_STAMPED_KINDS`, `LOCATION_FIELDS`, `compare(a_site, b_site, *, pg_dsn, unchanged=(), watch=(), noise_classes=None) -> dict` (`{"ok", "counts": {"narrative_citations", "unchanged", "located", "relocated", "rail_pages_moved"}, "new_pdfs": {sha: bytes}, "new_pdf_bytes", "by_volume", "watched", "noise_equivalent", "reorder_classes_trusted", "violations"}`; `rail_pages_moved` counts the stated-edge rail entries whose `evidence.page` differs between A's and B's program sidecars, whose rails must otherwise be equal; `noise_classes`, a noise file's classes, turns on Task 25b2's judging of the non-narrative citations' export noise by `proof diff`'s rules, a reorder only in a class the control vouched for, tallied in `noise_equivalent` (per field) and `reorder_classes_trusted`; `None` compares literally), `main(argv=None) -> int` (CLI `--a A_SITE --b B_SITE --pg-dsn DSN [--unchanged FID]… [--watch FID]… [--noise-from FILE] [--report FILE]`; lines `narrative citations <n>: unchanged <u>, located <l>, relocated <r>`, `rail evidence pages moved: <m>`, `PDFs only B hosts: <k> (<bytes> bytes)`, one per watched fact ID, with `--noise-from` `equivalent under proof diff's noise rules: <n> field(s) (<field> <count>, …); reorder classes trusted: [<path>] <pointer> x<count>, …`, `  violation: …`, last line `narrative-relocation: PASS|FAIL`, exit 0/1); the P1 rule list (19 rules). Tasks 25b and 26a run them.
 
-**Measured now** (2026-10-13): the report and the rule list were exercised on two exports of the synthetic book set, before and after `s195 --apply`, on a scratch copy of the tree with Tasks 23a–24 applied against a private Postgres 17 cluster: the tests below pass (4 then; 12 after review fix round 1 of 2026-10-15, which added the A-vs-B rail check: a dropped stated edge plus a relation/fy change on another passed `proof diff` with rule 18 matched 3, and the report did not compare A's rails with B's; 13 after fix round 2 of 2026-10-15, which pins that the export's `lineage: <k> rail evidence page(s)` count also covers lineage blocks no sidecar carries, so `rail_pages_moved` ≤ `<k>` and Task 25b Step 10 gates on the report alone; 17 after Task 25b2 of 2026-10-15, which adds `--noise-from`: Task 25b's real fu2-B and fu2-Bpost differed outside the narratives by 52 derived `inputs` and 69 usaspending `query_body` reorders and one `recorded_value` numeric-text flip, the control pair fu2-Bpost and fu2-B2post failed the literal comparison the same way, and Step 10 now judges that noise with the control's classes, as release 1's `fact_stability.py` does); `proof diff` with the rule list matched rules 0–13 and 15–17 there (2 and 17 citation-field differences, both PDFs only B hosts, `pdf_count` in both files) and left rules 14 (the receipts audit, which a bare `export_site()` call does not write) and 18 (no lineage in the synthetic book) unmet, as expected; on the real exports both match (Task 23b measured 22 evidence narratives moving; the CLI export runs the receipts step). No other file of `data/site` embeds a citation record: `grep -l hosted_pdf_url` over `data/site/json` finds only `citations.json` (and its shards) besides the receipt shards, which carry no narrative.
+**Measured now** (2026-10-13): the report and the rule list were exercised on two exports of the synthetic book set, before and after `s195 --apply`, on a scratch copy of the tree with Tasks 23a–24 applied against a private Postgres 17 cluster: the tests below pass (4 then; 12 after review fix round 1 of 2026-10-15, which added the A-vs-B rail check: a dropped stated edge plus a relation/fy change on another passed `proof diff` with rule 18 matched 3, and the report did not compare A's rails with B's; 13 after fix round 2 of 2026-10-15, which pins that the export's `lineage: <k> rail evidence page(s)` count also covers lineage blocks no sidecar carries, so `rail_pages_moved` ≤ `<k>` and Task 25b Step 10 gates on the report alone; 17 after Task 25b2 of 2026-10-15, which adds `--noise-from`: Task 25b's real fu2-B and fu2-Bpost differed outside the narratives by 52 derived `inputs` and 69 usaspending `query_body` reorders and one `recorded_value` numeric-text flip, the control pair fu2-Bpost and fu2-B2post failed the literal comparison the same way, and Step 10 now judges that noise with the control's classes, as release 1's `fact_stability.py` does; 18 after Task 25c2 of 2026-10-15, which makes the non-narrative pre-filter type-strict as `fact_stability.py` is (#199): `1` vs `1.0` is a change, with or without `--noise-from`); `proof diff` with the rule list matched rules 0–13 and 15–17 there (2 and 17 citation-field differences, both PDFs only B hosts, `pdf_count` in both files) and left rules 14 (the receipts audit, which a bare `export_site()` call does not write) and 18 (no lineage in the synthetic book) unmet, as expected; on the real exports both match (Task 23b measured 22 evidence narratives moving; the CLI export runs the receipts step). No other file of `data/site` embeds a citation record: `grep -l hosted_pdf_url` over `data/site/json` finds only `citations.json` (and its shards) besides the receipt shards, which carry no narrative.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -265,6 +265,25 @@ def test_a_noise_file_never_excuses_a_real_change(pg_dsn, exports, change):
     _tamper(b, fid, **{field: value})
     assert compare(a, b, pg_dsn=pg_dsn, noise_classes=[INPUTS_CLASS])["violations"] == [
         f"{fid} (derived): ['{field}'] changed"]
+
+
+def test_a_type_change_is_a_change_not_equality(pg_dsn, exports, capsys):
+    """Task 25c2 (#199, as scripts/era/fact_stability.py): the non-narrative
+    pre-filter is type-strict, so 1 vs 1.0 is a change, with or without the
+    noise file (proof diff's rules never call a type change noise)."""
+    _book, a, b, _fid = exports
+    for site, amount in ((a, 1), (b, 1.0)):
+        path = site / "json" / "citations.json"
+        cites = json.loads(path.read_text())
+        cites[FLIPPED] = {**DERIVED, "recorded_value": "10.000", "inputs": '["w3"]', "amount_thousands": amount}
+        path.write_text(json.dumps(cites))
+    assert type(_cites(a)[FLIPPED]["amount_thousands"]) is int
+    assert type(_cites(b)[FLIPPED]["amount_thousands"]) is float
+    expected = [f"{FLIPPED} (derived): ['amount_thousands'] changed"]
+    assert compare(a, b, pg_dsn=pg_dsn)["violations"] == expected
+    assert compare(a, b, pg_dsn=pg_dsn, noise_classes=[INPUTS_CLASS])["violations"] == expected
+    assert main(["--a", str(a), "--b", str(b), "--pg-dsn", pg_dsn]) == 1
+    assert capsys.readouterr().out.rstrip().endswith("narrative-relocation: FAIL")
 ```
 
 - [ ] **Step 2: Run them to verify they fail**
@@ -283,7 +302,8 @@ narrative relocation changed between two exports of ONE snapshot — A before
 the release-2 writes, B after them — and that it changed nothing else.
 
   * A and B publish the same fact IDs; every citation that is not a
-    jbook_narrative citation is equal field by field (retrieved_at excepted on
+    jbook_narrative citation is equal field by field, type-strict (1 vs 1.0
+    is a change, ROADMAP #199; Task 25c2) (retrieved_at excepted on
     the kinds each export stamps with its own run time, RUN_STAMPED_KINDS,
     as in piece 1's scripts/era/fact_stability.py);
   * a jbook_narrative citation that differs, differs only in LOCATION_FIELDS,
@@ -431,7 +451,8 @@ def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=(),
                 bad = []
                 for k in sorted(set(ca) | set(cb)):
                     va, vb = ca.get(k), cb.get(k)
-                    if va == vb or (k == "retrieved_at" and ca.get("kind") in RUN_STAMPED_KINDS):
+                    # type-strict (ROADMAP #199, as fact_stability.py): 1 vs 1.0 is a change
+                    if (type(va) is type(vb) and va == vb) or (k == "retrieved_at" and ca.get("kind") in RUN_STAMPED_KINDS):
                         continue
                     if mode is not None and _is_noise(fid, k, va, vb, mode):
                         noise[k] += 1
@@ -615,7 +636,7 @@ GOVBUDGET_TEST_PG_DSN=postgresql://127.0.0.1:55432/postgres uv run --project . p
 uv run --project . python -c "from govbudget.proof import load_expectations; print(len(load_expectations('docs/superpowers/plans/2026-10-04-families-piece1-followups/expected-diff-r2-narratives.json')), 'rules')"
 uvx --offline ruff check --isolated --select F,E9 scripts/fu/narrative_relocation_report.py tests/jbooks/test_fu_narrative_relocation_report.py
 ```
-Expected: `17 passed`; `19 rules`; `All checks passed!`. Then:
+Expected: `18 passed`; `19 rules`; `All checks passed!`. Then:
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families && git add GovBudget/scripts/fu/narrative_relocation_report.py GovBudget/tests/jbooks/test_fu_narrative_relocation_report.py GovBudget/docs/superpowers/plans/2026-10-04-families-piece1-followups/expected-diff-r2-narratives.json && git commit --author="Andes Lee <andes.lee444@gmail.com>" -m "test(fu): release-2 proof tools — the narrative relocation report and the P1 rule list (#195)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
