@@ -169,3 +169,78 @@ def test_losing_a_page_or_a_pdf_fails(pg_dsn, exports):
     assert f"{fid['N4']}: paged in A, pageless in B" in violations
     assert f"cited PDF {book['sha']['BA3']} is not hosted in B" in violations
     assert f"{fid['N4']} changed but must not" in violations
+
+
+# Task 25b2: two exports of ONE snapshot differ by run-to-run export noise
+# outside the narratives (derived `inputs` and usaspending `query_body`
+# reorders; numeric text equal to 12 significant digits). With --noise-from
+# the report judges it as scripts/era/fact_stability.py does: proof diff's
+# rules, a reorder only when the control vouched for its class.
+INPUTS_CLASS = {"path": "json/citations.json", "pointer": "/{fid}/inputs", "count": 1}
+REORDERED, FLIPPED = "0123456789abcdef", "fedcba9876543210"  # classes read 16-hex fact IDs as {fid}
+DERIVED = {"kind": "derived", "units": "USD thousands", "formula": "sum(budget_lines.amount_thousands)",
+           "pe_bli": None}
+
+
+def _add_noise(a, b):
+    for site, inputs, value in ((a, '["w1", "w2"]', "3872766113006.810"),
+                                (b, '["w2", "w1"]', "3872766113006.811")):
+        path = site / "json" / "citations.json"
+        cites = json.loads(path.read_text())
+        cites[REORDERED] = {**DERIVED, "recorded_value": "10.000", "inputs": inputs}
+        cites[FLIPPED] = {**DERIVED, "recorded_value": value, "inputs": '["w3"]'}
+        path.write_text(json.dumps(cites))
+
+
+def _noise_file(path, *classes):
+    from govbudget.proof import NOISE_FILE_SCHEMA, NOISE_POINTER_GENERALISATION, _classes_sha256
+
+    path.write_text(json.dumps({"schema_version": NOISE_FILE_SCHEMA, "verdict": "EQUAL", "a": "B", "b": "B2",
+                                "pointer_generalisation": NOISE_POINTER_GENERALISATION,
+                                "classes_sha256": _classes_sha256(list(classes), NOISE_POINTER_GENERALISATION),
+                                "classes": list(classes)}))
+    return path
+
+
+def test_export_noise_passes_only_with_the_controls_reorder_class(pg_dsn, exports, tmp_path, capsys):
+    _book, a, b, _fid = exports
+    _add_noise(a, b)
+    args = ["--a", str(a), "--b", str(b), "--pg-dsn", pg_dsn]
+    assert main(args) == 1
+    out = capsys.readouterr().out
+    assert f"violation: {REORDERED} (derived): ['inputs'] changed" in out
+    assert f"violation: {FLIPPED} (derived): ['recorded_value'] changed" in out
+    other = _noise_file(tmp_path / "other.json",
+                        {"path": "json/citations.json", "pointer": "/{fid}/query_body", "count": 1})
+    assert main(args + ["--noise-from", str(other)]) == 1
+    out = capsys.readouterr().out
+    assert f"violation: {REORDERED} (derived): ['inputs'] changed" in out
+    assert FLIPPED not in out
+    assert main(args + ["--noise-from", str(_noise_file(tmp_path / "noise.json", INPUTS_CLASS))]) == 0
+    out = capsys.readouterr().out
+    assert ("equivalent under proof diff's noise rules: 2 field(s) (inputs 1, recorded_value 1);"
+            " reorder classes trusted: [json/citations.json] /{fid}/inputs x1") in out
+    assert "violation" not in out and out.rstrip().endswith("narrative-relocation: PASS")
+    report = compare(a, b, pg_dsn=pg_dsn, noise_classes=[INPUTS_CLASS])
+    assert report["violations"] == [] and report["ok"]
+    assert report["noise_equivalent"] == {"inputs": 1, "recorded_value": 1}
+    assert report["reorder_classes_trusted"] == [INPUTS_CLASS]
+    assert report["counts"] == {"narrative_citations": 6, "unchanged": 4, "located": 1, "relocated": 1,
+                                "rail_pages_moved": 0}
+
+
+REAL_CHANGES = {
+    "a value outside the tolerance": (FLIPPED, "recorded_value", "3872766200000.000"),
+    "an added list element": (REORDERED, "inputs", '["w2", "w1", "w4"]'),
+    "a removed list element": (REORDERED, "inputs", '["w2"]'),
+}
+
+
+@pytest.mark.parametrize("change", sorted(REAL_CHANGES))
+def test_a_noise_file_never_excuses_a_real_change(pg_dsn, exports, change):
+    _book, a, b, _fid = exports
+    _add_noise(a, b)
+    fid, field, value = REAL_CHANGES[change]
+    _tamper(b, fid, **{field: value})
+    assert compare(a, b, pg_dsn=pg_dsn, noise_classes=[INPUTS_CLASS])["violations"] == [
+        f"{fid} (derived): ['{field}'] changed"]

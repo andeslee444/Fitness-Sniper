@@ -24,9 +24,18 @@ the release-2 writes, B after them — and that it changed nothing else.
     an edge added, dropped or changed in any other field, FAILS; the
     evidence pages that move are counted (rail_pages_moved);
   * --unchanged FID must be identical in A and B; --watch FID is reported.
+  * export noise (Task 25b2): with --noise-from FILE, a non-narrative field
+    that differs is judged by `govbudget proof diff`'s own rules, exactly as
+    scripts/era/fact_stability.py judges it: numeric text equal to 12
+    significant digits, and a pure permutation inside a JSON-in-string field
+    (derived `inputs`, usaspending `query_body`) ONLY when its
+    json/citations.json class is in FILE, the noise file a
+    `proof diff --control --write-noise` run wrote. Tallied apart, never
+    silent. Without --noise-from every difference counts, as before.
+    Narrative citations keep their own field-by-field checks.
 
 Usage: narrative_relocation_report.py --a A_SITE --b B_SITE --pg-dsn DSN
-       [--unchanged FID ...] [--watch FID ...] [--report FILE]
+       [--unchanged FID ...] [--watch FID ...] [--noise-from FILE] [--report FILE]
 Last line: narrative-relocation: PASS|FAIL (exit 0|1).
 """
 from __future__ import annotations
@@ -36,8 +45,12 @@ import datetime
 import hashlib
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 
+from govbudget.proof import NoiseMode, json_noise, load_noise_classes
+
+CITATIONS_GROUP = "json/citations.json"
 RUN_STAMPED_KINDS = frozenset({"derived", "state_file", "state_soql"})
 LOCATION_FIELDS = frozenset({
     "sha256", "page_number", "x0", "x1", "top_pt", "bottom_pt", "page_width",
@@ -88,11 +101,24 @@ def _page_masked(rail: dict) -> dict:
     return masked
 
 
-def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=()) -> dict:
+def _is_noise(fid: str, field: str, va, vb, mode: NoiseMode) -> bool:
+    """proof diff's verdict on one citations.json leaf: equivalent export noise?"""
+    probe = mode.fork()
+    if json_noise(va, vb, group=CITATIONS_GROUP, mode=probe, key_pointer=f"/{fid}/{field}") is None:
+        return False
+    mode.absorb(probe)
+    return True
+
+
+def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=(),
+            noise_classes: list[dict] | None = None) -> dict:
     import psycopg
 
     from govbudget.jbooks.provenance_pages import book_set
 
+    mode = (None if noise_classes is None
+            else NoiseMode(trusted={(c["path"], c["pointer"]) for c in noise_classes}))
+    noise: Counter = Counter()
     a_site, b_site = Path(a_site), Path(b_site)
     a = json.loads((a_site / "json" / "citations.json").read_text())
     b = json.loads((b_site / "json" / "citations.json").read_text())
@@ -123,8 +149,15 @@ def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=()) 
         for fid in sorted(set(a) & set(b)):
             ca, cb = a[fid], b[fid]
             if ca.get("kind") != "jbook_narrative":
-                bad = sorted(k for k in set(ca) | set(cb) if ca.get(k) != cb.get(k)
-                             and not (k == "retrieved_at" and ca.get("kind") in RUN_STAMPED_KINDS))
+                bad = []
+                for k in sorted(set(ca) | set(cb)):
+                    va, vb = ca.get(k), cb.get(k)
+                    if va == vb or (k == "retrieved_at" and ca.get("kind") in RUN_STAMPED_KINDS):
+                        continue
+                    if mode is not None and _is_noise(fid, k, va, vb, mode):
+                        noise[k] += 1
+                        continue
+                    bad.append(k)
                 if bad:
                     violations.append(f"{fid} ({ca.get('kind')}): {bad} changed")
                 continue
@@ -200,6 +233,9 @@ def compare(a_site: Path, b_site: Path, *, pg_dsn: str, unchanged=(), watch=()) 
             "new_pdfs": {s: docs[s]["bytes"] for s in new_pdfs},
             "new_pdf_bytes": sum(docs[s]["bytes"] or 0 for s in new_pdfs),
             "by_volume": dict(sorted(by_volume.items())), "watched": watched,
+            "noise_equivalent": dict(sorted(noise.items())),
+            "reorder_classes_trusted": [{"path": g, "pointer": p, "count": n}
+                                        for (g, p), n in sorted((mode.observed if mode else {}).items())],
             "violations": violations}
 
 
@@ -210,10 +246,14 @@ def main(argv=None) -> int:
     ap.add_argument("--pg-dsn", required=True, dest="pg_dsn")
     ap.add_argument("--unchanged", action="append", default=[])
     ap.add_argument("--watch", action="append", default=[])
+    ap.add_argument("--noise-from", type=Path, default=None, dest="noise_from",
+                    help="a `proof diff --control --write-noise` file: only its json/citations.json"
+                         " reorder classes are trusted")
     ap.add_argument("--report", type=Path, default=None)
     args = ap.parse_args(argv)
+    classes = load_noise_classes(args.noise_from) if args.noise_from else None
     report = compare(args.a, args.b, pg_dsn=args.pg_dsn, unchanged=args.unchanged,
-                     watch=args.watch)
+                     watch=args.watch, noise_classes=classes)
     if args.report:
         args.report.write_text(json.dumps(report, indent=2, sort_keys=True, default=str) + "\n")
     c = report["counts"]
@@ -223,6 +263,12 @@ def main(argv=None) -> int:
     print(f"PDFs only B hosts: {len(report['new_pdfs'])} ({report['new_pdf_bytes']:,} bytes)")
     for fid, w in report["watched"].items():
         print(f"  {fid}: A {w['a']} -> B {w['b']}")
+    if classes is not None:
+        noise = ", ".join(f"{field} {n:,}" for field, n in report["noise_equivalent"].items()) or "none"
+        trusted = ", ".join(f"[{r['path']}] {r['pointer']} x{r['count']:,}"
+                            for r in report["reorder_classes_trusted"]) or "none"
+        print(f"equivalent under proof diff's noise rules: {sum(report['noise_equivalent'].values()):,}"
+              f" field(s) ({noise}); reorder classes trusted: {trusted}")
     for v in report["violations"][:40]:
         print(f"  violation: {v}")
     print(f"narrative-relocation: {'PASS' if report['ok'] else 'FAIL'}")
