@@ -245,10 +245,11 @@ FAMILIES_FOLLOW_UPS = [
 
 
 # The piece-1 follow-ups release 1 (docs/superpowers/plans/2026-10-04-families-
-# piece1-followups/tasks/22e-*) closed four of the five; #195 stays open until
-# release 2. A closed entry keeps its old marker relabelled "Status (<date>):"
-# below the new plain one, so each entry still has exactly one grep-able line.
-FAMILIES_FOLLOW_UPS_STILL_OPEN = {"JLTV continuation sentence"}
+# piece1-followups/tasks/22e-*) closed four of the five, and release 2
+# (tasks/26b-*) closed #195. A closed entry keeps its old marker relabelled
+# "Status (<date>):" below the new plain one, so each entry still has exactly
+# one grep-able line.
+FAMILIES_FOLLOW_UPS_STILL_OPEN: set[str] = set()
 
 
 @pytest.mark.parametrize("subject", FAMILIES_FOLLOW_UPS)
@@ -325,3 +326,30 @@ def test_the_release_1_findings_are_filed_once(subject):
     num, body = hits[0]
     assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
     assert POINTER_RE.search(body), f"#{num} names no source path"
+
+
+# Filed by release 2 of the piece-1 follow-ups (#195; tasks/26b-*), by phrase:
+# the gap the new gate found and closed, the three it measured and left, and
+# three findings of the release itself (the live write's insert order, a vitest
+# timing flake, the release-2 reviews' minors).
+FOLLOW_UPS_RELEASE_2 = [
+    "Lineage-evidence narratives without a provenance row",
+    "The Navy RDTEN BA4–7 books are not in the corpus",
+    "Are the 8,021 unresolved J-book detail amounts the same species",
+    "Army RDT&E Vol 1 narratives ship twice",
+    "Narrative-provenance inserts are ordered by document sha256 only",
+    "The years-matrix filter timing test is flaky under full-suite load",
+    "Three release-2 review minors",
+]
+
+
+@pytest.mark.parametrize("subject", FOLLOW_UPS_RELEASE_2)
+def test_the_release_2_follow_ups_are_filed_once_with_effort_and_source(subject):
+    hits = [(num, body) for num, body in entries() if subject in body]
+    assert len(hits) == 1, f"{subject!r} filed {len(hits)} times, want 1"
+    num, body = hits[0]
+    assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
+    assert POINTER_RE.search(body), f"#{num} names no source path"
+    assert body.rstrip().splitlines()[-1].strip().startswith("**Status:** "), (
+        f"#{num} does not end with its Status line"
+    )

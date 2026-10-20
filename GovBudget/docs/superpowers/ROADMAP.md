@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-10-14 (families piece-1 follow-ups release 1 deployed at e362c0a7; SAM #10 status; Q23 filed for piece 2; release-1 findings #210–#214 filed); 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-10-19 (piece-1 follow-ups release 2 deployed at 1256ec35: #195; release-2 follow-ups #215–#221 filed); 2026-10-14 (families piece-1 follow-ups release 1 deployed at e362c0a7; SAM #10 status; Q23 filed for piece 2; release-1 findings #210–#214 filed); 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
@@ -244,6 +244,7 @@ dated findings and original backlog descriptions below remain historical records
 | PM-S3 | PM-review Sprint 3 — reach & self-description (spec `2026-07-30-pm-review.md` §P1-8, §P2-1..§P2-8, §Coverage). Eight tasks: a **390×844 mobile gate leg** built first (backlog #31 — Sprint 2 passed 24/24 and then failed judging on mobile clipping no gate exercised); **withdrawal of 87 false "zeroed out in FY2026" feed claims** (absence in an edition is not a zero — and the investigation surfaced backlog #32, a PB2026 taxonomy renumber the corpus cannot express); **RSS/Atom + 123 program and 55 company watch feeds** with a dollar magnitude on every card and a per-item linkage basis; **§P2-1 page weight** — `/programs/` 5,875,345 → 2,733,056 bytes (−53.5%; the spec blamed `/years/`, which measured as a 28 KB shell) — plus **§P2-2 `/years/` opens on money** and a mobile column-chip disclosure; **§P2-3/§P2-6 chart a11y** — accessible names, computed descriptions, "View as table" on 5 charts, a Sankey paint-order fix (gate 22 leg f), and a scope-vs-caution note vocabulary; **§P2-4/5/7/8 display** — company title-casing, distinct `0`/`<0.05`/`—` cell states, reproducible derivation strips, count notation; a **rebuilt `entity_xwalk`** correcting a ~73% understatement on 201 pages; and a new **build-derived `/coverage/`** page (12 rows, every figure recomputed at build time, 8 dated targets and 4 reasoned refusals) plus a **`/flow/` two-rivers reframe**. | gate 3 mobile leg (m1/m2, then **m3** added in the fix round) + gate 6 chart legs + gate 22 leg f + gate 24 leg h | ✅ **COMPLETE** 2026-08-05 (third panel 4/4/4 at both widths; live) — *Status corrected 2026-08-24. This cell read "GATES COMPLETE, VISUAL BAR NOT MET … NOT deployed" until then, contradicting this same file ~1,215 lines below, where the third judging panel is recorded at **390 → 4/4/4, 1440 → 4/4/4, unanimously and without a split** (commit `b87acbf`, "third judging panel clears the bar — 4/4/4 at both widths", 2026-08-05). The first two panels genuinely DID fail (2/2/2, then 3/3/3) and that history stays in the evidence section below — it is the substance of this row. The deploy claim is stale by construction: live HEAD is `c984d9c`, which contains `b87acbf`. What the panels left OPEN (#42 layout spine, #43 Fact-ID chip weight, Sankey labelling) remains open and is tracked there, not here.* *Re-checked 2026-09-25: #42 layout spine — closed 2026-09-01 (`f02deb0c`, with `db065c0c` and `29ab46be`; the `<dd>` and marker-less-list residue `dd86f8e7`, 2026-09-11); #43 — closed 2026-08-27 in its entry; Sankey labelling — every label plated and its value set against the node face, gate 22 leg (h) (`3111eae2`, 2026-09-12; `ecff0d6c`, 2026-09-18). Of the next cell's findings left unfixed: the 1440 Sankey value labels are that same work; the `/flow/` vs `/district/` counts are one registry published on `/coverage/#crosswalk` (`a1e8dc86`, 2026-09-18); filing pages case LDA names and keep the filed string beside them (`156a8e26`, 2026-09-18); and on the 2026-09-25 build the only U+2212 minus before a figure is the "FY N−1" prose on `/methodology/`. The 390 scroll-edge clipping was not re-measured here.* | **Visual judging FAILED twice: round 1 unanimous 2/2/2 at 390 and 3/3/3 at 1440; round 2, after the fix round, unanimous 3/3/3 at BOTH widths. Median never reached the ≥4 bar, and this row says so rather than rounding up.** Round 1's majors were all invisible to a 24/24 suite: **the home page painted the program title straight over its dollar delta** ("Test & Evaluation Science & Te**+$1.34B**ogy" — two of five figures on the front door unreadable); `/feed/` kept its desktop two-column row at 390, leaving ~110px for the headline (one or two words per line, ~1.4 cards per screen); **`/flow/`'s "View as table" — the sprint's own accessibility affordance — pushed the AMOUNT column out of its scroll box, so the fallback the chart's caption sends readers to carried no dollars at all**; and §P2-2 sorted the ROWS but not the viewport, so `/years/` still opened on FY2015A, empty for exactly the newest programs the new sort promotes, with the sorted column off-screen at both widths. **The gate work is the durable part.** (m3) — a label must not be painted over its value — was written, run against a deliberately-broken artifact, and **PASSED**, because it measured `getBoundingClientRect()` on a flex item that shrinks while its inline text overflows: the boxes never intersected, only the glyphs did. Rebuilt on painted extent (element + descendants + text line-boxes) it reproduces the shipped defect verbatim ("4/5 mover title vs change figure pair(s) collide — '0605238FGround Based Strategic Deterrent EMD' overprints '+$2.14B' by 59x20px"). The `/years/` leg was **strengthened, not relaxed**: it had pinned the LEFTMOST cell — a proxy that was passing on a column of em-dashes — and now reads the sorted key from the table's own `data-sorted-col` and measures that column (proof-can-fail: "300/300 sorted-column amount cell(s) are outside the 390px viewport — row 0: '7,696.9' left=993"). `/`, `/feed/` and `/flow/` joined the value-bearing sample; `/` had been in it but overflow-only, so the front page's sole assertion was one the defect could not trip. Round 2's majors were surfaces holding the answer in their own payload and not rendering it: **four different filings naming one PE in one quarter rendered as four identical rows** (registrant now on the row; the filing × program × matched-word grain also collapsed, Lockheed 1,296 → 1,219); **"Budget-Linked Awards" named no budget line** while `pe_bli` sat untyped in the sidecar; the chart table showed "RDT&E, Air Force" at $36.1B *and* $26.2B with no parent (now "from Air Force / Space Force" vs "from Classified Programs", 93/95 rows); the decade card claimed **"Ten fiscal years" on a five-year grid**; and `/companies/` said "total federal obligations" against a DoD-only lake. **Gate 1 then caught the fix's own cost** — naming the program on 318 award rows blew the page-weight ceiling by 172KB; the table was capped at 50 with its total stated (717,690 → 289,878 bytes) and **the ceiling was not touched**. Loop at final HEAD: 1,497 pytest / 853 vitest / tsc clean / eslint 0 errors / **24/24 gates** / verify-lineage PASS (31·53·22·528·34) / verify-phase5 assembly 8/8. **Live eval: FAILED first at citation 42/43 (q011 answered correctly through literal/echo SQL — `touched_tables` empty), PASSED on an immediate re-run at accuracy 47/48 and citation 43/43**; q011 has flaked twice before, so this is agent nondeterminism against a 100% bar, filed as backlog #36. The one persistent miss is q022 = backlog #34 (eval wording, not a regression; the gate passes on it). Findings left unfixed and why: the 390 Sankey still clips node values at the scroll edge (inherent to an 840px chart in a 356px scroller — mitigated by a swipe cue and the table view, not removed); 1440 Sankey value labels still sit on node bars and are crossed by de-obligation hairlines (chart-geometry work, not a copy fix); **`/data/` reports `dim_programs` at 1,739 against a site-wide claim of 1,741 — the parquet is right and the corpus number is two lines generous (backlog #35), which means the site currently overstates its own detail-grade coverage on the number `/coverage/` leads with**; `/flow/` "10 of 24 crosswalked PEs" vs `/district/` "17 of 1,741" unreconciled; filing pages keep their source ALL-CAPS registrant names; minus glyphs differ across pages. Commits a323b15→7734004 (7). |
 | Families-1 | Procurement history before FY2024 (platform families piece 1): PB2017–PB2023 P-1 points on procurement program pages through dated owner decisions on the printed budget code — `line_item_code` captured on every era P-1 row (migration 021), `p1_era_line_map` (6,927 era keys; class rulings R-DEC-ERA-SAME/EXCLUDE/HISTORY + owner batches R-DEC-ERA-B1…B6), `fct_program_decade_series`; F-15 fenced; F015E0 relabeled with its cited Lot 1 sentence | verify-era-map (legs a–f, in verify-phase5) + V5 F-15 identity + S4 A/B proof (diff = spec §10) + link-coverage V9 | ✅ DEPLOYED 2026-10-04 at 916ae88e (rollback tag 2026-10-04T210918Z) | 811/892 PB2026 + 79/89 decade-only procurement pages gain era points (629 and 42 of them with all seven editions), 16,494 points; citations 125,409 → 143,841 (+18,345 era, +87 SAM #10); era P-1 receipts complete PB2017–PB2023 2,205/2,232 · 2,322/2,355 · 2,368/2,403 · 2,465/2,496 · 2,553/2,622 · 2,670/2,697 · 2,658/2,697; F-15 default cells 67/67; gates: npm verify overall PASS (27/27), verify-phase5 PASS (eval 47/48, the miss q007 on the Lockheed Martin family's confidence level; citations 43/43), 5b1/5e/lineage/era-map PASS, link-coverage PASS, evals check PASS |
 | Families-1 FU-1 | Piece-1 follow-ups, release 1: `/years/` sharded (schema-2 core + lazy decade and detail shards) with its era fence lifted (#193, #206 T4, #207, #208); the 0390D Chem Demil O&M line under the route-safe key 0390DOM with a rollup-tier page and the era O&M chain as owner batch R-DEC-ERA-B7, the RDT&E line recorded as an R-1 restatement of 0708081D + 0708083D (#194); `p1_era_line_map.decided_on` (#206 T6); the v1 receipt files removed (#196); JASSM/C-130J search aliases (#197); one "tier pending" definition (T7); the F015E0 gloss (T9); verify-era-map legs g and h (T11); hardening #198–#205 | P1/P2/P2b/P3 proofs on snapshots fu-pre/fu-post, the write rehearsed on fu-post and fu-pre and its `--revert` on fu-pre ([proof](reviews/fu-release1-proof.md)) + yearsmatrix leg j + verify-era-map a–h + link-coverage V9 | ✅ DEPLOYED 2026-10-14 at e362c0a7 (rollback tag 2026-10-15T033621Z) | /years/ +14,985 era cells and the org-split rows' 63 modern cells, leg j 0 mismatches, core 1,100,823 / 344,303 gzip (budget 780,074), decade 1,390,739 / 433,932, detail 1,231,643 / 284,230 [p2b-report.json]; /program/0390DOM/ with 21 points before PB2024 [p1-content.txt]; totals chart panel 524 → 1,063 programs, FY2024A→FY2026R +9.34% → −2.61%, first→last +108.17% → +103.71% (Q15; told 2026-10-04: 524 → 1,056 and +9.3% → about −2.5%) [p2b-report.json]; citations 143,841 → 143,893 (+37 0390DOM, +15 SAM #10) [fu-release-counts.json]; 256 v1 receipt files gone; universe 385,268,393 → 385,271,636 ($385.3B); dbt assertions 196 → 199; gates: npm verify overall PASS, verify-phase5 PASS (eval 46/48, the misses q007, piece 1's, and q042, an analyst error filed as #210; citations 43/43), 5b1/5e/lineage/era-map a–h PASS, link-coverage PASS, evals check PASS; live: all 236 live-asset assertions and every live check passed [release-deploy.log, live-checks.txt] |
+| Families-1 follow-ups R2 | #195: each narrative citation names the volume of its book set that prints it — migration 022 (`provenance_pages.printed_document_sha256`), the book-set relocation (`provenance_pages.plan_narrative_relocations`, written once by `scripts/fu/s195_narratives.py` with a pre-image and `--revert`), the export citing and hosting the printing volume, and `verify-jbook-narratives` (verify-phase5b1 gate 5, full population) | release-2 A/B on one snapshot (P2 equal, P1 within `expected-diff-r2-narratives.json`, `narrative_relocation_report.py`), the write and its `--revert` rehearsed, gate 5 red before and green after | ✅ DEPLOYED 2026-10-19 at 1256ec35 (rollback tag 2026-10-20T000418Z) | 4,177 narrative citations gain a page and 228 move (fact IDs unchanged); 20 superseded PB2026 volumes hosted on R2 (162,040,168 B); 111 opening-only (Q26 ratchet) and 77 opening-seen pageless (ratchet the owner approved 2026-10-14) citations; 1,444 pageless (1,342 of them Navy RDTEN BA1–3 master-XML narratives whose books are not in the corpus); `/program/0601102A/` 1,169,983 / 147,323 of 1,180,000 / 151,000 and `/families/f-15/` 69,342 of 70,000 gzip (658 bytes left), ceilings unchanged [fu2-release-site-verify.log]; gates: npm verify overall PASS, verify-phase5 PASS (eval 46/48, the misses q007, piece 1's, and q042, the analyst's DATE crash #210; citations 43/43) [fu2-release-verify-phase5.log], 5b1 (gate 5)/5e/lineage/era-map PASS, link-coverage PASS, evals check PASS; citations 143,893, unchanged; SAM registrations shipped 0; hosted PDF files 225 → 245 [fu2-release-counts.json]; live writes 2026-10-15: state digest D0 equal to the proof's, D1 and D2 not, by a three-id rotation (#219), the post-write rows equal to the proof's by key [release-live-vs-D2-by-key.txt]; release export = proven export (`proof diff: EQUAL`) [fu2-release-vs-proof.txt]; live: all 236 live-asset assertions passed, the 20 new volumes probed by sha 39/39, every page and citation check as expected [fu2-release-deploy.log, fu2-release-live-pdfs.txt, fu2-release-live-checks.txt] |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog — refresh orchestrator shipped 2026-09-18 (#8: `govbudget refresh`, sync shrink guards, launchd templates; loading the scheduler is the owner's action); accounts/alerts tier and the public analyst surface still backlog | — |
 
 ## Evaluator framework (how each thing is judged)
@@ -281,6 +282,73 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
    *Used by: every phase's final review; 5B-4's NL eval (≥90% + REFUSE handling).*
 
 ## Findings log (what we learned; feeds future phases)
+
+- **2026-10-19: Families piece-1 follow-ups, release 2 (#195) deployed.** The
+  live writes ran on 2026-10-15, after the owner's go-ahead, in the proven order
+  (`govbudget migrate` → 022 [fu2-release-migrate.log]; `jbooks
+  narrative-provenance --lineage-evidence` → the 19 lineage-evidence rows that
+  had never been built [fu2-release-lineage-evidence.log];
+  `scripts/fu/s195_narratives.py --apply` → 4,386 rows, pre-image
+  `.proofs/fu2-release-s195-pre-image.json` [fu2-release-s195-apply.log]).
+  Correction to the plan, which expected each digest to equal the proof's:
+  only the first did. Before the writes the live state digest was the proof's
+  D0, 3e61258310ef4ce9a7fae630daf8eb62. After the 19 rows it read
+  dab37f87a29e75e00b35b5742bb2e15d, not the proof's D1
+  (474918138d7ce2569ff29de1d042f2a0), and after the relocation
+  b08a7d50c537f9ab2e86254c3d293d6b, not the proof's D2
+  (188856e4e0d4a1e0a0ef809059e1c810). Both differ from the proof's only by a
+  three-id rotation: `provenance_pages` ids 87852–87854 hold the same three
+  rows (one OSD RDT&E document: 0605142D8Z, 0605798D8Z, 0603618D8Z) in another
+  order, because `build_narrative_provenance` orders its inserts by document
+  sha256 alone (filed as #219). The relocation therefore ran with
+  `--expect-pre-digest` set to the measured live digest dab37f87… (controller
+  ruling; the owner had approved the write), and the post-write state equals
+  the proof's D2 by key (document_sha256, pe_bli, narrative_kind, xml_path):
+  11,980 = 11,980 keys, 0 content differences, 3 id differences
+  [release-live-vs-D2-by-key.txt]. The release export equals the proven export
+  (`proof diff: EQUAL` against `.proofs/fu2-Bpost/site`)
+  [fu2-release-vs-proof.txt], so the rotation changes nothing published;
+  against the pre-release copy `.proofs/fu2-release-pre-site`, 4,177 narrative
+  citations gained a page and 228 moved, nothing outside their location fields
+  changed [fu2-release-relocation.json], and the 20 superseded PB2026 volumes
+  they name (162,040,168 B) were hosted and uploaded to R2 by `deploy.sh`
+  (rollback tag 2026-10-20T000418Z; all 236 live-asset assertions passed
+  [fu2-release-deploy.log]; all 20 probed live, 39/39 assertions
+  [fu2-release-live-pdfs.txt]). The defect was systemic, as the follow-ups
+  design found: `dedup_service_master_dups` keeps one volume per master XML and
+  attaches every narrative of the master to it, and two volumes can embed
+  regenerated copies of one master (Army RDT&E Vol 1, docs 344 and 351), so a
+  narrative is searched in its whole book set (edition, organization, exhibit
+  family), and a new location needs the opening, the closing within three
+  pages and the PE anchor. Live [fu2-release-live-checks.txt]:
+  `/.build-meta.json` 1256ec35; #195's JLTV continuation sentence
+  (`136baeef904dd052`) cites the BA1 book p.100 (the JLTV page embeds that
+  page, and the BA1 PDF answers 206 on the asset host); `033016199ca94aa7` the
+  F-15EX P-40 in Vol II p.215; the F015E0 note receipt stays on Vol I p.71, so
+  the F-15 history did not change (the note renders on /families/f-15/);
+  sitemap 4,350. Still pageless: 1,444 — 1,367 printed in no PDF we hold
+  (1,342 from the Navy RDTEN BA1–3 master XML, filed as #216) and 77 whose
+  opening alone is printed (an opening is not a location: `033016199ca94aa7`
+  sat on the wrong exhibit by its opening); gate 5 ratchets the 77
+  (owner-approved 2026-10-14), as it does the 111 opening-only paged citations
+  (Q26) [fu2-release-vjn.txt]. Gate 5 also found 19 lineage-evidence
+  narratives with no provenance row at all (filed and closed as #215). SAM: 0
+  registrations shipped [fu2-release-counts.json].
+  Release build at 1256ec35 on that export: `npm run verify` overall PASS;
+  `/program/0601102A/` 1,169,983 / 147,323 of 1,180,000 / 151,000 and
+  `/families/f-15/` 69,342 of 70,000 gzip, 658 bytes left (ceilings
+  unchanged) [fu2-release-site-verify.log]; citations 143,893, unchanged.
+  verify-phase5 PASS: eval 46/48, citations 43/43, the misses q007 (piece 1's)
+  and q042 (the DATE crash, #210) [fu2-release-verify-phase5.log]. The first
+  full vitest run failed one timing test, which passes alone, and the re-run
+  passed 2,891 of 2,891 (filed as #220) [fu2-release-vitest.log,
+  fu2-release-vitest-rerun.log]. The plan's Step 4 PDF probe passed its
+  `--sha` list as one unquoted string, which zsh does not word-split, so its
+  first run asked for one URL holding all 20 shas (HTTP 400); re-run with an
+  array, all 20 passed, and the task text now builds one. Also filed: #217
+  (are the 8,021 unresolved detail amounts #195's species?), #218 (the
+  duplicated Army RDT&E Vol 1 narratives) and #221 (three minors from the
+  release-2 reviews).
 
 - **2026-10-15: Families piece-1 follow-ups, release-2 proof (#195) — the
   narrative relocation on one snapshot.** Snapshot `.proofs/fu2`
@@ -5089,7 +5157,14 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   `jbook_narrative` citation names a document that prints its text. Source:
   `src/govbudget/export_site.py` (the jbook_narrative citation pass).
   Effort: hours.
-  **Status:** open (2026-10-02).
+  **Status:** CLOSED 2026-10-19 — fixed systemically in release 2 of the
+  piece-1 follow-ups (deployed 1256ec35): every narrative citation names the
+  volume of its book set that prints it (4,177 located, 228 moved, 20 superseded
+  volumes hosted), and `verify-jbook-narratives` (verify-phase5b1 gate 5) checks
+  the whole population, ratcheting 111 opening-only and 77 opening-seen
+  citations. The JLTV sentence cites the BA1 book p.100.
+  *(Earlier marker below.)*
+  **Status (2026-10-02):** open (2026-10-02).
 
 - **#196 Dead v1 PDF receipt files still ship and need the owner's sign-off
   to remove.** `export_budget_pdf_receipts` in
@@ -5500,6 +5575,93 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   each chip to its figure explicitly. Found by the Task 21h2 review
   (2026-10-14). Source: `site/scripts/gates/basis.mjs`. Effort: hours.
   **Status:** open (2026-10-14).
+
+- **#215 Lineage-evidence narratives without a provenance row.** 19 of the 92
+  narratives a stated lineage edge cites (PB2017–PB2025) had no
+  `provenance_pages` row, so their citations shipped without a page although
+  their own volume prints them; `jbooks narrative-provenance --lineage-evidence`
+  had not been re-run since their edges were added. Found by
+  `verify-jbook-narratives` (Task 24), fixed by release 2's write (all 19 in
+  their own volume). Source: `src/govbudget/cli.py` (`narrative-provenance
+  --lineage-evidence`). Effort: hours.
+  **Status:** CLOSED 2026-10-19 — built in release 2 (1256ec35).
+
+- **#216 The Navy RDTEN BA4–7 books are not in the corpus.** 1,342 PB2026
+  narratives come from the Navy RDT&E master XML embedded in the BA1–3 book
+  (`RDTEN_BA1-3_Book.pdf`), which prints only BA1–3; no PDF we hold prints them,
+  so their citations stay pageless (verify-jbook-narratives counts them in
+  "opening printed nowhere"). Fix: acquire the BA4–7 volumes and let the book-set
+  search place them. Source: `src/govbudget/jbooks/service_fetch.py` (the Navy
+  book set), `src/govbudget/jbooks/provenance_pages.py` (`book_set`). Effort:
+  hours (acquisition) plus a release.
+  **Status:** open (2026-10-19).
+
+- **#217 Are the 8,021 unresolved J-book detail amounts the same species as
+  #195?** Narrative citations were attached to the kept volume of a master XML;
+  detail amounts (`budget_line_details`, `jbook_pdf` citations) were extracted
+  from the same masters, and 8,021 of them resolve to no page. Measure how many
+  are printed in another volume of their book set before deciding. Source:
+  `src/govbudget/jbooks/provenance_pages.py` (`build_provenance_pages`). Effort:
+  hours to measure.
+  **Status:** open (2026-10-19).
+
+- **#218 Army RDT&E Vol 1 narratives ship twice.** Docs 344 (BA1) and 351
+  (BA2) embed two regenerations of the Vol 1 master XML, and both are kept
+  (`dedup_service_master_dups` groups by identical master sha), so 1,189
+  narratives are attached to each and 1,207 PB2026 narrative pairs share
+  (pe_bli, kind, body); `/program/0601102A/` lists 106 + 106. Since #195 both
+  copies cite the same printing page. Fix: collapse regenerated masters (same
+  narratives, different bytes) the way identical ones are, or dedup the page's
+  list. Source: `src/govbudget/jbooks/service_fetch.py`
+  (`dedup_service_master_dups`). Effort: hours.
+  **Status:** open (2026-10-19).
+
+- **#219 Narrative-provenance inserts are ordered by document sha256 only.**
+  `build_narrative_provenance` in `src/govbudget/jbooks/provenance_pages.py`
+  inserts its rows in the order of a query sorted by `j.sha256` alone, so the
+  rows within one document take arbitrary ids from the sequence and the
+  `provenance_pages` state digest is not reproducible across rebuilds. Seen at
+  release 2's live write (2026-10-15): after `jbooks narrative-provenance
+  --lineage-evidence` the live digest read dab37f87a29e75e00b35b5742bb2e15d,
+  not the proof's 474918138d7ce2569ff29de1d042f2a0, because ids 87852–87854
+  held the same three rows of one OSD RDT&E document (0605142D8Z, 0605798D8Z,
+  0603618D8Z) in another order. The relocation ran against the measured
+  digest, its post-state equalled the proof's by key, and the export did not
+  change (`proof diff: EQUAL`; the release-2 findings entry, 2026-10-19). Fix:
+  order the inserts deterministically (by the narrative id or `xml_path`
+  within a document), with a test that two builds of one state assign the
+  same ids. Source: `src/govbudget/jbooks/provenance_pages.py`
+  (`build_narrative_provenance`). Effort: hours.
+  **Status:** open (2026-10-19).
+
+- **#220 The years-matrix filter timing test is flaky under full-suite load.**
+  "filter narrows rows within the 50-millisecond budget and clearing restores"
+  (`site/src/__tests__/years-matrix.test.tsx`) times one `fireEvent.change`
+  with `performance.now()` and asserts under 50 ms. In release 2's first full
+  vitest run (2026-10-15, `fu2-release-vitest.log`) it measured 55.9 ms and
+  failed (the test took 82 ms in all); it passes alone, and the full re-run
+  passed 2,891 of 2,891. Release 2 does not touch /years/. Fix: take the
+  timing where suite load cannot skew it (the median of several runs, or a
+  separate performance run), keeping the 50 ms budget. Source:
+  `site/src/__tests__/years-matrix.test.tsx`. Effort: hours.
+  **Status:** open (2026-10-19).
+
+- **#221 Three release-2 review minors.** (1) `build_narrative_provenance`
+  (`src/govbudget/jbooks/provenance_pages.py`) keeps every touched volume's
+  pdfplumber handle open until the run ends, so its peak memory is the sum
+  over the run: a bare `jbooks narrative-provenance` run would hold 145
+  volumes, 1,451 MB. (2) A narrative located in more than one volume of its
+  book set is still stored as `unique` (`resolve_printed_narrative` takes the
+  first volume that locates it and judges uniqueness within that volume
+  only). (3) `scripts/fu/narrative_relocation_report.py`'s narrative branch
+  still compares with `==`, not type-strictly (Task 25c2 made only the
+  non-narrative pre-filter type-strict, #199). Filed at the release-2 stamp
+  (2026-10-19). Fix: close each volume's handle once its narratives are
+  placed; give a location more than one volume prints its own resolution;
+  compare the narrative fields type-strictly. Source:
+  `src/govbudget/jbooks/provenance_pages.py`,
+  `scripts/fu/narrative_relocation_report.py`. Effort: hours.
+  **Status:** open (2026-10-19).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —

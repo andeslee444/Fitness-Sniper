@@ -65,9 +65,11 @@ The 20 new volumes on the asset host, every one (assertion 1 of the deploy's own
 
 ```bash
 cd /Users/andeslee/Documents/Cursor-Projects/GovBudget/.claude/worktrees/families/GovBudget && source scripts/era/env.sh || exit 1
-ARGS=$(uv run --project . python -c "import json; print(' '.join('--sha=' + s for s in sorted(json.load(open('${GOVBUDGET_PROOFS:?}/fu2-logs/relocation-report.json'))['new_pdfs'])))"); echo "$ARGS" | wc -w; node scripts/launch/verify_live_assets.mjs --skip-site $ARGS > tmp/fu2-release-live-pdfs.txt 2>&1; echo "exit=$?"; tail -3 tmp/fu2-release-live-pdfs.txt
+ARGS=(${(f)"$(uv run --project . python -c "import json; print('\n'.join('--sha=' + s for s in sorted(json.load(open('${GOVBUDGET_PROOFS:?}/fu2-logs/relocation-report.json'))['new_pdfs'])))")"}); echo ${#ARGS[@]}; node scripts/launch/verify_live_assets.mjs --skip-site "${ARGS[@]}" > tmp/fu2-release-live-pdfs.txt 2>&1; echo "exit=$?"; tail -3 tmp/fu2-release-live-pdfs.txt
 ```
 Expected: `20`; `exit=0` and the last line `All <n> live-asset assertions passed.` (one `PASS` per volume — 200/206 with a non-empty `%PDF-` body — plus the fixed-name `data/` and `citations/` objects; `--sha` skips the receipt probes, `--skip-site` the site host).
+
+*(2026-10-19: corrected after the release-2 run. The block first built `ARGS` as one space-joined string and passed `$ARGS` unquoted; zsh, the shell these blocks run in, does not word-split an unquoted parameter, so the first live probe sent all 20 shas as a single `--sha` value, one URL, and got HTTP 400. It now builds an array, one `--sha=` per line split by zsh's `(f)` flag, and passes `"${ARGS[@]}"`; the re-run probed all 20 volumes and passed, 39/39 assertions.)*
 
 Then the pages and citations readers open:
 
