@@ -69,7 +69,11 @@ const CITATIONS = citationsFor([
 ]);
 
 /** The post-chain shape export_site._link_precision_block projects
- *  (decisions-lane-export-ops.md §4(a)). */
+ *  (decisions-lane-export-ops.md §4(a)). fpds-ap carries the figure the
+ *  contract-link release publishes, 86/111: 89/114 less the two confirmed
+ *  pairs R-DEC-LINK-2026-10-21 withdrew (R1) and the one R-DEC-LINK-2026-10-21-B
+ *  withdrew (B-C1), each counted in neither direction once it stops
+ *  publishing. The other figures keep the decisions-lane shape. */
 const WITHDRAWN_META = {
   link_precision: {
     rubric: "attribution",
@@ -77,7 +81,7 @@ const WITHDRAWN_META = {
     sampled_at: "2026-09-04",
     methods: {
       "announcement+lexicon": { confirmed: 56, sampled: 60, sample_id: "2026-09-04", judged: "2026-09-04" },
-      "fpds-ap": { confirmed: 89, sampled: 114, sample_id: "2026-09-04", judged: "2026-09-04" },
+      "fpds-ap": { confirmed: 86, sampled: 111, sample_id: "2026-09-04", judged: "2026-09-04" },
       "subaward+lexicon": { confirmed: 53, sampled: 60, sample_id: "2026-09-04", judged: "2026-09-04" },
     },
     unmeasured: ["account", "account+subagency", "account+tokens"],
@@ -103,7 +107,7 @@ const PRECISION_PARAGRAPH =
   "publishes under today, not the tier it carried when it was drawn; one the " +
   "corpus no longer publishes is counted in neither direction, except a " +
   "refuted link a ruling withdrew: " +
-  "announcement+lexicon 56/60; fpds-ap 89/114; subaward+lexicon 53/60. No " +
+  "announcement+lexicon 56/60; fpds-ap 86/111; subaward+lexicon 53/60. No " +
   "precision figure is published for the remaining tiers a reader can meet — " +
   "account, account+subagency, account+tokens. Those rest on an " +
   "appropriation-account match, narrowed by a hand adjudication of the award, " +

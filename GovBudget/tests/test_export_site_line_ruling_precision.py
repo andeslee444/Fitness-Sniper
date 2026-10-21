@@ -1,5 +1,5 @@
-"""R-DEC-LINK-2026-10-21 (owner, 2026-10-21) on the export's held-out link
-precision tally.
+"""R-DEC-LINK-2026-10-21 and R-DEC-LINK-2026-10-21-B (owner, 2026-10-21) on
+the export's held-out link precision tally.
 
 A `withdraw` ruling in dbt/seeds/link_line_rulings.csv grades a pair 'low'
 with demotion_reason 'line_activity_mismatch' (or 'precision_sample_refuted'
@@ -16,19 +16,27 @@ lands in `_withdrawn_link_rows`. Two rules decide what the tally does with it:
     the rule above; controller ruling R-DEC-LINK-2026-10-21-R2, narrowed on
     the round-2 review, I-1: a refuted link that left the corpus WITHOUT a
     ruling counts in neither direction, as three of the 2026-09-04
-    announcement draw do; the last test pins it). Two of the 34
-    withdrawn fpds-ap pairs carry a 'confirmed' verdict (F03500|N0001917C0020,
+    announcement draw do; the last test pins it). Two of the first ruling's
+    34 withdrawn fpds-ap pairs carry a 'confirmed' verdict (F03500|N0001917C0020,
     link_precision_samples id 75; 3264AA0252|W58RGZ18F0050, id 120), so the
     fpds-ap figure loses them: 89/114 -> 87/112, the smaller true number
-    (controller ruling R-DEC-LINK-2026-10-21-R1: option B confirmed).
+    (controller ruling R-DEC-LINK-2026-10-21-R1: option B confirmed). One of
+    the B ruling's 10 F03500 production-support pairs does too
+    (F03500|N0001916C0004, id 74), so it loses that one as well: 87/112 ->
+    86/111 (controller ruling R-DEC-LINK-2026-10-21-B-C1; measured read-only
+    2026-10-21). The same order's ATA000 link (id 73) and the other two
+    sampled B-ruling orders' links on 0147 and ATA000 (ids 72, 96) still
+    publish, so their confirmations still count.
 
 And a per-pair ruling is not a withdrawn TIER. The `withdrawn` sub-block
 exists so the measurement that caused a tier's withdrawal survives it
 (#107(b): account+subagency, 0 of 58); /methodology/ renders every entry as
 "its N links were withdrawn from publication". Fed the line-ruled rows, the
 unchanged exporter would have minted "fpds-ap: confirmed 2 of 2; its 32
-links were withdrawn" — a figure that did not cause the withdrawal, stated as
-if it had. Line-ruled rows never enter it.
+links were withdrawn" on the first ruling's 41 pairs, and "confirmed 3 of 3;
+its 42 links were withdrawn" on all 51 (measured 2026-10-21) — a figure that
+did not cause the withdrawal, stated as if it had. Line-ruled rows never
+enter it.
 
 Run against the fixture Postgres (root conftest's `pg_dsn`).
 """

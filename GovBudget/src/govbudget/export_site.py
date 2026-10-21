@@ -4426,10 +4426,11 @@ def _published_demotions(duckdb_path) -> list[dict] | None:
 #: the sample drew, so the link's own method may differ from its draw tier.
 _PRECISION_SAMPLE_DEMOTION = "precision_sample_refuted"
 
-#: R-DEC-LINK-2026-10-21 (owner, 2026-10-21): the `demotion_reason` dbt
-#: records on a pair a person ruled withdrawn in dbt/seeds/link_line_rulings.csv
-#: (a production or long-lead contract, or an O&M support task order,
-#: attributed to a modification line) that no precision sample refuted. A
+#: R-DEC-LINK-2026-10-21 and R-DEC-LINK-2026-10-21-B (owner, 2026-10-21):
+#: the `demotion_reason` dbt records on a pair a person ruled withdrawn in
+#: dbt/seeds/link_line_rulings.csv (a production or long-lead contract, an
+#: F-35 production-support order, or an O&M support task order, attributed
+#: to a modification line) that no precision sample refuted. A
 #: per-pair ruling is not a withdrawn TIER: `_link_precision_block` never
 #: tallies these rows into its `withdrawn` sub-block.
 _LINE_RULING_DEMOTION = "line_activity_mismatch"
@@ -4686,21 +4687,25 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     export's `_published_demotions`) builds both populations before any
     tally runs, so the rule reaches the pins and `withdrawn` alike.
 
-    A LINK A PERSON RULED OFF ITS LINE (R-DEC-LINK-2026-10-21, owner
-    2026-10-21). dbt grades a pair a `withdraw` ruling names 'low' with
+    A LINK A PERSON RULED OFF ITS LINE (R-DEC-LINK-2026-10-21 and
+    R-DEC-LINK-2026-10-21-B, owner 2026-10-21). dbt grades a pair a
+    `withdraw` ruling names 'low' with
     `demotion_reason = 'line_activity_mismatch'` — or
     'precision_sample_refuted' where a sample refuted the pair, which the
     paragraph above keeps in its tier. A 'line_activity_mismatch' row
     follows the population rule like any link the corpus stopped publishing:
-    its verdict, if it was sampled, counts in neither direction (two of the
-    34 withdrawn fpds-ap pairs carry a 'confirmed' verdict, so the fpds-ap
-    figure loses two confirmations: the smaller true number). And it never
+    its verdict, if it was sampled, counts in neither direction (three of
+    the 44 withdrawn fpds-ap pairs carry a 'confirmed' verdict: two of the
+    first ruling's 34 and N0001916C0004 on F03500 of the B ruling's 10, so
+    the fpds-ap figure loses three confirmations, 89/114 -> 86/111 measured
+    2026-10-21: the smaller true number). And it never
     enters `withdrawn`: that sub-block keeps the measurement that CAUSED a
     tier's withdrawal (#107(b)), and /methodology/ renders each entry as
     such ("its N links were withdrawn from publication"); a per-pair ruling
     is neither a tier nor caused by the study, so a figure minted from its
-    rows ("fpds-ap: confirmed 2 of 2; its 32 links were withdrawn") would
-    state a measured withdrawal that never happened.
+    rows ("fpds-ap: confirmed 3 of 3; its 42 links were withdrawn", measured
+    2026-10-21 with this filter removed) would state a measured withdrawal
+    that never happened.
     """
     if rubric not in _PRECISION_RUBRICS:
         raise ValueError(f"rubric must be one of {list(_PRECISION_RUBRICS)}, got {rubric!r}")
