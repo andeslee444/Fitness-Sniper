@@ -655,6 +655,26 @@ describe("gate 24 leg o — the label maps mirror /methodology/'s (fix round 4)"
     expect(DEMOTION_REASON_WORDS).toEqual(readPageMap("DEMOTION_WORDS"));
   });
 
+  // R-DEC-LINK-2026-10-21: the words cover every reason audit_link_grading
+  // can record (dbt/models/audit/schema.yml's accepted_values), so a new
+  // reason cannot reach the page as a bare code. The one exception is
+  // account_subagency_not_pinned: /methodology/ words the #107(b) tier in its
+  // own withdrawn-tier sentence, never in the demoted-from-high list.
+  it("DEMOTION_REASON_WORDS words every reason the grading records", () => {
+    const yml = fs.readFileSync(
+      path.resolve(path.dirname(fileURLToPath(import.meta.url)),
+        "../../../../dbt/models/audit/schema.yml"),
+      "utf8",
+    );
+    const block = yml.split("- name: demotion_reason")[1];
+    const values = block.match(/values: \[([^\]]*)\]/)[1]
+      .split(",").map((v) => v.trim().replace(/^'|'$/g, ""));
+    expect(values).toContain("line_activity_mismatch");
+    const unworded = values.filter(
+      (v) => v !== "account_subagency_not_pinned" && !(v in DEMOTION_REASON_WORDS));
+    expect(unworded).toEqual([]);
+  });
+
   it("REVIEW_KIND_EXTRA_WORDS equals page.tsx's REVIEW_KIND_EXTRA", () => {
     expect(REVIEW_KIND_EXTRA_WORDS).toEqual(readPageMap("REVIEW_KIND_EXTRA"));
   });

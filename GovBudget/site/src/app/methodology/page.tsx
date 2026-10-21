@@ -535,6 +535,9 @@ export default function MethodologyPage() {
     precision_sample_refuted: "refuted by the precision study",
     announcement_review_incomplete: "whose review records neither uphold nor refute them",
     announcement_review_unrecorded: "with no recorded review",
+    // R-DEC-LINK-2026-10-21: graded low (never in demoted_from_high, which
+    // reads the mart's medium rows); worded so it can never print as a code.
+    line_activity_mismatch: "withdrawn by a ruling on their budget line",
   };
   const demotedParts =
     demoted && demoted.links > 0

@@ -153,6 +153,23 @@ export default function AboutPage() {
               title, page, and the value you believe is correct). We will
               investigate and respond.
             </p>
+            {/* R-DEC-LINK-2026-10-21 (owner, 2026-10-21): the owner's rule is
+                to publish the smaller true number AND label it a correction.
+                Every figure here is bound to dbt/seeds/link_line_rulings.csv
+                by src/__tests__/about-link-line-rulings.test.tsx. It sits on
+                /about/ because /methodology/ §6 has no page-weight room. */}
+            <p
+              className="text-muted-foreground leading-7 mt-4"
+              data-correction="link-line-rulings"
+            >
+              Correction issued 2026-10-21: 41 budget-to-contract links were
+              withdrawn. 39 had attributed a production or long-lead contract
+              (aircraft or missile production lots, long-lead parts and
+              engines) to an aircraft- or missile-modification budget line;
+              the other 2 had attributed one operations-and-maintenance
+              support task order to two aircraft-modification lines. No link
+              was moved to another line in their place.
+            </p>
           </section>
 
           {/* Data provenance */}

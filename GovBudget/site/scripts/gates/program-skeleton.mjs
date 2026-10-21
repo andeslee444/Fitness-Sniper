@@ -69,6 +69,10 @@
  *     AND the synthesized full-tier pages the 2026-07-05 fix never covered),
  *     it names the page's own org, and the branch it picks agrees with
  *     site_meta.ingested_service_orgs. ROADMAP #14 — see leg o's own block.
+ * (q) A pair the owner ruled withdrawn (dbt/seeds/link_line_rulings.csv,
+ *     R-DEC-LINK-2026-10-21) is listed on no program page and summed in no
+ *     flows file; 0592/0593 carry neither F-35 production PIID and 0549 has
+ *     no awards — see leg q's own block at the bottom.
  * (p) /families/f-15/ states the family funding history its export carries:
  *     the headline is the sum of the default actuals years, every annual
  *     total and matrix cell sums exactly its own workbook receipts, and the
@@ -556,6 +560,10 @@ export async function runProgramSkeletonGate() {
   //        (codex/f15-family-browser; that branch lettered it (o), which
   //        this gate already gives the coverage note — merged 2026-09-25)
   runFamilyLeadLeg({ errors, notes });
+
+  // ── (q) a pair the owner ruled withdrawn publishes nowhere ──────────────
+  //        (R-DEC-LINK-2026-10-21)
+  runLineRulingsLeg({ errors, notes, sidecars });
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -4200,4 +4208,141 @@ function runFamilyLeadLeg({ errors, notes }) {
   findings.push(...checkFamilyHistoryAssets(history, citations, fs.existsSync(shippedHistory) ? readJson(shippedHistory) : null, shippedShards));
   errors.push(...findings.map(message => `program-skeleton(p): /families/f-15/ ${message}`));
   if (!findings.length) notes.push(`leg p: family history sums, ${history.default_point_ids.length} annual snapshots, receipts and historical coverage checked ✓`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg q — a pair the owner ruled withdrawn publishes nowhere
+//          (R-DEC-LINK-2026-10-21)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Until the 2026-10-21 ruling nothing compared a line's budget activity with
+// what the award buys: the Lot 12 advance acquisition (N0001917C0001) and the
+// Lot 20 long-lead (N0001925C0070) published at high on the F-35
+// modification lines 0592 and 0593 — $46.4B of the $49.71B the 0592 flow
+// showed — TH-73A full-rate production published on 0549, a C-32/C-40 O&M
+// support task order on C03200/C04000, and 34 fpds-ap production, long-lead,
+// multiyear and engine buys on seven modification lines (verify.md 1.1,
+// sweep.md 2 A2). The owner withdrew all 41 ("approved, would process with
+// recommendation to approve all"); dbt/seeds/link_line_rulings.csv records
+// them and audit_link_grading grades each pair low, so the mart drops it.
+//
+// This leg reads the SHIPPED artifacts, not the warehouse: for every
+// withdraw row, no program_details sidecar of the pair's code (an
+// account-split member page files under its own code, read from
+// programs.json) lists the award, and no flows/{code}.json sums it. The
+// pinned pages the release must ship are named too: 0592 and 0593 exist and
+// carry neither F-35 production PIID (the general check), and 0549 has no
+// awards at all — its only link was the TH-73A contract (a later, legitimate
+// link would be a change to argue for here, not to absorb). A seed that
+// lost its withdraw rows fails rather than passing vacuously.
+
+const LINE_RULINGS_SEED = path.resolve(siteRoot, "..", "dbt", "seeds", "link_line_rulings.csv");
+/** Measured 2026-10-21: the seed withdraws 41 pairs. */
+const MIN_WITHDRAWN_PAIRS = 41;
+
+/** dbt/seeds/link_line_rulings.csv as rows of strings. */
+export function readLineRulings(seedPath = LINE_RULINGS_SEED) {
+  return readCsvRows(fs.readFileSync(seedPath, "utf8"));
+}
+
+function readShippedFlows() {
+  const dir = path.join(jsonDir, "flows");
+  const out = new Map();
+  if (!fs.existsSync(dir)) return out;
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".json"))) {
+    try {
+      out.set(f.replace(/\.json$/, ""), readJson(path.join(dir, f)));
+    } catch {
+      out.set(f.replace(/\.json$/, ""), null);
+    }
+  }
+  return out;
+}
+
+export function runLineRulingsLeg({
+  errors,
+  notes,
+  sidecars,
+  programs,
+  flows,
+  rulings,
+  minWithdraw = MIN_WITHDRAWN_PAIRS,
+}) {
+  let ruled = rulings;
+  if (!ruled) {
+    if (!fs.existsSync(LINE_RULINGS_SEED)) {
+      errors.push("program-skeleton(q): dbt/seeds/link_line_rulings.csv missing");
+      return;
+    }
+    ruled = readLineRulings();
+  }
+  const withdrawn = ruled.filter((r) => r.ruling === "withdraw");
+  if (withdrawn.length < minWithdraw) {
+    errors.push(
+      `program-skeleton(q): the line-ruling seed carries ${withdrawn.length} ` +
+        `withdraw row(s) (floor ${minWithdraw}, measured 2026-10-21 at 41). ` +
+        `A seed that lost its withdraw rows would pass this leg vacuously ` +
+        `while the pairs republish`,
+    );
+    return;
+  }
+  let programRows = programs;
+  if (!programRows) {
+    const programsPath = path.join(jsonDir, "programs.json");
+    programRows = fs.existsSync(programsPath) ? readJson(programsPath) : [];
+  }
+  const codeOfSlug = new Map(programRows.map((p) => [p.slug, p.pe_bli]));
+  const pairs = new Set(withdrawn.map((r) => `${r.award_piid}|${r.pe_bli}`));
+
+  let pagesChecked = 0;
+  for (const [slug, d] of sidecars) {
+    const code = codeOfSlug.get(slug) ?? slug;
+    for (const a of d?.awards ?? []) {
+      if (pairs.has(`${a.award_piid}|${code}`)) {
+        errors.push(
+          `program-skeleton(q): award ${a.award_piid} is listed on ` +
+            `/program/${slug}/ (code ${code}), but the owner withdrew that pair ` +
+            `(dbt/seeds/link_line_rulings.csv, R-DEC-LINK-2026-10-21) — ` +
+            `audit_link_grading must grade it low`,
+        );
+      }
+    }
+    pagesChecked++;
+  }
+
+  const shippedFlows = flows ?? readShippedFlows();
+  let flowsChecked = 0;
+  for (const [code, f] of shippedFlows) {
+    flowsChecked++;
+    for (const a of f?.awards ?? []) {
+      if (pairs.has(`${a.piid}|${code}`)) {
+        errors.push(
+          `program-skeleton(q): flows/${code}.json sums award ${a.piid}, ` +
+            `a pair the owner withdrew (R-DEC-LINK-2026-10-21)`,
+        );
+      }
+    }
+  }
+
+  for (const slug of ["0592", "0593", "0549"]) {
+    if (!sidecars.has(slug)) {
+      errors.push(
+        `program-skeleton(q): /program/${slug}/ sidecar missing — the ` +
+          `withdrawal of its production links cannot be checked`,
+      );
+    }
+  }
+  const trainer = sidecars.get("0549");
+  if (trainer && (trainer.awards ?? []).length > 0) {
+    errors.push(
+      `program-skeleton(q): /program/0549/ lists ` +
+        `${trainer.awards.length} award(s), but it has no awards since the ` +
+        `TH-73A production contract was withdrawn (R-DEC-LINK-2026-10-21): ` +
+        `${trainer.awards.map((a) => a.award_piid).join(", ")}`,
+    );
+  }
+  notes.push(
+    `line rulings: ${withdrawn.length} withdrawn pair(s) checked on ` +
+      `${pagesChecked} program page(s) and ${flowsChecked} flows file(s)`,
+  );
 }

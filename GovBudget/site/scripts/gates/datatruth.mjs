@@ -3378,6 +3378,7 @@ export const DEMOTION_REASON_WORDS = {
   precision_sample_refuted: "refuted by the precision study",
   announcement_review_incomplete: "whose review records neither uphold nor refute them",
   announcement_review_unrecorded: "with no recorded review",
+  line_activity_mismatch: "withdrawn by a ruling on their budget line",
 };
 
 /**
