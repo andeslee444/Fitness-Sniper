@@ -101,8 +101,8 @@ const PRECISION_PARAGRAPH =
   "attribution: does this award execute this program element? — not whether " +
   "the linking rule fired. Each sampled link is counted under the tier it " +
   "publishes under today, not the tier it carried when it was drawn; one the " +
-  "corpus no longer publishes is counted in neither direction unless the " +
-  "study refuted it: " +
+  "corpus no longer publishes is counted in neither direction, except a " +
+  "refuted link a ruling withdrew: " +
   "announcement+lexicon 56/60; fpds-ap 89/114; subaward+lexicon 53/60. No " +
   "precision figure is published for the remaining tiers a reader can meet — " +
   "account, account+subagency, account+tokens. Those rest on an " +

@@ -1397,7 +1397,7 @@ export default function MethodologyPage() {
                     Each sampled link is counted under the tier it publishes
                     under today, not the tier it carried when it was drawn; one
                     the corpus no longer publishes is counted in neither
-                    direction unless the study refuted it:{" "}
+                    direction, except a refuted link a ruling withdrew:{" "}
                     {linkPrecisionText}.
                     {annDrawGap && (
                       <span data-announcement-draw-gap="">

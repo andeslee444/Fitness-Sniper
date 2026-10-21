@@ -12,8 +12,11 @@ lands in `_withdrawn_link_rows`. Two rules decide what the tally does with it:
     announcement+lexicon stays 57/61;
   * any other line-ruled pair follows the population rule /methodology/
     states: "one the corpus no longer publishes is counted in neither
-    direction unless the study refuted it" (the exception is the rule
-    above; controller ruling R-DEC-LINK-2026-10-21-R2). Two of the 34
+    direction, except a refuted link a ruling withdrew" (the exception is
+    the rule above; controller ruling R-DEC-LINK-2026-10-21-R2, narrowed on
+    the round-2 review, I-1: a refuted link that left the corpus WITHOUT a
+    ruling counts in neither direction, as three of the 2026-09-04
+    announcement draw do; the last test pins it). Two of the 34
     withdrawn fpds-ap pairs carry a 'confirmed' verdict (F03500|N0001917C0020,
     link_precision_samples id 75; 3264AA0252|W58RGZ18F0050, id 120), so the
     fpds-ap figure loses them: 89/114 -> 87/112, the smaller true number
@@ -156,3 +159,51 @@ def test_with_no_withdrawn_tier_the_block_carries_no_withdrawn_key(sampled):
     block = _precision(sampled, published_links=AFTER, withdrawn_links=RULED)
     assert "withdrawn" not in block
     assert _figures(block) == {ANN: (2, 3), FPDS: (1, 2), SUB: (1, 1)}
+
+
+@pytest.fixture()
+def left_the_corpus(sampled):
+    """`sampled` plus LR-A4, an announcement+lexicon link the same run
+    refuted. The `sampled` teardown removes it with the rest (same MARKER)."""
+    with psycopg.connect(sampled) as pg:
+        pg.execute(
+            "insert into link_precision_samples (sample_id, award_piid,"
+            " pe_bli, method, rubric, verdict, reason, adjudicated_at)"
+            " values (%s, 'LR-A4', '0594', %s, 'attribution', 'refuted', %s,"
+            " '2026-09-04 12:00:00-04'::timestamptz)",
+            (RUN, ANN, MARKER))
+        pg.commit()
+    return sampled
+
+
+def test_a_refuted_link_that_left_the_corpus_without_a_ruling_counts_nowhere(
+        left_the_corpus):
+    """The exception /methodology/ names is a refuted link a RULING withdrew
+    (", except a refuted link a ruling withdrew"), not every refuted link the
+    corpus stopped publishing. Three refuted announcement+lexicon links of the
+    2026-09-04 draw (FA850419F0008|0401132F, FA873018C0065|E00300,
+    M6785417C9000|4630) left the lake with no ruling and no demotion_reason,
+    so the export sees them in neither population: they count in neither
+    direction, and the tally reproduces the published 57/61 only that way
+    (round-2 review, I-1, measured read-only 2026-10-21).
+
+    LR-A4 is that shape: refuted, then gone from both the published and the
+    withdrawn rows. While it publishes, its refutation counts (2/4); gone, it
+    counts in neither direction (2/3) and mints no `withdrawn` figure; withdrawn
+    by a ruling (graded low as 'precision_sample_refuted'), it keeps counting
+    (2/4)."""
+    lr_a4 = _link("LR-A4", "0594", ANN)
+    published = _precision(left_the_corpus, published_links=[*AFTER, lr_a4],
+                           withdrawn_links=[SUBAGENCY, *RULED])
+    assert _figures(published)[ANN] == (2, 4)
+
+    gone = _precision(left_the_corpus, published_links=AFTER,
+                      withdrawn_links=[SUBAGENCY, *RULED])
+    assert _figures(gone) == {ANN: (2, 3), FPDS: (1, 2), SUB: (1, 1)}
+    assert set(gone["withdrawn"]) == {"account+subagency"}
+
+    ruled = _precision(
+        left_the_corpus, published_links=AFTER,
+        withdrawn_links=[SUBAGENCY, *RULED, _link("LR-A4", "0594", ANN, SAMPLE)])
+    assert _figures(ruled) == {ANN: (2, 4), FPDS: (1, 2), SUB: (1, 1)}
+    assert set(ruled["withdrawn"]) == {"account+subagency"}

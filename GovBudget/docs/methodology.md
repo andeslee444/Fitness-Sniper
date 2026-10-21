@@ -411,7 +411,9 @@ the tier it carried when it was drawn —
 `fpds-ap+account` was withdrawn hours after the 2026-09-04 draw and its links
 moved into the `fpds-ap` medium tier, so counting by the drawn method printed a
 figure for a tier no reader can meet. A sampled link the corpus no
-longer publishes counts in neither direction unless the study refuted it. A
+longer publishes counts in neither direction, except a refuted link a ruling
+withdrew: a refuted link that stopped publishing with no ruling, as three
+announcement links of the 2026-09-04 draw did, counts in neither direction. A
 link demoted to medium by its own sample's refutation still publishes under
 the same tier, so its "refuted" still counts: a demotion never flatters the
 figure that caused it (ROADMAP #110, a rule set 2026-09-26). The same holds
