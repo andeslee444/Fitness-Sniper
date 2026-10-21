@@ -50,10 +50,18 @@ describe("/about/ labels the contract-link withdrawal a correction", () => {
     expect(production.length + support.length + om.length).toBe(withdrawn.length);
     const omAwards = new Set(om.map((r) => r.award_piid)).size;
     const omLines = new Set(om.map((r) => r.pe_bli)).size;
-    // R-DEC-LINK-2026-10-21-B: one order per link, all on F03500, whose
-    // programs.json title is "F-35 Modifications"
+    // R-DEC-LINK-2026-10-21-B: one award per link, all on F03500, whose
+    // programs.json title is "F-35 Modifications" (gate 21 leg q holds the
+    // built page's line name to that title)
     expect(new Set(support.map((r) => r.award_piid)).size).toBe(support.length);
     expect([...new Set(support.map((r) => r.pe_bli))]).toEqual(["F03500"]);
+    // Review r3-1b M-1: the 10 are 7 definitive contracts and 3 delivery
+    // orders (FPDS award type, contracts lake, read 2026-10-21). A DoD PIID
+    // carries its instrument type in its 9th character (DFARS 204.1603:
+    // C a contract, F an order), so the seed itself says which words are
+    // true: "contract or order" while both kinds are among the 10.
+    const instruments = [...new Set(support.map((r) => r.award_piid[8]))].sort();
+    expect(instruments).toEqual(["C", "F"]);
 
     const { container } = render(<AboutPage />);
     const el = container.querySelector('[data-correction="link-line-rulings"]');
@@ -64,11 +72,7 @@ describe("/about/ labels the contract-link withdrawal a correction", () => {
     expect(text).toContain(
       `${production.length} had attributed a production or long-lead contract`,
     );
-    expect(text).toContain(
-      `${support.length} had attributed an F-35 production-support order (such as `,
-    );
-    expect(text).toContain(") to the F-35 Modifications line;");
-    // each kind of order the sentence names is one an FPDS description in
+    // each kind of award the sentence names is one an FPDS description in
     // the B ruling's evidence names
     const kinds: [string, RegExp][] = [
       ["sustainment", /SUSTAINMENT/],
@@ -78,9 +82,19 @@ describe("/about/ labels the contract-link withdrawal a correction", () => {
       ["long-lead items", /LONG LEAD/],
     ];
     for (const [words, fpds] of kinds) {
-      expect(text).toContain(words);
       expect(support.some((r) => fpds.test(r.evidence)), words).toBe(true);
     }
+    // Review r3-1b M-3: the parenthetical is exactly these kinds, so a kind
+    // added to the sentence without its evidence row above fails here
+    const named = kinds.map(([words]) => words);
+    const parenthetical = `(such as ${named.slice(0, -1).join(", ")} or ${named.at(-1)})`;
+    expect(parenthetical).toBe(
+      "(such as sustainment, foreign military sales, a parts redesign, helmet displays or long-lead items)",
+    );
+    expect(text).toContain(
+      `${support.length} had attributed an F-35 production-support contract or order ` +
+        `${parenthetical} to the F-35 Modifications line;`,
+    );
     expect(text).toContain(
       `the other ${om.length} had attributed ${WORDS[omAwards]} operations-and-maintenance ` +
         `support task order to ${WORDS[omLines]} aircraft-modification lines`,
