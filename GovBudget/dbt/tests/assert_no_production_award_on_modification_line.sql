@@ -28,12 +28,38 @@
 -- The predicate is only a screen: of its 13 announcement-tier hits on the
 -- 2026-10-20 warehouse, 8 are correct subsystem buys a modification line
 -- makes itself (IRST, NGJ-MB, EPAWSS, AWACS FRP-C, DRAGON, GGU-25). So it
--- never withholds anything: every hit needs a person's ruling, `withdraw`
--- (audit_link_grading grades the pair low, and the mart drops it) or
--- `allow`. Its recall is limited to the base description: "WITH AEA KITS"
--- (N0001917C0003) is excluded by KITS, and "PRODUCTION READY TEST ASSET"
--- (W58RGZ24C0021) or "PAC-3 MISSILE PRODUCTION" name no listed term — a
--- ruling found those by hand.
+-- never withholds anything: every hit needs a recorded ruling — the owner's
+-- `withdraw` (audit_link_grading grades the pair low, and the mart drops it)
+-- or `allow`, or the controller's `hold` (kept as published pending an owner
+-- ruling; assert_link_line_rulings_well_formed binds each to its ruler).
+-- Measured read-only 2026-10-21 against the pre-ruling publish with no
+-- rulings: 54 hits — 31 of the 41 withdrawn pairs, 13 allows, 10 holds.
+--
+-- RECALL. Its reach ends at the FPDS base description, and it MISSES 10 of
+-- the 41 withdrawn pairs (same measurement; base description as this test
+-- reads it, max() over the award's rows):
+--   0505        N0001909C0019  fpds-ap  "F/A-18 AIRCRAFT"
+--   0505        N0001914C0032  fpds-ap  "EA-18 G AIRCRAFT"
+--   0505        N0001917C0003  fpds-ap  "LOT 40 F/A-18E AND EA-18G AIRCRAFT
+--                                        WITH AEA KITS" (KITS excludes it)
+--   0505        N0001917C0047  fpds-ap  "USN F414 ENGINES: EA-18G"
+--   0590        N0001917C0081  fpds-ap  "AE1107C TURBOSHAFT ENGINES"
+--   0962C50700  W31P4Q09C0002  fpds-ap  "FY09 PAC-3 MISSILE PRODUCTION BUY"
+--   0962C50700  W31P4Q10C0002  fpds-ap  "PAC-3 FY10 PRODUCTIO"
+--   3264AA0252  W58RGZ18F0050  fpds-ap  "AUSTRALIA DEFENSE FORCE (QAF)
+--                                        QUALITY ASSURANCE TEAM REVIEW"
+--   C03200      FA813423FB001  announcement+lexicon  "CONTRACTOR LOGISTICS
+--   C04000      FA813423FB001  announcement+lexicon   SUPPORT FOR THE C-32/C-40
+--                                                      AIRCRAFT FLEETS"
+-- A ruling found those by hand. The FB001 pair is an O&M support task order,
+-- not a production buy; assert_refuted_pair_siblings_ruled covers it (the
+-- precision study refuted the C04000 link, and its C03200 twin cites the same
+-- announcement). The others name an aircraft, an engine or a missile buy in
+-- words this predicate does not list ("PRODUCTION" alone, "ENGINES", a bare
+-- type designator), so a recurrence of an "ENGINE PRODUCTION" buy on a
+-- modification line passes it. The predicate is NOT widened here: a broader
+-- term flags subsystem buys a person must then rule on (verify.md v18 counts
+-- about 14 more), and those rulings would have to be the owner's.
 --
 -- Returned rows are the FAILURES (dbt singular test convention), one per
 -- (link, line activity, description): select distinct, because a NULL-account
