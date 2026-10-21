@@ -470,6 +470,31 @@ def _other_payload(members: list[str], values: dict[str, Decimal],
 # ---------------------------------------------------------------------------
 
 
+#: The bridge's families per program: the recipient families of the awards
+#: each HIGH-confidence link carries (medium links fan out, see
+#: build_flow_chart). (pe_bli, family_key) rows, NULL family where a link has
+#: no transaction in the lake — or names none of its PIID's awards.
+#:
+#: R-DEC-LINK-2026-10-21 R4: the award a link NAMES (dbt link_award_keys),
+#: never every award sharing its PIID — N0001922F0001's Rolls-Royce NASM
+#: maintenance order listed Rolls-Royce among the F-35 (ATA000) families.
+_XWALK_FAMILIES_SQL = """
+select distinct b.pe_bli,
+       coalesce(x.family_key, t.recipient_uei) as fam
+from fct_budget_to_awards b
+left join link_award_keys k
+    on k.award_piid = b.award_piid
+   and k.recipient_uei is not distinct from b.recipient_uei
+   and k.named
+left join fct_award_transactions t
+    on t.award_id_piid = k.award_piid
+   and t.award_unique_key is not distinct from k.award_unique_key
+left join entity_xwalk x on x.recipient_uei = t.recipient_uei
+where b.confidence = 'high'
+order by 1, 2
+"""
+
+
 def serialize_flow_chart(payload: dict) -> str:
     """Compact the transport without dropping drill-down members or receipts."""
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
@@ -541,18 +566,7 @@ def build_flow_chart(*, duckdb_path, bl_rows: list, top_n: int = TOP_N,
                 " else 0 end) from fct_budget_to_awards group by 1"
             ).fetchall():
                 xwalk_conf[pe] = "high" if has_high else "medium"
-            for pe, fam in con.execute(
-                """
-                select distinct b.pe_bli,
-                       coalesce(x.family_key, t.recipient_uei) as fam
-                from fct_budget_to_awards b
-                left join fct_award_transactions t
-                    on t.award_id_piid = b.award_piid
-                left join entity_xwalk x on x.recipient_uei = t.recipient_uei
-                where b.confidence = 'high'
-                order by 1, 2
-                """
-            ).fetchall():
+            for pe, fam in con.execute(_XWALK_FAMILIES_SQL).fetchall():
                 if fam is None:
                     continue
                 xwalk_fams.setdefault(pe, {})[fam] = "high"

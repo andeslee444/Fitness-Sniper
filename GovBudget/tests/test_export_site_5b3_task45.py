@@ -26,6 +26,7 @@ from govbudget.export_site import (
     fact_id_usaspending,
     _write_json,
 )
+from link_award_keys_fixture import materialize_link_award_keys
 
 
 # Most fixtures in this module carry ORDINARY codes only (no dim_programs, no
@@ -812,28 +813,32 @@ class TestEmitDistrictSidecars:
         # `account` is required on this table once there are district rows to
         # attach counts to (Task 27 fix round 1) — NULL on every row here,
         # which is what an ordinary code's links carry.
+        # recipient_uei / award_unique_key: the link -> award key the real
+        # marts carry (R-DEC-LINK-2026-10-21 R4); one award per PIID here.
         con.execute(
             "CREATE TABLE fct_budget_to_awards ("
             "  pe_bli varchar, award_piid varchar, account varchar,"
-            "  confidence varchar"
+            "  confidence varchar, recipient_uei varchar"
             ")"
         )
         con.execute(
             "INSERT INTO fct_budget_to_awards VALUES "
-            "('0601101E', 'SHARED-1', NULL, 'high'),"
-            "('0602303E', 'SHARED-1', NULL, 'high'),"
-            "('0699999X', 'SOLO-1', NULL, 'high')"
+            "('0601101E', 'SHARED-1', NULL, 'high', 'UEI-S'),"
+            "('0602303E', 'SHARED-1', NULL, 'high', 'UEI-S'),"
+            "('0699999X', 'SOLO-1', NULL, 'high', 'UEI-O')"
         )
         con.execute(
             "CREATE TABLE fct_award_transactions ("
-            "  award_id_piid varchar, pop_district varchar, obligation double"
+            "  award_id_piid varchar, pop_district varchar, obligation double,"
+            "  recipient_uei varchar, award_unique_key varchar"
             ")"
         )
         con.execute(
             "INSERT INTO fct_award_transactions VALUES "
-            "('SHARED-1', 'TX-09', 100000000.0),"
-            "('SOLO-1', 'CA-18', 15000000.0)"
+            "('SHARED-1', 'TX-09', 100000000.0, 'UEI-S', 'K-SHARED-1'),"
+            "('SOLO-1', 'CA-18', 15000000.0, 'UEI-O', 'K-SOLO-1')"
         )
+        materialize_link_award_keys(con)
         con.close()
 
         dist_dir = tmp_path / "districts"
@@ -904,29 +909,33 @@ class TestEmitDistrictSidecars:
         # WIDE-1 is crosswalked to three program elements and carries the
         # account; NARROW-1 is crosswalked to one and carries none. Both are
         # '20' awards in TX-09, so both fanout rows address the bare '20'.
+        # recipient_uei / award_unique_key: the link -> award key the real
+        # marts carry (R-DEC-LINK-2026-10-21 R4); one award per PIID here.
         con.execute(
             "CREATE TABLE fct_budget_to_awards ("
             "  pe_bli varchar, award_piid varchar, account varchar,"
-            "  confidence varchar"
+            "  confidence varchar, recipient_uei varchar"
             ")"
         )
         con.execute(
             "INSERT INTO fct_budget_to_awards VALUES "
-            "('20', 'WIDE-1', '0300D', 'high'),"
-            "('0601101E', 'WIDE-1', NULL, 'high'),"
-            "('0602303E', 'WIDE-1', NULL, 'high'),"
-            "('20', 'NARROW-1', NULL, 'high')"
+            "('20', 'WIDE-1', '0300D', 'high', 'UEI-W'),"
+            "('0601101E', 'WIDE-1', NULL, 'high', 'UEI-W'),"
+            "('0602303E', 'WIDE-1', NULL, 'high', 'UEI-W'),"
+            "('20', 'NARROW-1', NULL, 'high', 'UEI-N')"
         )
         con.execute(
             "CREATE TABLE fct_award_transactions ("
-            "  award_id_piid varchar, pop_district varchar, obligation double"
+            "  award_id_piid varchar, pop_district varchar, obligation double,"
+            "  recipient_uei varchar, award_unique_key varchar"
             ")"
         )
         con.execute(
             "INSERT INTO fct_award_transactions VALUES "
-            "('WIDE-1', 'TX-09', 5000000.0),"
-            "('NARROW-1', 'TX-09', 2000000.0)"
+            "('WIDE-1', 'TX-09', 5000000.0, 'UEI-W', 'K-WIDE-1'),"
+            "('NARROW-1', 'TX-09', 2000000.0, 'UEI-N', 'K-NARROW-1')"
         )
+        materialize_link_award_keys(con)
         con.close()
 
         dist_dir = tmp_path / "districts"

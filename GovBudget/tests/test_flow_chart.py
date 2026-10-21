@@ -23,6 +23,7 @@ from govbudget.flow_chart import (
     build_flow_chart,
     serialize_flow_chart,
 )
+from link_award_keys_fixture import materialize_link_award_keys
 
 FLOW_COLS = (
     "river varchar, fiscal_year integer, level_from varchar, node_from varchar,"
@@ -120,20 +121,24 @@ def flow_db(tmp_path: Path) -> Path:
     # varchar max where 'medium' > 'high') and families must come from the
     # high link only. 0601104A is medium-only → confidence 'medium',
     # families [] (medium fan-out excluded by design).
+    # recipient_uei / award_unique_key: the link -> award key the real marts
+    # carry; the families read the award each link names through
+    # link_award_keys (R-DEC-LINK-2026-10-21 R4). One award per PIID here.
     con.execute(
         "create table fct_budget_to_awards as select * from (values"
-        " ('0601101E','PIID1','high'),"
-        " ('0601101E','PIID3','medium'),"
-        " ('0601104A','PIID2','medium'))"
-        " t(pe_bli, award_piid, confidence)"
+        " ('0601101E','PIID1','high','UEI1'),"
+        " ('0601101E','PIID3','medium','UEI2'),"
+        " ('0601104A','PIID2','medium','UEI2'))"
+        " t(pe_bli, award_piid, confidence, recipient_uei)"
     )
     con.execute(
         "create table fct_award_transactions as select * from (values"
-        " ('PIID1','UEI1',1000.0),"
-        " ('PIID2','UEI2',500.0),"
-        " ('PIID3','UEI2',250.0))"
-        " t(award_id_piid, recipient_uei, obligation)"
+        " ('PIID1','UEI1',1000.0,'K1'),"
+        " ('PIID2','UEI2',500.0,'K2'),"
+        " ('PIID3','UEI2',250.0,'K3'))"
+        " t(award_id_piid, recipient_uei, obligation, award_unique_key)"
     )
+    materialize_link_award_keys(con)
     con.execute(
         "create table entity_xwalk as select * from (values"
         " ('UEI1','ACME PARENT'),('UEI2','BETA LLC'))"
@@ -588,12 +593,15 @@ def collision_db(tmp_path: Path) -> Path:
     # tiny high-confidence crosswalk → near-hairline crosswalked bridge band
     con.execute(
         "create table fct_budget_to_awards as select * from (values"
-        " ('0609999X','PIID1','high')) t(pe_bli, award_piid, confidence)"
+        " ('0609999X','PIID1','high','UEI1'))"
+        " t(pe_bli, award_piid, confidence, recipient_uei)"
     )
     con.execute(
         "create table fct_award_transactions as select * from (values"
-        " ('PIID1','UEI1',1000.0)) t(award_id_piid, recipient_uei, obligation)"
+        " ('PIID1','UEI1',1000.0,'K1'))"
+        " t(award_id_piid, recipient_uei, obligation, award_unique_key)"
     )
+    materialize_link_award_keys(con)
     con.execute(
         "create table entity_xwalk as select * from (values"
         " ('UEI1','HUNTINGTON INGALLS INDUSTRIES'))"

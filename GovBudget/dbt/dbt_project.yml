@@ -9,6 +9,10 @@ models:
     marts:
       dim_recipients:
         +materialized: table
+      # R-DEC-LINK-2026-10-21 R4: read by every link->award dollar join; a
+      # table, so the award lake is resolved once per build, not once per mart
+      link_award_keys:
+        +materialized: table
 seeds:
   govbudget:
     state_category_map:

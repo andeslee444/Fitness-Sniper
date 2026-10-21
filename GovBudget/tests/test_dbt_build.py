@@ -5,6 +5,8 @@ from pathlib import Path
 import duckdb
 import pytest
 
+from link_award_keys_fixture import materialize_link_award_keys
+
 ROOT = Path(__file__).resolve().parents[1]
 
 CONTRACT_COLS = (
@@ -1123,13 +1125,16 @@ def test_two_members_of_a_shared_code_in_one_district_keep_their_own_rows():
     import duckdb
 
     con = duckdb.connect()
+    # award_unique_key NULL: each fixture PIID is one award, the whole of
+    # which its link names (link_award_keys, R-DEC-LINK-2026-10-21 R4)
     con.execute(
         "create table txns (transaction_key varchar, award_id_piid varchar,"
         " recipient_uei varchar, pop_state varchar, pop_district varchar,"
-        " fiscal_year integer, obligation double)"
+        " fiscal_year integer, obligation double, award_unique_key varchar)"
     )
     con.execute(
-        "insert into txns values"
+        "insert into txns (transaction_key, award_id_piid, recipient_uei,"
+        " pop_state, pop_district, fiscal_year, obligation) values"
         " ('T1','N0002420C0001','UEI1','VA','VA-08',2025,900000.0),"
         " ('T2','N0003917D0006','UEI2','VA','VA-08',2025,100000.0),"
         " ('T3','HR001124C0001','UEI3','CA','CA-52',2025,800.25)"
@@ -1137,10 +1142,11 @@ def test_two_members_of_a_shared_code_in_one_district_keep_their_own_rows():
     con.execute(
         "create table links (award_piid varchar, pe_bli varchar,"
         " program_title varchar, organization varchar, account varchar,"
-        " confidence varchar)"
+        " confidence varchar, recipient_uei varchar)"
     )
     con.execute(
-        "insert into links values"
+        "insert into links (award_piid, pe_bli, program_title, organization,"
+        " account, confidence) values"
         " ('N0002420C0001','3010','LPD Flight II','N','1611N','high'),"
         " ('N0003917D0006','3010','Shipboard Tactical Communications','N',"
         "  '1810N','high'),"
@@ -1151,6 +1157,8 @@ def test_two_members_of_a_shared_code_in_one_district_keep_their_own_rows():
         " total_obligation from (" + _model_sql(
             "fct_district_programs",
             fct_award_transactions="txns", fct_budget_to_awards="links",
+            link_award_keys=materialize_link_award_keys(
+                con, links="links", transactions="txns", name="lak"),
         ) + ") order by pop_district, total_obligation desc"
     ).fetchall()
     assert rows == [
@@ -1166,6 +1174,7 @@ def test_two_members_of_a_shared_code_in_one_district_keep_their_own_rows():
         " program_title, total_obligation from (" + _model_sql(
             "fct_district_programs_by_year",
             fct_award_transactions="txns", fct_budget_to_awards="links",
+            link_award_keys="lak",
         ) + ") order by pop_district, total_obligation desc"
     ).fetchall()
     assert by_year == [
@@ -1213,7 +1222,11 @@ def test_high_only_index_is_withheld_over_zero_dollars_or_one_positive_family():
     import duckdb
 
     con = duckdb.connect()
-    con.execute("create table tx (award_id_piid varchar, obligation double)")
+    # award_unique_key / recipient_uei NULL: each fixture PIID is one award,
+    # the whole of which its link names (link_award_keys, R-DEC-LINK-2026-10-21
+    # R4)
+    con.execute("create table tx (award_id_piid varchar, obligation double,"
+                " award_unique_key varchar, recipient_uei varchar)")
     # "b2a", not "links": the model has a CTE of that name, which the #130
     # scope CTEs (2026-09-25) read the link table beside. account and
     # organization are the columns those CTEs key a shared code's members on.
@@ -1229,7 +1242,7 @@ def test_high_only_index_is_withheld_over_zero_dollars_or_one_positive_family():
     )
 
     con.execute(
-        "insert into tx values"
+        "insert into tx (award_id_piid, obligation) values"
         # CLEAR: two positive families over three awards
         " ('A1', 600.0), ('A2', 300.0), ('A3', 100.0),"
         # ZERO: three awards carrying no positive obligation at all
@@ -1268,6 +1281,8 @@ def test_high_only_index_is_withheld_over_zero_dollars_or_one_positive_family():
                 fct_budget_to_awards="b2a",
                 entity_xwalk="xwalk",
                 dim_programs="progs",
+                link_award_keys=materialize_link_award_keys(
+                    con, links="b2a", transactions="tx", name="lak"),
             )
             + ")"
         ).fetchall()

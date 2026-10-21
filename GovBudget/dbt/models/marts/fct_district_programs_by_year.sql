@@ -36,9 +36,19 @@ select
     sum(greatest(coalesce(t.obligation, 0), 0))  as positive_obligation
 from {{ ref('fct_award_transactions') }} t
 join (
-    select distinct award_piid, pe_bli, account, program_title, organization
-    from {{ ref('fct_budget_to_awards') }}
-    where confidence = 'high'
+    -- R-DEC-LINK-2026-10-21 R4: the award each link NAMES (link_award_keys),
+    -- never every award sharing its PIID; byte-identical for a PIID that is
+    -- one award in the lake.
+    select distinct
+        b.award_piid, k.award_unique_key, b.pe_bli, b.account,
+        b.program_title, b.organization
+    from {{ ref('fct_budget_to_awards') }} b
+    join {{ ref('link_award_keys') }} k
+      on k.award_piid = b.award_piid
+     and k.recipient_uei is not distinct from b.recipient_uei
+     and k.named
+    where b.confidence = 'high'
 ) b on t.award_id_piid = b.award_piid
+   and t.award_unique_key is not distinct from b.award_unique_key
 where t.pop_district is not null
 group by 1, 2, 3, 4, 5

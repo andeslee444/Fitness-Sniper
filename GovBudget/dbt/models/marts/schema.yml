@@ -213,6 +213,17 @@ models:
       - name: units
         data_tests: [not_null]
         description: "Unit label: thousands_usd | hhi_dollars | dollars"
+  - name: link_award_keys
+    description: "R-DEC-LINK-2026-10-21 R4 (controller ruling on review 1 I-4, 2026-10-21): the AWARD each published crosswalk link names — the one resolution point every join from fct_budget_to_awards to fct_award_transactions reads (the district, feed and concentration marts, assert_district_totals_no_double_count, export_site's flows, district-citation and fan-out reads, flow_chart's families). A PIID is unique only under its parent IDV and agency, so the PIID-only joins summed every award sharing a linked PIID: N0001922F0001 is a Lockheed Martin F-35 order and an unrelated Rolls-Royce NASM maintenance order, and the second published as F-35 (ATA000) money. One row per published link key (award_piid, recipient_uei) and per award the lake carries under its PIID (award_unique_key; a NULL key is one award). named: true for a PIID's only award (whole, every UEI on it — byte-identical to the PIID-only join) and, for a PIID that is several awards, for the award(s) whose transactions carry the link's recipient. Rows with named = false are the ledger of what the rule removes. A table (dbt_project.yml), so the award lake is resolved once per build."
+    columns:
+      - name: award_piid
+        data_tests: [not_null]
+      - name: n_awards
+        description: "How many awards (distinct award_unique_key, NULL counted as one) the lake carries under the PIID."
+        data_tests: [not_null]
+      - name: named
+        description: "True where the link names this award: the PIID's only award, or one carrying the link's recipient. Every consumer joins with `and named`."
+        data_tests: [not_null]
   - name: fct_district_programs
     description: "High-confidence dollar grain per (pop_state, pop_district, pe_bli, account) — the MEMBER grain (Task 27, 2026-09-19). Only confidence='high' awards to avoid 14.7x multi-count fanout from medium rows. Measured read-only 2026-09-19: 608 rows, 189 districts, 317 program elements. NOT summable at district grain — an award matched to N program elements appears N times with the same dollars; use fct_district_totals for the district headline (#51)."
     columns:

@@ -35,6 +35,7 @@ from pathlib import Path
 import duckdb
 
 from govbudget.export_site import _emit_feed_sidecar, fact_id_derived
+from link_award_keys_fixture import materialize_link_award_keys
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_SQL = ROOT / "dbt" / "models" / "marts" / "fct_feed_events.sql"
@@ -53,6 +54,7 @@ def _render_model_sql() -> str:
         "fct_award_transactions",
         "fct_budget_to_awards",
         "entity_xwalk",
+        "link_award_keys",
     ):
         sql = re.sub(r"\{\{\s*ref\('" + model + r"'\)\s*\}\}", model, sql)
     assert "{{" not in sql, "unrendered jinja left in model SQL"
@@ -81,13 +83,16 @@ def _run_mart(traj_rows: list[tuple]) -> list[tuple]:
     con.execute(
         "create table fct_award_transactions ("
         " award_id_piid varchar, fiscal_year integer, recipient_uei varchar,"
-        " obligation double)"
+        " obligation double, award_unique_key varchar)"
     )
     con.execute(
         "create table fct_budget_to_awards ("
-        " award_piid varchar, pe_bli varchar, confidence varchar)"
+        " award_piid varchar, pe_bli varchar, confidence varchar,"
+        " recipient_uei varchar)"
     )
     con.execute("create table entity_xwalk (recipient_uei varchar, family_key varchar)")
+    # the award each link names (R-DEC-LINK-2026-10-21 R4); empty here too
+    materialize_link_award_keys(con)
     out = con.execute(_render_model_sql()).fetchall()
     con.close()
     return out

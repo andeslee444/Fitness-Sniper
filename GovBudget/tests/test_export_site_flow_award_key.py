@@ -27,6 +27,7 @@ from pathlib import Path
 import duckdb
 
 from govbudget.export_site import _emit_flows_sidecars
+from link_award_keys_fixture import materialize_link_award_keys
 
 PE = "ATA000"
 
@@ -71,6 +72,8 @@ def _lake(links, transactions) -> duckdb.DuckDBPyConnection:
     for uei in sorted({t[2] for t in transactions}):
         con.execute("insert into entity_xwalk values (?, ?, ?)",
                     (uei, f"VENDOR {uei}", f"VENDOR {uei}"))
+    # every link->award join reads dbt's link_award_keys (R-DEC-LINK-2026-10-21 R4)
+    materialize_link_award_keys(con)
     return con
 
 

@@ -30,6 +30,7 @@ from govbudget.export_site import (
     apply_title_override,
     shared_code_program_label,
 )
+from link_award_keys_fixture import materialize_link_award_keys
 
 # (pe_bli, account, org, title) — the live member shapes of the four shared
 # codes that carry a flows sidecar today (read-only on the chain-G lake,
@@ -120,6 +121,8 @@ def _lake(programs, *, with_account: bool = True) -> duckdb.DuckDBPyConnection:
         con.execute(
             "insert into fct_district_programs values ('CO', 'CO-05', ?, null)", (code,)
         )
+    # every link->award join reads dbt's link_award_keys (R-DEC-LINK-2026-10-21 R4)
+    materialize_link_award_keys(con)
     return con
 
 

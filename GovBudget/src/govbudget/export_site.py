@@ -816,6 +816,67 @@ def _fetch_program_identity(con) -> _ProgramIdentity:
 
 
 # ---------------------------------------------------------------------------
+# The award a published link NAMES (R-DEC-LINK-2026-10-21 R4): every export
+# join from fct_budget_to_awards to fct_award_transactions reads dbt's
+# link_award_keys through these two.
+# ---------------------------------------------------------------------------
+
+def _require_link_award_keys(con) -> None:
+    """RAISE when the warehouse carries the award lake (fct_award_transactions)
+    but not dbt's link_award_keys (R-DEC-LINK-2026-10-21 R4), the award each
+    published link names.
+
+    Called only where district rows exist to describe. Such a warehouse
+    predates R4: its marts still join links to awards by PIID alone, and a
+    quiet fallback here (no award_ids on a district citation, a fan-out of 1
+    on every district row) would publish that collision with no error and no
+    gate able to see it — the hazard _require_account_column names. A present
+    model missing a column raises too. A warehouse with NO award lake (a
+    fixture that never built one) keeps its old behaviour: every
+    link->award read below degrades to empty, as it always has."""
+    import duckdb as _duckdb
+
+    try:
+        con.execute("select 1 from fct_award_transactions limit 0")
+    except _duckdb.CatalogException:
+        return
+    try:
+        con.execute(
+            "select award_piid, recipient_uei, award_unique_key, n_awards, named"
+            " from link_award_keys limit 0")
+    except (_duckdb.CatalogException, _duckdb.BinderException) as exc:
+        raise RuntimeError(
+            "link_award_keys is missing or incomplete"
+            f" ({type(exc).__name__}): this warehouse predates"
+            " R-DEC-LINK-2026-10-21 R4, so its district marts sum every award"
+            " sharing a linked PIID. Run `govbudget build` before export-site."
+        ) from exc
+
+
+def _named_link_awards_sql(where: str, columns: str = "") -> str:
+    """A subquery of the AWARDS the published links matching `where` (over
+    fct_budget_to_awards `b`) name: (award_piid, award_unique_key{columns}).
+
+    R-DEC-LINK-2026-10-21 R4 (controller ruling on review 1 I-4). A PIID is
+    unique only under its parent IDV and agency, so a link's dollars are the
+    award it names, resolved once in dbt's link_award_keys (its header has
+    the rule): the PIID's only award, whole, or — when the PIID is several
+    awards — the award(s) carrying the link's recipient. Join the result to
+    fct_award_transactions on (award_id_piid, award_unique_key) with IS NOT
+    DISTINCT FROM (a NULL key is one award). The export's every link->award
+    join reads this fragment, as the marts read the model."""
+    return (
+        "select distinct b.award_piid, k.award_unique_key" + columns
+        + " from fct_budget_to_awards b"
+        " join link_award_keys k"
+        "   on k.award_piid = b.award_piid"
+        "  and k.recipient_uei is not distinct from b.recipient_uei"
+        "  and k.named"
+        " where " + where
+    )
+
+
+# ---------------------------------------------------------------------------
 # Whose program is a concentration figure keyed on the BARE pe_bli?
 # (ROADMAP #70/#82; module level since Task 28a, 2026-09-24, so the program
 # pages and the feed ask the one question with the one function.)
@@ -15428,6 +15489,8 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
         # above grains on). Asked once, loudly, rather than per row.
         _links_have_account = bool(dp_rows) and _require_account_column(
             con, "fct_budget_to_awards")
+        if _links_have_account:
+            _require_link_award_keys(con)
 
         for pop_state, pop_district, pe_bli, account, total_obl in dp_rows:
             if total_obl is None:
@@ -15446,14 +15509,21 @@ def _build_usaspending_citation_rows(*, duckdb_path) -> list[tuple]:
             # account-NULL row (every ordinary code) matches the account-NULL
             # links it is built from, which is the pre-Task-27 result for all
             # of them.
+            #
+            # R-DEC-LINK-2026-10-21 R4: the PIIDs of the awards the links
+            # NAME (_named_link_awards_sql) that performed here, as
+            # fct_district_programs counts them — never a PIID whose only
+            # award in this district is another contract sharing its number.
             try:
                 piids = con.execute(
                     "select distinct t.award_id_piid"
                     " from fct_award_transactions t"
-                    " join (select distinct award_piid from fct_budget_to_awards"
-                    "       where confidence='high' and pe_bli=?"
-                    "         and account is not distinct from ?) b"
+                    " join (" + _named_link_awards_sql(
+                        "b.confidence='high' and b.pe_bli=?"
+                        " and b.account is not distinct from ?") + ") b"
                     "   on t.award_id_piid = b.award_piid"
+                    "  and t.award_unique_key is not distinct from"
+                    "      b.award_unique_key"
                     " where t.pop_state=? and t.pop_district=?"
                     " limit 25",
                     [pe_bli, account, pop_state, pop_district],
@@ -16745,6 +16815,8 @@ def _emit_district_sidecars(
     # query is skipped rather than run for its side effects.
     _fanout_ready = bool(dp_rows) and _require_account_column(
         con, "fct_budget_to_awards")
+    if _fanout_ready:
+        _require_link_award_keys(con)
     try:
         fanout_rows = (
             con.execute(
@@ -16756,13 +16828,18 @@ def _emit_district_sidecars(
                     group by 1
                 ),
                 detail as (
+                    -- R-DEC-LINK-2026-10-21 R4: the awards the links NAME
+                    -- performed in the district (fct_district_programs'
+                    -- own join), never another award sharing a PIID
                     select t.pop_district, b.pe_bli, b.account, t.award_id_piid
                     from fct_award_transactions t
                     join (
-                        select distinct award_piid, pe_bli, account
-                        from fct_budget_to_awards
-                        where confidence = 'high'
+                        """ + _named_link_awards_sql(
+                            "b.confidence = 'high'", ", b.pe_bli, b.account")
+                    + """
                     ) b on t.award_id_piid = b.award_piid
+                       and t.award_unique_key is not distinct from
+                           b.award_unique_key
                     where t.pop_district is not null
                     group by 1, 2, 3, 4
                 )
@@ -19192,6 +19269,37 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
     except Exception:
         crosswalked_pe_blis = []
 
+    # R-DEC-LINK-2026-10-21 R4 (review 1 M-4): a high link whose PIID the
+    # lake carries as several awards, none of them carrying the link's
+    # recipient, names no award (link_award_keys: no row `named`) and so
+    # contributes nothing to its flows file. Today no link does; the day one
+    # does, the export log says so rather than dropping it silently.
+    import duckdb as _duckdb
+
+    try:
+        for _pe, _piid, _uei, _n in con.execute(
+            """
+            select b.pe_bli, k.award_piid, k.recipient_uei, max(k.n_awards)
+            from (select distinct pe_bli, award_piid, recipient_uei
+                  from fct_budget_to_awards where confidence = 'high') b
+            join link_award_keys k
+              on k.award_piid = b.award_piid
+             and k.recipient_uei is not distinct from b.recipient_uei
+            group by 1, 2, 3
+            having not bool_or(k.named)
+            order by 1, 2, 3
+            """
+        ).fetchall():
+            print(
+                f"export-site: WARNING — flows/{_pe}.json: linked PIID {_piid}"
+                f" is {_n} awards in the lake and the link's recipient"
+                f" ({_uei or 'none recorded'}) is on none of them, so the"
+                " link names no award and adds no dollars"
+                " (R-DEC-LINK-2026-10-21 R4)")
+    except (_duckdb.CatalogException, _duckdb.BinderException) as exc:
+        _report_dropped("the flows unresolved-link check (link_award_keys)",
+                        exc)
+
     for pe_bli in crosswalked_pe_blis:
         # Get top-12 high-confidence awards for this program with non-null
         # district.
@@ -19201,46 +19309,20 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
         # under its parent IDV and agency (award_unique_key =
         # contract_award_unique_key); N0001922F0001 is a Lockheed F-35 order
         # AND a Rolls-Royce NASM maintenance order, and the PIID-only join
-        # published the second ($157.9M) on flows/ATA000.json. A linked PIID
-        # that is ONE award contributes it whole, as before (every UEI on it:
-        # a novated award keeps its successor's rows; a NULL key counts as
-        # one award). A PIID that is several awards contributes the award(s)
-        # whose transactions carry the recipient the link records.
+        # published the second ($157.9M) on flows/ATA000.json. Round 2 (R4)
+        # moved the rule into dbt's link_award_keys, which every link->award
+        # join now reads (_named_link_awards_sql): a linked PIID that is ONE
+        # award contributes it whole, as before (every UEI on it: a novated
+        # award keeps its successor's rows; a NULL key counts as one award);
+        # a PIID that is several awards contributes the award(s) whose
+        # transactions carry the recipient the link records.
+        #
+        # Only a warehouse missing a relation or column (CatalogException /
+        # BinderException) empties the file, and the log says so; any other
+        # failure raises (review 1 M-4).
         try:
             award_rows = con.execute(
                 """
-                with links as (
-                    select distinct award_piid, recipient_uei
-                    from fct_budget_to_awards
-                    where confidence='high' and pe_bli=?
-                ),
-                -- ONE scan of the award lake per program (materialized: the
-                -- view is read once, as the PIID-only join read it)
-                linked_tx as materialized (
-                    select award_id_piid, award_unique_key, recipient_uei,
-                           pop_state, pop_district, obligation
-                    from fct_award_transactions
-                    where award_id_piid in (select award_piid from links)
-                ),
-                piid_awards as (
-                    select
-                        t.award_id_piid,
-                        t.award_unique_key,
-                        coalesce(bool_or(t.recipient_uei = l.recipient_uei),
-                                 false) as carries_link_recipient
-                    from linked_tx t
-                    join links l on t.award_id_piid = l.award_piid
-                    group by 1, 2
-                ),
-                link_awards as (
-                    select award_id_piid, award_unique_key
-                    from (
-                        select *, count(*) over (
-                            partition by award_id_piid) as n_awards
-                        from piid_awards
-                    )
-                    where n_awards = 1 or carries_link_recipient
-                )
                 select
                     t.award_id_piid as piid,
                     t.recipient_uei,
@@ -19248,9 +19330,10 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
                     t.pop_district,
                     coalesce(x.family_key, t.recipient_uei) as family_key,
                     sum(t.obligation) as dollars
-                from linked_tx t
-                join link_awards b
-                  on t.award_id_piid = b.award_id_piid
+                from fct_award_transactions t
+                join (""" + _named_link_awards_sql(
+                    "b.confidence='high' and b.pe_bli=?") + """) b
+                  on t.award_id_piid = b.award_piid
                  and t.award_unique_key is not distinct from b.award_unique_key
                 left join entity_xwalk x on t.recipient_uei = x.recipient_uei
                 where t.pop_district is not null and t.obligation > 0
@@ -19260,7 +19343,8 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
                 """,
                 [pe_bli],
             ).fetchall()
-        except Exception:
+        except (_duckdb.CatalogException, _duckdb.BinderException) as exc:
+            _report_dropped(f"flows/{pe_bli}.json's awards", exc)
             award_rows = []
 
         # Build recipient_name lookup: UEI → name

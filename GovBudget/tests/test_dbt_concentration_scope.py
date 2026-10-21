@@ -23,6 +23,7 @@ every member has an account and no two share one, otherwise ORGANIZATION.
 """
 import duckdb
 
+from link_award_keys_fixture import materialize_link_award_keys
 from test_dbt_build import _model_sql
 
 
@@ -41,9 +42,14 @@ def _scope(programs, links):
         "insert into b2a values (?, ?, 'high', ?, 'R', ?, ?)",
         [(pe, piid, f"U-{piid}", acct, org) for pe, piid, acct, org in links],
     )
-    con.execute("create table tx (award_id_piid varchar, obligation double)")
-    con.executemany("insert into tx values (?, 100.0)", [(l[1],) for l in links])
+    # award_unique_key / recipient_uei: the award each link names
+    # (link_award_keys, R-DEC-LINK-2026-10-21 R4); one award per PIID here
+    con.execute("create table tx (award_id_piid varchar, obligation double,"
+                " award_unique_key varchar, recipient_uei varchar)")
+    con.executemany("insert into tx values (?, 100.0, ?, ?)",
+                    [(l[1], f"K-{l[1]}", f"U-{l[1]}") for l in links])
     con.execute("create table xwalk (recipient_uei varchar, family_key varchar)")
+    materialize_link_award_keys(con, links="b2a", transactions="tx", name="lak")
     rows = con.execute(
         "select pe_bli, scope, member_programs, member_keys_with_links,"
         " links_outside_member_keys, award_count_all from ("
@@ -54,6 +60,7 @@ def _scope(programs, links):
             fct_budget_to_awards="b2a",
             entity_xwalk="xwalk",
             dim_programs="progs",
+            link_award_keys="lak",
         )
         + ") order by pe_bli"
     ).fetchall()
@@ -121,16 +128,19 @@ def _figures(programs, links):
         "insert into b2a values (?, ?, 'high', ?, 'R', ?, ?)",
         [(pe, piid, f"U-{piid}", acct, org) for pe, piid, acct, org in links],
     )
-    con.execute("create table tx (award_id_piid varchar, obligation double)")
-    con.executemany("insert into tx values (?, ?)",
-                    [(l[1], 100.0 * (i + 1)) for i, l in enumerate(links)])
+    con.execute("create table tx (award_id_piid varchar, obligation double,"
+                " award_unique_key varchar, recipient_uei varchar)")
+    con.executemany("insert into tx values (?, ?, ?, ?)",
+                    [(l[1], 100.0 * (i + 1), f"K-{l[1]}", f"U-{l[1]}")
+                     for i, l in enumerate(links)])
     con.execute("create table xwalk (recipient_uei varchar, family_key varchar)")
+    materialize_link_award_keys(con, links="b2a", transactions="tx", name="lak")
     rel = con.sql(
         "select * exclude (scope, member_programs, member_keys_with_links,"
         " links_outside_member_keys) from ("
         + _model_sql("fct_program_concentration", fct_award_transactions="tx",
                      fct_budget_to_awards="b2a", entity_xwalk="xwalk",
-                     dim_programs="progs")
+                     dim_programs="progs", link_award_keys="lak")
         + ") order by pe_bli"
     )
     out = {r[0]: r for r in rel.fetchall()}

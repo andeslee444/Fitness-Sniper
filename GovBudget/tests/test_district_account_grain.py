@@ -12,6 +12,7 @@ from govbudget.export_site import (
     fact_id_derived,
     fact_id_usaspending,
 )
+from link_award_keys_fixture import materialize_link_award_keys
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,29 +34,34 @@ def test_two_members_in_one_district_keep_separate_amounts_and_receipts(tmp_path
     con.execute("""
         create table fct_budget_to_awards (
             award_piid varchar, pe_bli varchar, account varchar,
-            program_title varchar, organization varchar, confidence varchar
+            program_title varchar, organization varchar, confidence varchar,
+            recipient_uei varchar
         )
     """)
     con.execute("""
         insert into fct_budget_to_awards values
-            ('SHIP','3010','1611N','LPD Flight II','N','high'),
-            ('RADIO','3010','1810N','Shipboard Tactical Communications','N','high'),
-            ('SHIP','3010','1611N','LPD Flight II','N','high')
+            ('SHIP','3010','1611N','LPD Flight II','N','high','UEI1'),
+            ('RADIO','3010','1810N','Shipboard Tactical Communications','N','high','UEI2'),
+            ('SHIP','3010','1611N','LPD Flight II','N','high','UEI1')
     """)
     con.execute("""
         create table fct_award_transactions (
             pop_state varchar, pop_district varchar, award_id_piid varchar,
-            transaction_key varchar, recipient_uei varchar, obligation double
+            transaction_key varchar, recipient_uei varchar, obligation double,
+            award_unique_key varchar
         )
     """)
     con.execute("""
         insert into fct_award_transactions values
-            ('VA','VA-08','SHIP','T1','UEI1',900.0),
-            ('VA','VA-08','SHIP','T2','UEI1',-100.0),
-            ('VA','VA-08','RADIO','T3','UEI2',200.0)
+            ('VA','VA-08','SHIP','T1','UEI1',900.0,'K-SHIP'),
+            ('VA','VA-08','SHIP','T2','UEI1',-100.0,'K-SHIP'),
+            ('VA','VA-08','RADIO','T3','UEI2',200.0,'K-RADIO')
     """)
+    # the award each link names (R-DEC-LINK-2026-10-21 R4)
+    materialize_link_award_keys(con)
     model = (ROOT / "dbt/models/marts/fct_district_programs.sql").read_text()
-    for name in ('fct_award_transactions', 'fct_budget_to_awards'):
+    for name in ('fct_award_transactions', 'fct_budget_to_awards',
+                 'link_award_keys'):
         model = model.replace("{{ ref('%s') }}" % name, name)
     con.execute("create table fct_district_programs as " + model)
     assert con.execute("""

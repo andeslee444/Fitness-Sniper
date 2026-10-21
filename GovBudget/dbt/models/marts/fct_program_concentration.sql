@@ -47,11 +47,28 @@ with award_dollars as (
     -- sum obligation at award grain across all transactions (positive-only for share)
     select
         award_id_piid,
+        award_unique_key,
         sum(obligation) as award_obligation,
         sum(case when obligation > 0 then obligation else 0 end) as pos_obligation
     from {{ ref('fct_award_transactions') }}
     where award_id_piid is not null
-    group by award_id_piid
+    group by award_id_piid, award_unique_key
+),
+link_dollars as (
+    -- R-DEC-LINK-2026-10-21 R4: a link's dollars are those of the award(s)
+    -- it NAMES (link_award_keys), never every award sharing its PIID. A PIID
+    -- that is one award in the lake keeps exactly its PIID-grain sum.
+    select
+        k.award_piid,
+        k.recipient_uei,
+        sum(a.award_obligation) as award_obligation,
+        sum(a.pos_obligation) as pos_obligation
+    from {{ ref('link_award_keys') }} k
+    join award_dollars a
+      on a.award_id_piid = k.award_piid
+     and a.award_unique_key is not distinct from k.award_unique_key
+    where k.named
+    group by k.award_piid, k.recipient_uei
 ),
 links as (
     -- one row per published (pe_bli, award_piid) link — true of the corpus
@@ -71,8 +88,9 @@ links as (
         coalesce(a.pos_obligation, 0) as pos_obligation,
         coalesce(x.family_key, l.recipient_uei, upper(l.recipient_name)) as family_key
     from {{ ref('fct_budget_to_awards') }} l
-    left join award_dollars a
-        on a.award_id_piid = l.award_piid
+    left join link_dollars a
+        on a.award_piid = l.award_piid
+       and a.recipient_uei is not distinct from l.recipient_uei
     left join {{ ref('entity_xwalk') }} x
         on x.recipient_uei = l.recipient_uei
 ),

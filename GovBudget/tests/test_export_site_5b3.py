@@ -36,6 +36,7 @@ from govbudget.verify_phase5b1 import (
     citation_gate5b1,
     integrity_gate5b1,
 )
+from link_award_keys_fixture import materialize_link_award_keys
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -793,6 +794,8 @@ def _make_flows_duckdb(tmp_path: Path) -> Path:
         "INSERT INTO fct_district_programs VALUES ('CO', 'CO-05', '0603760E', null, 'CC', 'DARPA', 3, 3, 3, 350000.0)"
     )
 
+    # every link->award join reads dbt's link_award_keys (R-DEC-LINK-2026-10-21 R4)
+    materialize_link_award_keys(con)
     con.close()
     return db_path
 
@@ -1060,6 +1063,8 @@ def _make_usaspending_mart_duckdb(tmp_path: Path) -> Path:
         ],
     )
 
+    # every link->award join reads dbt's link_award_keys (R-DEC-LINK-2026-10-21 R4)
+    materialize_link_award_keys(con)
     con.close()
     return db_path
 

@@ -37,8 +37,41 @@ DUCKDB = REPO / "data" / "duckdb" / "govbudget.duckdb"
 # transactions directly would give the same dollars here, but not the same
 # award_count, and the point of this helper is to reproduce the model's
 # reasoning from its inputs.
+#
+# R-DEC-LINK-2026-10-21 R4: a link's dollars are the AWARD it names, never
+# every award sharing its PIID — restated here from the raw inputs, not read
+# from dbt's link_award_keys (the model the mart under test is built on). A
+# PIID that is one award in the lake (a NULL award_unique_key is one award)
+# contributes it whole; a PIID that is several contributes the award(s) whose
+# transactions carry the recipient the link records.
 _SQL = """
-with linked as (
+with links as (
+    select distinct award_piid, recipient_uei
+    from fct_budget_to_awards
+    where confidence = 'high'
+),
+award_recipients as (
+    select distinct award_id_piid, award_unique_key, recipient_uei
+    from fct_award_transactions
+    where award_id_piid in (select award_piid from links)
+),
+piid_awards as (
+    select award_id_piid, award_unique_key,
+           count(*) over (partition by award_id_piid) as n_awards
+    from (select distinct award_id_piid, award_unique_key from award_recipients)
+),
+named as (
+    select distinct a.award_id_piid, a.award_unique_key
+    from piid_awards a
+    join links l on l.award_piid = a.award_id_piid
+    where a.n_awards = 1
+       or exists (
+            select 1 from award_recipients r
+            where r.award_id_piid = a.award_id_piid
+              and r.award_unique_key is not distinct from a.award_unique_key
+              and r.recipient_uei = l.recipient_uei)
+),
+linked as (
     select
         t.pop_district,
         t.fiscal_year,
@@ -46,11 +79,9 @@ with linked as (
         sum(coalesce(t.obligation, 0))              as obligation,
         sum(greatest(coalesce(t.obligation, 0), 0)) as positive_obligation
     from fct_award_transactions t
-    join (
-        select distinct award_piid
-        from fct_budget_to_awards
-        where confidence = 'high'
-    ) b on t.award_id_piid = b.award_piid
+    join named b
+      on t.award_id_piid = b.award_id_piid
+     and t.award_unique_key is not distinct from b.award_unique_key
     where t.pop_district = ? and t.fiscal_year = ?
     group by 1, 2, 3
 )
