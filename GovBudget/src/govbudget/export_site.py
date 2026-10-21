@@ -4363,6 +4363,14 @@ def _published_demotions(duckdb_path) -> list[dict] | None:
 #: the sample drew, so the link's own method may differ from its draw tier.
 _PRECISION_SAMPLE_DEMOTION = "precision_sample_refuted"
 
+#: R-DEC-LINK-2026-10-21 (owner, 2026-10-21): the `demotion_reason` dbt
+#: records on a pair a person ruled withdrawn in dbt/seeds/link_line_rulings.csv
+#: (a production or long-lead contract, or an O&M support task order,
+#: attributed to a modification line) that no precision sample refuted. A
+#: per-pair ruling is not a withdrawn TIER: `_link_precision_block` never
+#: tallies these rows into its `withdrawn` sub-block.
+_LINE_RULING_DEMOTION = "line_activity_mismatch"
+
 
 def _self_refuted_population(
     pg,
@@ -4614,11 +4622,32 @@ def _link_precision_block(pg, published_methods: set[str] | None = None,
     `_self_refuted_population` (with `demoted_links`, the
     export's `_published_demotions`) builds both populations before any
     tally runs, so the rule reaches the pins and `withdrawn` alike.
+
+    A LINK A PERSON RULED OFF ITS LINE (R-DEC-LINK-2026-10-21, owner
+    2026-10-21). dbt grades a pair a `withdraw` ruling names 'low' with
+    `demotion_reason = 'line_activity_mismatch'` — or
+    'precision_sample_refuted' where a sample refuted the pair, which the
+    paragraph above keeps in its tier. A 'line_activity_mismatch' row
+    follows the population rule like any link the corpus stopped publishing:
+    its verdict, if it was sampled, counts in neither direction (two of the
+    34 withdrawn fpds-ap pairs carry a 'confirmed' verdict, so the fpds-ap
+    figure loses two confirmations: the smaller true number). And it never
+    enters `withdrawn`: that sub-block keeps the measurement that CAUSED a
+    tier's withdrawal (#107(b)), and /methodology/ renders each entry as
+    such ("its N links were withdrawn from publication"); a per-pair ruling
+    is neither a tier nor caused by the study, so a figure minted from its
+    rows ("fpds-ap: confirmed 2 of 2; its 32 links were withdrawn") would
+    state a measured withdrawal that never happened.
     """
     if rubric not in _PRECISION_RUBRICS:
         raise ValueError(f"rubric must be one of {list(_PRECISION_RUBRICS)}, got {rubric!r}")
     published_links, withdrawn_links = _self_refuted_population(
         pg, rubric, published_links, demoted_links, withdrawn_links)
+    if withdrawn_links is not None:
+        withdrawn_links = [
+            r for r in withdrawn_links
+            if r.get("demotion_reason") != _LINE_RULING_DEMOTION
+        ]
 
     def _tally(run: str | None, links: list[dict] | None = published_links,
                methods_filter: set[str] | None = published_methods,
@@ -19164,10 +19193,54 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
         crosswalked_pe_blis = []
 
     for pe_bli in crosswalked_pe_blis:
-        # Get top-12 high-confidence awards for this program with non-null district
+        # Get top-12 high-confidence awards for this program with non-null
+        # district.
+        #
+        # R-DEC-LINK-2026-10-21 (owner 2026-10-21; verify.md 7): the AWARD a
+        # link names, not every award sharing its PIID. A PIID is unique only
+        # under its parent IDV and agency (award_unique_key =
+        # contract_award_unique_key); N0001922F0001 is a Lockheed F-35 order
+        # AND a Rolls-Royce NASM maintenance order, and the PIID-only join
+        # published the second ($157.9M) on flows/ATA000.json. A linked PIID
+        # that is ONE award contributes it whole, as before (every UEI on it:
+        # a novated award keeps its successor's rows; a NULL key counts as
+        # one award). A PIID that is several awards contributes the award(s)
+        # whose transactions carry the recipient the link records.
         try:
             award_rows = con.execute(
                 """
+                with links as (
+                    select distinct award_piid, recipient_uei
+                    from fct_budget_to_awards
+                    where confidence='high' and pe_bli=?
+                ),
+                -- ONE scan of the award lake per program (materialized: the
+                -- view is read once, as the PIID-only join read it)
+                linked_tx as materialized (
+                    select award_id_piid, award_unique_key, recipient_uei,
+                           pop_state, pop_district, obligation
+                    from fct_award_transactions
+                    where award_id_piid in (select award_piid from links)
+                ),
+                piid_awards as (
+                    select
+                        t.award_id_piid,
+                        t.award_unique_key,
+                        coalesce(bool_or(t.recipient_uei = l.recipient_uei),
+                                 false) as carries_link_recipient
+                    from linked_tx t
+                    join links l on t.award_id_piid = l.award_piid
+                    group by 1, 2
+                ),
+                link_awards as (
+                    select award_id_piid, award_unique_key
+                    from (
+                        select *, count(*) over (
+                            partition by award_id_piid) as n_awards
+                        from piid_awards
+                    )
+                    where n_awards = 1 or carries_link_recipient
+                )
                 select
                     t.award_id_piid as piid,
                     t.recipient_uei,
@@ -19175,12 +19248,10 @@ def _emit_flows_sidecars(*, flows_dir, con) -> int:
                     t.pop_district,
                     coalesce(x.family_key, t.recipient_uei) as family_key,
                     sum(t.obligation) as dollars
-                from fct_award_transactions t
-                join (
-                    select distinct award_piid
-                    from fct_budget_to_awards
-                    where confidence='high' and pe_bli=?
-                ) b on t.award_id_piid = b.award_piid
+                from linked_tx t
+                join link_awards b
+                  on t.award_id_piid = b.award_id_piid
+                 and t.award_unique_key is not distinct from b.award_unique_key
                 left join entity_xwalk x on t.recipient_uei = x.recipient_uei
                 where t.pop_district is not null and t.obligation > 0
                 group by 1,2,3,4,5

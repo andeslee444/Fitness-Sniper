@@ -89,14 +89,18 @@ def _lake(awards) -> duckdb.DuckDBPyConnection:
         "create table fct_budget_trajectory (pe_bli varchar, organization varchar,"
         " account varchar, fy2026_total double)"
     )
+    # The real marts carry fct_budget_to_awards.recipient_uei and
+    # fct_award_transactions.award_unique_key; the flows query keys a
+    # link on its award (R-DEC-LINK-2026-10-21). One award per PIID here
+    # (P-SPLIT's two rows are one award).
     con.execute(
         "create table fct_budget_to_awards (award_piid varchar, pe_bli varchar,"
-        " confidence varchar)"
+        " confidence varchar, recipient_uei varchar)"
     )
     con.execute(
         "create table fct_award_transactions (award_id_piid varchar,"
         " recipient_uei varchar, obligation double, pop_state varchar,"
-        " pop_district varchar)"
+        " pop_district varchar, award_unique_key varchar)"
     )
     con.execute(
         "create table entity_xwalk (recipient_uei varchar, recipient_name varchar,"
@@ -108,11 +112,12 @@ def _lake(awards) -> duckdb.DuckDBPyConnection:
     )
     for piid, uei, state, district, obligation in awards:
         con.execute(
-            "insert into fct_budget_to_awards values (?, ?, 'high')", (piid, PE)
+            "insert into fct_budget_to_awards values (?, ?, 'high', ?)",
+            (piid, PE, uei),
         )
         con.execute(
-            "insert into fct_award_transactions values (?, ?, ?, ?, ?)",
-            (piid, uei, obligation, state, district),
+            "insert into fct_award_transactions values (?, ?, ?, ?, ?, ?)",
+            (piid, uei, obligation, state, district, f"CONT_AWD_{piid}"),
         )
     for uei in dict.fromkeys(a[1] for a in awards):
         con.execute(

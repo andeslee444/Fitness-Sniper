@@ -740,10 +740,13 @@ def _make_flows_duckdb(tmp_path: Path) -> Path:
     # fct_budget_to_awards (confidence=high)
     con.execute(
         "CREATE TABLE fct_budget_to_awards (award_piid varchar, pe_bli varchar,"
-        " program_title varchar, organization varchar, confidence varchar)"
+        " program_title varchar, organization varchar, confidence varchar,"
+        # the link's recipient, as the real mart carries it (the flows
+        # query keys a link on its award: R-DEC-LINK-2026-10-21)
+        " recipient_uei varchar)"
     )
     con.executemany(
-        "INSERT INTO fct_budget_to_awards VALUES (?, '0603760E', 'CC', 'DARPA', 'high')",
+        "INSERT INTO fct_budget_to_awards VALUES (?, '0603760E', 'CC', 'DARPA', 'high', null)",
         [("PIID-001",), ("PIID-002",), ("PIID-003",)],
     )
 
@@ -751,10 +754,11 @@ def _make_flows_duckdb(tmp_path: Path) -> Path:
     con.execute(
         "CREATE TABLE fct_award_transactions (award_id_piid varchar, recipient_uei varchar,"
         " obligation double, pop_state varchar, pop_district varchar, fiscal_year integer,"
-        " transaction_key varchar)"
+        # NULL award key: each fixture PIID is one award
+        " transaction_key varchar, award_unique_key varchar)"
     )
     con.executemany(
-        "INSERT INTO fct_award_transactions VALUES (?, ?, ?, 'CO', 'CO-05', 2025, ?)",
+        "INSERT INTO fct_award_transactions VALUES (?, ?, ?, 'CO', 'CO-05', 2025, ?, null)",
         [
             ("PIID-001", "UEI-A", 100000.0, "TXN-1"),
             ("PIID-002", "UEI-B", 200000.0, "TXN-2"),
@@ -884,11 +888,11 @@ class TestFlowsSidecar:
             piid = f"PIID-EX{i:03d}"
             uei = f"UEI-EX{i:03d}"
             con.execute(
-                "INSERT INTO fct_budget_to_awards VALUES (?, '0603760E', 'CC', 'DARPA', 'high')",
+                "INSERT INTO fct_budget_to_awards VALUES (?, '0603760E', 'CC', 'DARPA', 'high', null)",
                 [piid],
             )
             con.execute(
-                "INSERT INTO fct_award_transactions VALUES (?, ?, 10000.0, 'CO', 'CO-05', 2025, ?)",
+                "INSERT INTO fct_award_transactions VALUES (?, ?, 10000.0, 'CO', 'CO-05', 2025, ?, null)",
                 [piid, uei, f"TXN-EX{i:03d}"],
             )
             con.execute(
@@ -1024,10 +1028,10 @@ def _make_usaspending_mart_duckdb(tmp_path: Path) -> Path:
     con.execute(
         "CREATE TABLE fct_budget_to_awards (award_piid varchar, pe_bli varchar,"
         " program_title varchar, organization varchar, account varchar,"
-        " confidence varchar)"
+        " confidence varchar, recipient_uei varchar)"
     )
     con.executemany(
-        "INSERT INTO fct_budget_to_awards VALUES (?, ?, ?, ?, ?, 'high')",
+        "INSERT INTO fct_budget_to_awards VALUES (?, ?, ?, ?, ?, 'high', null)",
         [
             ("PIID-001", "0603760E", "CC", "DARPA", None),
             ("PIID-SCN", "3010", "LPD Flight II", "N", "1611N"),
@@ -1043,10 +1047,11 @@ def _make_usaspending_mart_duckdb(tmp_path: Path) -> Path:
     con.execute(
         "CREATE TABLE fct_award_transactions (award_id_piid varchar, recipient_uei varchar,"
         " obligation double, pop_state varchar, pop_district varchar, fiscal_year integer,"
-        " transaction_key varchar)"
+        # NULL award key: each fixture PIID is one award
+        " transaction_key varchar, award_unique_key varchar)"
     )
     con.executemany(
-        "INSERT INTO fct_award_transactions VALUES (?, 'UEI-A1', 100000.0, ?, ?, 2025, ?)",
+        "INSERT INTO fct_award_transactions VALUES (?, 'UEI-A1', 100000.0, ?, ?, 2025, ?, null)",
         [
             ("PIID-001", "CO", "CO-05", "TXN-1"),
             ("PIID-SCN", "VA", "VA-08", "TXN-2"),

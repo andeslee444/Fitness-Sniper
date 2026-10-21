@@ -132,14 +132,17 @@ def _lake(programs, trajectory, *, with_account: bool = True) -> duckdb.DuckDBPy
                 "insert into fct_budget_trajectory values (?, ?, ?)",
                 (pe_bli, org, total),
             )
+    # The real marts carry fct_budget_to_awards.recipient_uei and
+    # fct_award_transactions.award_unique_key; the flows query keys a
+    # link on its award (R-DEC-LINK-2026-10-21). One award per PIID here.
     con.execute(
         "create table fct_budget_to_awards (award_piid varchar, pe_bli varchar,"
-        " confidence varchar)"
+        " confidence varchar, recipient_uei varchar)"
     )
     con.execute(
         "create table fct_award_transactions (award_id_piid varchar,"
         " recipient_uei varchar, obligation double, pop_state varchar,"
-        " pop_district varchar)"
+        " pop_district varchar, award_unique_key varchar)"
     )
     con.execute(
         "create table entity_xwalk (recipient_uei varchar, recipient_name varchar,"
@@ -152,10 +155,12 @@ def _lake(programs, trajectory, *, with_account: bool = True) -> duckdb.DuckDBPy
     con.execute("insert into entity_xwalk values ('UEI-A', 'VENDOR A', 'VENDOR A')")
     for code in sorted({p[0] for p in programs}):
         piid = f"PIID-{code}"
-        con.execute("insert into fct_budget_to_awards values (?, ?, 'high')", (piid, code))
+        con.execute("insert into fct_budget_to_awards values (?, ?, 'high', 'UEI-A')",
+                    (piid, code))
         con.execute(
-            "insert into fct_award_transactions values (?, 'UEI-A', 1000.0, 'CO', 'CO-05')",
-            (piid,),
+            "insert into fct_award_transactions values"
+            " (?, 'UEI-A', 1000.0, 'CO', 'CO-05', ?)",
+            (piid, f"CONT_AWD_{piid}"),
         )
         con.execute(
             "insert into fct_district_programs values ('CO', 'CO-05', ?, null)", (code,)
