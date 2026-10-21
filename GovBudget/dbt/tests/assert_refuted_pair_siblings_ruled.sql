@@ -22,8 +22,11 @@
 -- refuted pair's article comes from its pipeline records too; a pair with
 -- none cited (no announcement card) has no sibling by this rule.
 --
--- A ruling is either word: `withdraw` (the sibling is wrong too) or `allow`
--- (a person read it and it stands).
+-- Any recorded ruling satisfies it: the owner's `withdraw` (the sibling is
+-- wrong too) or `allow` (a person read it and it stands), or the
+-- controller's `hold` (recorded, kept as published, pending an owner
+-- ruling; assert_link_line_rulings_well_formed binds each value to its
+-- ruler).
 --
 -- Returned rows are the FAILURES (dbt singular test convention): one per
 -- unruled sibling link, naming every refuted pair and shared article.

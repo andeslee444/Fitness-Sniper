@@ -134,7 +134,9 @@
 --       the study's 'refuted' verdict and never flatters the figure that
 --       caught it. An `allow` ruling grades nothing: it records that a
 --       person read a pair assert_no_production_award_on_modification_line
---       flags and ruled it correct. A withdraw ruling on a pair a hand
+--       flags and ruled it correct. A `hold` grades nothing either: it
+--       records a flagged pair no owner has ruled on yet, kept as published
+--       pending that ruling (controller, R-DEC-LINK-2026-10-21-HOLD). A withdraw ruling on a pair a hand
 --       adjudication pinned here (award_verdict 'pinned', pair_reason
 --       'pinned-here') stops the build
 --       (assert_link_line_withdraw_not_on_pinned_pair).
@@ -199,8 +201,8 @@ sample_refutations as (
 ),
 -- R-DEC-LINK-2026-10-21: the pairs a person ruled withdrawn. One row per
 -- pair, so a pair ruled twice cannot fan a link out; a withdraw beside an
--- allow is still a withdraw (assert_link_line_rulings_well_formed fails the
--- build on the duplicate anyway).
+-- allow or a hold is still a withdraw (assert_link_line_rulings_well_formed
+-- fails the build on the duplicate anyway). `allow` and `hold` grade nothing.
 line_rulings as (
     select award_piid, pe_bli, bool_or(ruling = 'withdraw') as withdrawn
     from {{ ref('link_line_rulings') }}

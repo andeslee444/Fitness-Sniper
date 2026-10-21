@@ -125,6 +125,25 @@ def test_an_allow_ruling_changes_nothing():
     assert g["ALLOW_REFUTED"] == ("medium", "high", SAMPLE)
 
 
+def test_a_hold_ruling_keeps_the_link_published_as_it_was():
+    """R-DEC-LINK-2026-10-21-HOLD (controller, 2026-10-21): `hold` records a
+    pair the recurrence gate flags that no owner has ruled on — "recorded,
+    kept as published, pending an owner ruling". It grades nothing: the link
+    publishes exactly as it would with no ruling at all, and a precision
+    sample's refutation still moves it."""
+    awards = [("HOLD_FPDS", "F03500", FPDS, "medium"),
+              ("HOLD_HIGH", "0592", ANN, "high"),
+              ("HOLD_REFUTED", "0603", ANN, "high")]
+    reviews = [survivor("HOLD_HIGH", pe="0592"),
+               survivor("HOLD_REFUTED"), sample("HOLD_REFUTED")]
+    held = _grade(awards=awards, reviews=reviews,
+                  rulings=[(p, b, "hold") for p, b, _m, _c in awards])
+    assert held == _grade(awards=awards, reviews=reviews)
+    assert held["HOLD_FPDS"] == ("medium", "medium", None)
+    assert held["HOLD_HIGH"] == ("high", "high", None)
+    assert held["HOLD_REFUTED"] == ("medium", "high", SAMPLE)
+
+
 def test_a_ruling_binds_its_pair_and_nothing_else():
     """The same award on another line, and another award on the same line,
     are other pairs: a ruling names one (award_piid, pe_bli)."""
@@ -209,6 +228,17 @@ VERIFIED_WRONG = {
 #: verify.md §1.2 — the three "unclear" links stay as they are (owner review).
 UNCLEAR = {("FA813423DB004", "C03200"), ("FA813423DB004", "C04000"),
            ("W58RGZ24C0021", "0756AA6601")}
+#: fix-brief-round2.md R3 (controller, 2026-10-21): the 10 F03500
+#: `production_associated_support` fpds-ap links the recurrence gate flags.
+#: The owner never ruled on them, so the ledger records them as `hold` —
+#: kept as published, pending an owner ruling — under the controller's
+#: R-DEC-LINK-2026-10-21-HOLD, never as an owner `allow`.
+HELD = {(piid, "F03500") for piid in (
+    "N0001912C0004", "N0001914C0026", "N0001915C0114", "N0001916C0004",
+    "N0001918C1069", "N0001918F0472", "N0001920C0005", "N0001920F0443",
+    "N0001920F0579", "N0001921C0006")}
+OWNER_ID = "R-DEC-LINK-2026-10-21"
+HOLD_ID = "R-DEC-LINK-2026-10-21-HOLD"
 
 
 def test_the_seed_carries_the_owners_rulings():
@@ -229,8 +259,21 @@ def test_the_seed_carries_the_owners_rulings():
     assert a2 == {"F03500": 16, "0505": 5, "0590": 4, "0596": 4,
                   "3264AA0252": 2, "0962C50700": 2, "6552C67500": 1}, a2
     assert not UNCLEAR & {(r["award_piid"], r["pe_bli"]) for r in rows}
+    assert Counter(r["ruling"] for r in rows) == {
+        "withdraw": 41, "allow": 13, "hold": 10}
+    # the owner's rulings are the owner's; nothing else is attributed to them
     assert all(r["ruled_by"] == "owner" and r["ruled_on"] == "2026-10-21"
-               and r["ruling_id"] == "R-DEC-LINK-2026-10-21" for r in rows)
+               and r["ruling_id"] == OWNER_ID
+               for r in rows if r["ruling"] in ("withdraw", "allow"))
+    held = [r for r in rows if r["ruling"] == "hold"]
+    assert {(r["award_piid"], r["pe_bli"]) for r in held} == HELD
+    assert all(r["ruled_by"] == "controller" and r["ruling_id"] == HOLD_ID
+               and r["ruled_on"] == "2026-10-21"
+               and r["species"] == "production_associated_support"
+               and r["evidence"].startswith(
+                   "pending owner ruling; kept as published")
+               and "owner" not in r["evidence"].split("; kept as published", 1)[1]
+               for r in held), held
     pairs = [(r["award_piid"], r["pe_bli"]) for r in rows]
     assert len(pairs) == len(set(pairs))
 
@@ -313,6 +356,41 @@ def test_a_malformed_or_duplicated_ruling_stops_the_build():
     con.close()
     assert failures == ["", "BAD_DATE", "BAD_RULING", "DUP", "DUP", "NOT_OWNER",
                         "NO_EVIDENCE", "NO_ID", "NO_SPECIES"], failures
+
+
+def test_each_ruling_value_names_its_one_ruler_and_ruling_id():
+    """R3 (fix-brief-round2.md): a ledger row says WHO ruled. `withdraw` and
+    `allow` are the owner's (R-DEC-LINK-2026-10-21); `hold` — recorded, kept
+    as published, pending an owner ruling — is the controller's
+    (R-DEC-LINK-2026-10-21-HOLD). A hold attributed to the owner would record
+    an owner ruling that does not exist; an owner ruling under the hold id,
+    or under any other id, is not the ruling it claims to be."""
+    con = duckdb.connect()
+    _rulings_table(con, [
+        _ruling("WITHDRAW", "0592"),
+        _ruling("ALLOW", "0515", "allow"),
+        _ruling("HOLD", "F03500", "hold", ruled_by="controller",
+                ruling_id="R-DEC-LINK-2026-10-21-HOLD"),
+        _ruling("HOLD_BY_OWNER", "F03500", "hold",
+                ruling_id="R-DEC-LINK-2026-10-21-HOLD"),
+        _ruling("HOLD_OWNER_ID", "F03500", "hold", ruled_by="controller"),
+        _ruling("WITHDRAW_BY_CONTROLLER", "0592", ruled_by="controller"),
+        _ruling("ALLOW_HOLD_ID", "0515", "allow",
+                ruling_id="R-DEC-LINK-2026-10-21-HOLD"),
+        _ruling("ALLOW_OTHER_ID", "0515", "allow", ruling_id="R-DEC-110"),
+        _ruling("WITHDRAW_OTHER_ID", "0592", ruling_id="R-DEC-LINK-2026-10-22"),
+        _ruling("HOLD_OTHER_RULER", "F03500", "hold", ruled_by="reviewer",
+                ruling_id="R-DEC-LINK-2026-10-21-HOLD"),
+    ])
+    failures = sorted(r[0] for r in con.execute(
+        "select award_piid from (" + _test_sql(
+            "assert_link_line_rulings_well_formed",
+            {"{{ ref('link_line_rulings') }}": "rulings"}) + ")").fetchall())
+    con.close()
+    assert failures == [
+        "ALLOW_HOLD_ID", "ALLOW_OTHER_ID", "HOLD_BY_OWNER", "HOLD_OTHER_RULER",
+        "HOLD_OWNER_ID", "WITHDRAW_BY_CONTROLLER", "WITHDRAW_OTHER_ID",
+    ], failures
 
 
 def _gate_a(published, lines, contracts, rulings=()):
@@ -510,7 +588,7 @@ KEPT = {
     ("N0001925C0070", "ATA000"): ("announcement+lexicon", "high"),
     ("N0001915C0036", "0515"): ("announcement+lexicon", "high"),   # allow
     ("FA813423DB004", "C03200"): ("announcement+lexicon", "high"),  # unclear
-    ("N0001912C0004", "F03500"): ("fpds-ap", "medium"),            # allow
+    ("N0001912C0004", "F03500"): ("fpds-ap", "medium"),            # hold (R3)
 }
 
 
