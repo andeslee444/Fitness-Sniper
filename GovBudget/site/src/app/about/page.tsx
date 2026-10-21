@@ -160,8 +160,12 @@ export default function AboutPage() {
                 /about/ because /methodology/ §6 has no page-weight room. The
                 last sentence is R4 of the same ruling (review 1, I-4): the
                 N0001922F0001 collision, removed from every surface that read
-                a link's award by PIID alone; its figure is the measured
-                removal, bound by the same test. */}
+                a link's award by PIID alone. Its figure is the order's net
+                obligation over all years, the measured removal from
+                /district/IN-07/ and the programs.json concentration dollars,
+                bound by the same test: the smaller true number, not the
+                $157.9M gross FY2022 figure (controller ruling on review r2
+                M-1). */}
             <p
               className="text-muted-foreground leading-7 mt-4"
               data-correction="link-line-rulings"
@@ -172,10 +176,11 @@ export default function AboutPage() {
               engines) to an aircraft- or missile-modification budget line;
               the other 2 had attributed one operations-and-maintenance
               support task order to two aircraft-modification lines. No link
-              was moved to another line in their place. A $157.9 million
-              Rolls-Royce maintenance order (N0001922F0001) that shares its
-              order number with an F-35 contract was removed from F-35
-              figures on the money-flow, district and concentration views.
+              was moved to another line in their place. A Rolls-Royce
+              maintenance order (N0001922F0001) carrying $147.0 million in
+              net obligations, which shares its order number with an F-35
+              contract, was removed from F-35 figures on the money-flow,
+              district and concentration views.
             </p>
           </section>
 

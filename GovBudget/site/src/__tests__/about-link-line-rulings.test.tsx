@@ -69,25 +69,35 @@ describe("/about/ labels the contract-link withdrawal a correction", () => {
    * release removes the N0001922F0001 collision from every surface. The PIID
    * is a Lockheed Martin F-35 order and an unrelated Rolls-Royce NASM
    * maintenance order; every PIID-only join published the second as F-35
-   * (ATA000) money. The figure is the measured removal, rounded as printed:
-   * the Rolls-Royce award's positive obligation, $157,917,295.93 (FY2022) —
-   * the row flows/ATA000.json carried, the IN-07 FY2022 positive obligation
-   * and the FY2022 F-35 concentration-shift dollars all lose exactly this
-   * (read-only dry evaluation, 2026-10-21; fix-report.md Round 2).
+   * (ATA000) money.
+   *
+   * The figure is the order's NET obligation over all years, $147,027,390.49
+   * (FY2022 $147,169,527.81, FY2023 −$142,137.32), rounded as printed. It is
+   * the measured removal from the all-years /district/IN-07/ F-35 row and
+   * from the programs.json F-35 concentration dollars (read-only dry
+   * evaluations, 2026-10-21; fix-report.md Round 2 and fix-review-r2-2.md).
+   * Its gross FY2022 positive obligation, $157,917,295.93, is what the flows
+   * row, the IN-07 FY2022 positive figure and the FY2022 concentration shift
+   * lose; the owner's rule publishes the smaller true number (controller
+   * ruling on review r2 M-1), and the sentence says "net" so it is true of
+   * the order as a whole.
    */
-  it("states the removed share-numbered order at its measured figure", () => {
+  it("states the removed share-numbered order at its net measured figure", () => {
     const PIID = "N0001922F0001";
-    const MEASURED_REMOVAL = 157_917_295.93;
-    const printed = `$${(MEASURED_REMOVAL / 1e6).toFixed(1)} million`;
-    expect(printed).toBe("$157.9 million");
+    const MEASURED_NET_REMOVAL = 147_027_390.49;
+    const printed = `$${(MEASURED_NET_REMOVAL / 1e6).toFixed(1)} million`;
+    expect(printed).toBe("$147.0 million");
 
     const { container } = render(<AboutPage />);
     const el = container.querySelector('[data-correction="link-line-rulings"]');
     const text = (el!.textContent ?? "").replace(/\s+/g, " ").trim();
     expect(text).toContain(
-      `A ${printed} Rolls-Royce maintenance order (${PIID}) that shares its ` +
-        "order number with an F-35 contract was removed from F-35 figures on " +
-        "the money-flow, district and concentration views.",
+      `A Rolls-Royce maintenance order (${PIID}) carrying ${printed} in net ` +
+        "obligations, which shares its order number with an F-35 contract, " +
+        "was removed from F-35 figures on the money-flow, district and " +
+        "concentration views.",
     );
+    // the gross FY2022 figure is the larger number; it is not printed
+    expect(text).not.toContain("$157.9 million");
   });
 });
