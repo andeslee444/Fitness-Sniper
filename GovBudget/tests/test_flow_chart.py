@@ -457,6 +457,62 @@ def test_missing_mart_returns_none(tmp_path, bl_rows):
 
 
 # ---------------------------------------------------------------------------
+# The bridge families never drop silently (review r2 M-3, R-DEC-LINK-2026-10-21
+# R4). The families read the award each high link NAMES through dbt's
+# link_award_keys. A warehouse that carries the award lake but not that model
+# predates R4; the old `except CatalogException: pass` emptied every
+# program's families there with no word on the log. It now raises, as the
+# export's district readers do (export_site._require_link_award_keys). Any
+# other missing relation still degrades, and the log names what was dropped
+# (export_site._report_dropped).
+# ---------------------------------------------------------------------------
+
+
+def _drop(db, *statements):
+    con = duckdb.connect(str(db))
+    try:
+        for sql in statements:
+            con.execute(sql)
+    finally:
+        con.close()
+
+
+def test_families_raise_when_the_award_lake_has_no_link_award_keys(
+        flow_db, bl_rows):
+    _drop(flow_db, "drop view link_award_keys")
+    with pytest.raises(RuntimeError, match="link_award_keys"):
+        _build(flow_db, bl_rows)
+
+
+def test_families_say_what_they_drop_on_a_warehouse_without_the_award_lake(
+        flow_db, bl_rows, capsys):
+    _drop(flow_db, "drop view link_award_keys",
+          "drop table fct_award_transactions")
+    payload, _ = _build(flow_db, bl_rows)
+    progs = {p["pe_bli"]: p for p in payload["budget"]["bridge"]["programs"]}
+    # the link-level confidence needs no award lake and is still read
+    assert progs["0601101E"]["confidence"] == "high"
+    assert progs["0601101E"]["families"] == []
+    log = capsys.readouterr().out
+    assert "WARNING" in log and "flow_chart.json's bridge families" in log, log
+
+
+def test_the_bridge_says_what_it_drops_without_the_link_mart(
+        flow_db, bl_rows, capsys):
+    _drop(flow_db, "drop view link_award_keys",
+          "drop table fct_budget_to_awards")
+    payload, _ = _build(flow_db, bl_rows)
+    assert payload["budget"]["bridge"]["programs"] == []
+    log = capsys.readouterr().out
+    assert "WARNING" in log and "fct_budget_to_awards" in log, log
+
+
+def test_a_complete_warehouse_drops_nothing(flow_db, bl_rows, capsys):
+    _build(flow_db, bl_rows)
+    assert "WARNING" not in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
 # Label layout (F3 — precomputed, collision-free inline labels)
 # ---------------------------------------------------------------------------
 

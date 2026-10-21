@@ -513,6 +513,8 @@ def build_flow_chart(*, duckdb_path, bl_rows: list, top_n: int = TOP_N,
 
     from govbudget.export_site import (
         _null_derived_row,
+        _report_dropped,
+        _require_link_award_keys,
         canonical_amount,
         fact_id_derived,
     )
@@ -558,6 +560,13 @@ def build_flow_chart(*, duckdb_path, bl_rows: list, top_n: int = TOP_N,
         # account-level matches that fan out ~400 PIIDs/PE (the same 14.7x
         # hazard fct_district_programs guards against); listing hundreds of
         # incidental families per program would be noise dressed as data.
+        #
+        # Review r2 M-3: neither read drops silently any more. A warehouse
+        # that carries the award lake but not dbt's link_award_keys predates
+        # R-DEC-LINK-2026-10-21 R4 and RAISES before the families are read,
+        # as the export's district readers do; any other missing relation
+        # degrades and the log names what was dropped. Any other error (a
+        # missing column included) raises, as it always did.
         xwalk_conf: dict[str, str] = {}
         xwalk_fams: dict[str, dict[str, str]] = {}
         try:
@@ -566,12 +575,20 @@ def build_flow_chart(*, duckdb_path, bl_rows: list, top_n: int = TOP_N,
                 " else 0 end) from fct_budget_to_awards group by 1"
             ).fetchall():
                 xwalk_conf[pe] = "high" if has_high else "medium"
-            for pe, fam in con.execute(_XWALK_FAMILIES_SQL).fetchall():
-                if fam is None:
-                    continue
-                xwalk_fams.setdefault(pe, {})[fam] = "high"
-        except _duckdb.CatalogException:
-            pass
+        except _duckdb.CatalogException as exc:
+            _report_dropped("flow_chart.json's crosswalk bridge"
+                            " (fct_budget_to_awards)", exc)
+        if "high" in xwalk_conf.values():
+            # families are read for high links only: nothing to name, no
+            # requirement (the district readers' "rows to describe" rule)
+            _require_link_award_keys(con)
+            try:
+                for pe, fam in con.execute(_XWALK_FAMILIES_SQL).fetchall():
+                    if fam is None:
+                        continue
+                    xwalk_fams.setdefault(pe, {})[fam] = "high"
+            except _duckdb.CatalogException as exc:
+                _report_dropped("flow_chart.json's bridge families", exc)
 
         # ---- spend leaves per FY ----------------------------------------
         spend_fys = [r[0] for r in con.execute(

@@ -826,7 +826,9 @@ def _require_link_award_keys(con) -> None:
     but not dbt's link_award_keys (R-DEC-LINK-2026-10-21 R4), the award each
     published link names.
 
-    Called only where district rows exist to describe. Such a warehouse
+    Called only where there are rows to describe: district rows here, and
+    flow_chart.json's high links (flow_chart.build_flow_chart, review r2
+    M-3). Such a warehouse
     predates R4: its marts still join links to awards by PIID alone, and a
     quiet fallback here (no award_ids on a district citation, a fan-out of 1
     on every district row) would publish that collision with no error and no
