@@ -4247,7 +4247,8 @@ function runFamilyLeadLeg({ errors, notes }) {
 //   * R4, the N0001922F0001 collision: the PIID is a Lockheed Martin F-35
 //     order (the one the ATA000 link names, TX-12) and an unrelated
 //     Rolls-Royce NASM maintenance order ($157,917,295.93 positive, all in
-//     IN-07). flows/ATA000.json carries no Rolls-Royce row of it, and
+//     IN-07). flows/ATA000.json carries no Rolls-Royce row of it (by name,
+//     or by N0001922F0001 at IN-07 under any name: review r2 M-2), and
 //     /district/IN-07/ lists no F-35 (ATA000) row in its programs or years,
 //     and its F-35 receipt (usaspending district_program IN|IN-07|ATA000,
 //     44ee093c2bab2ea8) is cited nowhere: measured read-only 2026-10-21, the
@@ -4285,6 +4286,8 @@ export const linkFactId = (pe, piid) => sha16(`derived|budget_to_awards|${pe}|${
  *  "total_obligation"). */
 const IN07_F35_FACT_ID = sha16("usaspending|district_program|IN|IN-07|ATA000|total_obligation");
 const COLLISION_PIID = "N0001922F0001";
+/** Where the Rolls-Royce award sharing COLLISION_PIID performed (all of it). */
+const COLLISION_DISTRICT = "IN-07";
 
 /** The cite shards a set of fact ids land in, from every shipped copy. */
 function readShippedShards(fids) {
@@ -4403,11 +4406,17 @@ export function runLineRulingsLeg({
   if (!f35Flow) {
     errors.push("program-skeleton(q): flows/ATA000.json missing — the N0001922F0001 collision cannot be checked");
   } else {
+    // Review r2 M-2: by name OR by place. The export labels a row with its
+    // UEI, or "Unknown", when the UEI→name lookup misses, so the name alone
+    // cannot be the pin. Measured 2026-10-21, the Rolls-Royce award performed
+    // only in IN-07 and the Lockheed award the link names only in TX-12.
     for (const a of f35Flow.awards ?? []) {
-      if (a.piid === COLLISION_PIID && /^ROLLS[- ]ROYCE/i.test(a.recipient_name ?? "")) {
+      const rollsRoyceByName = /^ROLLS[- ]ROYCE/i.test(a.recipient_name ?? "");
+      const rollsRoyceByPlace = a.district === COLLISION_DISTRICT;
+      if (a.piid === COLLISION_PIID && (rollsRoyceByName || rollsRoyceByPlace)) {
         errors.push(
           `program-skeleton(q): flows/ATA000.json sums ${COLLISION_PIID} ` +
-            `${a.recipient_name} (${a.district}, $${a.dollars}) — the Rolls-Royce ` +
+            `${a.recipient_name ?? "(unnamed)"} (${a.district}, $${a.dollars}) — the Rolls-Royce ` +
             `NASM maintenance order that shares the F-35 order's number; the ` +
             `ATA000 link names the Lockheed Martin award (R-DEC-LINK-2026-10-21 R4)`,
         );

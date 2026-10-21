@@ -150,6 +150,30 @@ describe("program-skeleton leg (q): withdrawn line rulings", () => {
     expect(run({ districts: new Map() }).join("\n")).toMatch(/IN-07.*missing/);
   });
 
+  // Review r2 M-2: the export names a flows row by its UEI, or "Unknown",
+  // when the UEI→name lookup misses (_emit_flows_sidecars' uei_names), so a
+  // name-only pin would pass the Rolls-Royce dollars back under any other
+  // label. The order performed only in IN-07 and the Lockheed one only in
+  // TX-12, so N0001922F0001 at IN-07 is the Rolls-Royce award whatever the
+  // row is called.
+  it("pins the N0001922F0001 IN-07 row whatever its recipient name (review r2 M-2)", () => {
+    for (const recipient_name of ["RRUEI0000001", "Unknown", null, "ALLISON ENGINE CO"]) {
+      const flows = cleanFlows();
+      flows.get("ATA000").awards.push({
+        piid: "N0001922F0001", recipient_name, district: "IN-07", dollars: 157917295.93,
+      });
+      expect(run({ flows }).join("\n"), String(recipient_name))
+        .toMatch(/flows\/ATA000\.json.*N0001922F0001.*IN-07/);
+    }
+    // the Lockheed award the ATA000 link names (TX-12) stays a clean pass,
+    // and so does the same district under another PIID
+    const flows = cleanFlows();
+    flows.get("ATA000").awards.push({
+      piid: "N0001922F0002", recipient_name: "Unknown", district: "IN-07", dollars: 1,
+    });
+    expect(run({ flows })).toEqual([]);
+  });
+
   it("reads the committed seed", () => {
     const rulings = readLineRulings();
     expect(rulings.filter((r) => r.ruling === "withdraw")).toHaveLength(41);
