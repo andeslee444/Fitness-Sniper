@@ -81,24 +81,40 @@ def _grading_sql() -> str:
         "{{ source('lake', 'jbook_awards') }}": "awards",
         "{{ source('lake', 'jbook_award_adjudications') }}": "adjudications",
         "{{ source('lake', 'jbook_announcement_link_reviews') }}": "reviews",
+        "{{ ref('link_line_rulings') }}": "rulings",
     }.items():
         sql = sql.replace(src, table)
     assert "{{" not in sql, "unsubstituted macro left in audit_link_grading.sql"
     return sql
 
 
-def _grade_rows(awards, adjudications=(), reviews=()):
+# dbt/seeds/link_line_rulings.csv's columns (all varchar, dbt_project.yml)
+RULING_COLS = (
+    "award_piid, pe_bli, ruling, species, correct_line, evidence, ruled_on,"
+    " ruled_by, ruling_id"
+)
+
+
+def _grade_rows(awards, adjudications=(), reviews=(), rulings=()):
     """awards: (piid, pe_bli, method, confidence); every link R-1/2026/DARPA.
     adjudications: (piid, pe_bli, adjudicated_confidence, award_verdict,
     pair_reason, refuter_lenses_passed). reviews: (piid, pe_bli, exhibit,
     fiscal_year, record_kind, reviewer_verdict, adversarial_verdict,
-    article_id, cites_reviewed_article, reason) — build them with rev()."""
+    article_id, cites_reviewed_article, reason) — build them with rev().
+    rulings: (piid, pe_bli, ruling) rows of the link_line_rulings seed
+    (R-DEC-LINK-2026-10-21); empty unless a test rules a pair."""
     con = duckdb.connect()
     # all-varchar, exactly as export_facts writes every jbooks parquet
     for table, cols in (("awards", AWARD_COLS), ("adjudications", ADJ_COLS),
-                        ("reviews", REVIEW_COLS)):
+                        ("reviews", REVIEW_COLS), ("rulings", RULING_COLS)):
         defs = ", ".join(f"{c.strip()} varchar" for c in cols.split(","))
         con.execute(f"create table {table} ({defs})")
+    for piid, pe, ruling in rulings:
+        con.execute(
+            "insert into rulings values (?, ?, ?, 'production_on_modification_line',"
+            " null, 'e', '2026-10-21', 'owner', 'R-DEC-LINK-2026-10-21')",
+            [piid, pe, ruling],
+        )
     for piid, pe, method, conf in awards:
         con.execute(
             "insert into awards values (?, 'R-1', '2026', 'DARPA', ?, 'X', 'U',"
@@ -129,10 +145,10 @@ def _grade_rows(awards, adjudications=(), reviews=()):
     return {(r[0], r[1]): r[2:] for r in rows}
 
 
-def _grade(awards, adjudications=(), reviews=()):
+def _grade(awards, adjudications=(), reviews=(), rulings=()):
     """_grade_rows keyed by award_piid alone (every fixture link but the
     other-PE test's has its own piid)."""
-    graded = _grade_rows(awards, adjudications, reviews)
+    graded = _grade_rows(awards, adjudications, reviews, rulings)
     by_piid = {piid: g for (piid, _pe), g in graded.items()}
     assert len(by_piid) == len(graded), graded
     return by_piid

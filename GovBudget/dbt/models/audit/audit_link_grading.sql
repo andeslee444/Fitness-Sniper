@@ -119,10 +119,30 @@
 --       refutation stops the build: assert_no_high_link_refuted_by_its_
 --       precision_sample).
 --
+--   line_activity_mismatch (R-DEC-LINK-2026-10-21, owner 2026-10-21:
+--       "approved, would process with recommendation to approve all") a
+--       PERSON ruled the pair (award_piid, pe_bli) wrong for its line in
+--       dbt/seeds/link_line_rulings.csv: a production or long-lead contract
+--       attributed to a modification line, or an O&M support task order
+--       attributed to one. A `withdraw` ruling takes first precedence over
+--       every demotion above and grades the link 'low' (not published), on
+--       every row of the pair — every edition, every method. Its reason is
+--       'precision_sample_refuted' instead whenever a held-out precision
+--       sample refuted the pair ((c) fails): the export's tally keys on that
+--       exact value and keeps such a link in the tier it was tallied in,
+--       published or not (R-DEC-110b/110c), so the withdrawal never drops
+--       the study's 'refuted' verdict and never flatters the figure that
+--       caught it. An `allow` ruling grades nothing: it records that a
+--       person read a pair assert_no_production_award_on_modification_line
+--       flags and ruled it correct. A withdraw ruling on a pair a hand
+--       adjudication pinned here (award_verdict 'pinned', pair_reason
+--       'pinned-here') stops the build
+--       (assert_link_line_withdraw_not_on_pinned_pair).
+--
 -- Demotions only ever move a link DOWN (high → medium, or out of the
 -- published tiers); a grade the adjudication overlay already set to low or
 -- reject stays that grade with no demotion_reason (the adjudication is the
--- reason, recorded in award_verdict / pair_reason).
+-- reason, recorded in award_verdict / pair_reason), ruled or not.
 with adjudications as (
     select award_piid, pe_bli, adjudicated_confidence, award_verdict,
            pair_reason, basis as adjudication_basis,
@@ -177,6 +197,15 @@ sample_refutations as (
     where from_precision_sample and (refutes or rejects)
     group by 1, 2
 ),
+-- R-DEC-LINK-2026-10-21: the pairs a person ruled withdrawn. One row per
+-- pair, so a pair ruled twice cannot fan a link out; a withdraw beside an
+-- allow is still a withdraw (assert_link_line_rulings_well_formed fails the
+-- build on the duplicate anyway).
+line_rulings as (
+    select award_piid, pe_bli, bool_or(ruling = 'withdraw') as withdrawn
+    from {{ ref('link_line_rulings') }}
+    group by 1, 2
+),
 overlaid as (
     select
         a.pe_bli,
@@ -204,6 +233,7 @@ overlaid as (
         coalesce(r.any_refuted, false) as review_any_refuted,
         coalesce(r.any_rejected, false) as review_any_rejected,
         s.award_piid is not null as sample_refuted,
+        coalesce(lr.withdrawn, false) as ruled_withdrawn,
         adj.award_verdict,
         adj.pair_reason,
         adj.adjudication_basis
@@ -218,12 +248,20 @@ overlaid as (
     left join sample_refutations s
       on s.award_piid = a.award_piid
      and s.pe_bli = a.pe_bli
+    left join line_rulings lr
+      on lr.award_piid = a.award_piid
+     and lr.pe_bli = a.pe_bli
 ),
 reasoned as (
     select
         *,
         case
             when overlay_confidence not in ('high', 'medium') then null
+            -- R-DEC-LINK-2026-10-21: a withdraw ruling first; the sample's
+            -- reason when the pair was refuted (the tally keys on it)
+            when ruled_withdrawn and sample_refuted
+                then 'precision_sample_refuted'
+            when ruled_withdrawn then 'line_activity_mismatch'
             when method = 'account+subagency' and not two_lens_pinned
                 then 'account_subagency_not_pinned'
             when not adjudicated
@@ -267,7 +305,10 @@ select
     recipient_uei,
     method,
     account,
-    case demotion_reason
+    case
+        -- a withdrawn pair publishes nowhere, whichever reason it records
+        when ruled_withdrawn and demotion_reason is not null then 'low'
+        else case demotion_reason
         when 'account_subagency_not_pinned' then 'low'
         when 'account_tokens_unadjudicated' then 'medium'
         when 'announcement_review_refuted' then 'medium'
@@ -276,6 +317,7 @@ select
         when 'announcement_review_incomplete' then 'medium'
         when 'announcement_review_unrecorded' then 'medium'
         else overlay_confidence
+        end
     end as confidence,
     crosswalk_confidence,
     case when adjudicated then 'adjudicated' else 'mechanical' end

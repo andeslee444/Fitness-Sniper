@@ -355,6 +355,14 @@ def make_lake(data_dir: Path):
         f"('K2','2017-03-02','-50.25','UEI2','BETA','','','DoD','Navy','541330','R425','VA','VA-08',null,'https://www.usaspending.gov/award/CONT_AWD_K2',null,'NAVSEA HQ','NOT COMPETED',null,'2017-03-03 00:00:00+00')"
         f") t({CONTRACT_COLS})",
     )
+    # Every USAspending contracts archive carries the award's base
+    # description; assert_no_production_award_on_modification_line
+    # (R-DEC-LINK-2026-10-21) reads it by name. NULL here: no fixture award
+    # is a production contract on a modification line.
+    ensure_lake_columns(
+        data_dir / "parquet/contracts/fy=2017/part.parquet",
+        ("prime_award_base_transaction_description",),
+    )
     write_parquet(
         data_dir / "parquet/assistance/fy=2017",
         "select * from (values "

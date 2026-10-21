@@ -356,11 +356,16 @@ def _mart_reasons(rows, piids):
         "{{ source('lake', 'jbook_awards') }}": "awards",
         "{{ source('lake', 'jbook_award_adjudications') }}": "adjudications",
         "{{ source('lake', 'jbook_announcement_link_reviews') }}": "reviews",
+        # R-DEC-LINK-2026-10-21: no line ruling binds these fixture links
+        "{{ ref('link_line_rulings') }}": "rulings",
     }.items():
         sql = sql.replace(src, table)
     assert "{{" not in sql
     con = duckdb.connect()
     try:
+        con.execute(
+            "create table rulings (award_piid varchar, pe_bli varchar,"
+            " ruling varchar)")
         con.execute(
             "create table awards (pe_bli varchar, exhibit varchar,"
             " fiscal_year varchar, organization varchar, award_piid varchar,"

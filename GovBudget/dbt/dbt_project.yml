@@ -46,6 +46,17 @@ seeds:
         decided_by: varchar
         ruling: varchar
         note: varchar
+    link_line_rulings:
+      +column_types:
+        award_piid: varchar
+        pe_bli: varchar
+        ruling: varchar
+        species: varchar
+        correct_line: varchar
+        evidence: varchar
+        ruled_on: varchar
+        ruled_by: varchar
+        ruling_id: varchar
     p1_route_safe_codes:
       +column_types:
         account: varchar
