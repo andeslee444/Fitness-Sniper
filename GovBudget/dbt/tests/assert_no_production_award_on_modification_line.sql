@@ -8,7 +8,11 @@
 -- TH-73A full-rate production on 0549, and 34 fpds-ap production, long-lead,
 -- multiyear and engine buys on seven modification lines (verify.md 1.1;
 -- sweep.md 2 A2). Run against the 2026-09-04 publish, this test flags all
--- five announcement links.
+-- five announcement links. A second owner ruling the same day,
+-- R-DEC-LINK-2026-10-21-B ("proceed with recommendations"), withdrew 10 more
+-- fpds-ap links this test flags: F-35 production-support orders
+-- (sustainment, FMS, DMS redesign, HMDS, long-lead) on F03500 F-35
+-- Modifications (verify.md 1.2).
 --
 -- A FAILURE is a PUBLISHED link (fct_budget_to_awards) with no ruling in
 -- dbt/seeds/link_line_rulings.csv, of method announcement+lexicon,
@@ -31,13 +35,17 @@
 -- never withholds anything: every hit needs a recorded ruling — the owner's
 -- `withdraw` (audit_link_grading grades the pair low, and the mart drops it)
 -- or `allow`, or the controller's `hold` (kept as published pending an owner
--- ruling; assert_link_line_rulings_well_formed binds each to its ruler).
+-- ruling; assert_link_line_rulings_well_formed binds each to its ruler; no
+-- seed row is a hold since the B ruling).
 -- Measured read-only 2026-10-21 against the pre-ruling publish with no
--- rulings: 54 hits — 31 of the 41 withdrawn pairs, 13 allows, 10 holds.
+-- rulings: 54 hits — 41 of the 51 withdrawn pairs (31 under
+-- R-DEC-LINK-2026-10-21, all 10 under R-DEC-LINK-2026-10-21-B) and 13
+-- allows; no hit is unruled.
 --
 -- RECALL. Its reach ends at the FPDS base description, and it MISSES 10 of
--- the 41 withdrawn pairs (same measurement; base description as this test
--- reads it, max() over the award's rows):
+-- the 51 withdrawn pairs, all of them R-DEC-LINK-2026-10-21's (same
+-- measurement; base description as this test reads it, max() over the
+-- award's rows):
 --   0505        N0001909C0019  fpds-ap  "F/A-18 AIRCRAFT"
 --   0505        N0001914C0032  fpds-ap  "EA-18 G AIRCRAFT"
 --   0505        N0001917C0003  fpds-ap  "LOT 40 F/A-18E AND EA-18G AIRCRAFT

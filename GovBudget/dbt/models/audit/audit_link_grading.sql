@@ -120,11 +120,15 @@
 --       precision_sample).
 --
 --   line_activity_mismatch (R-DEC-LINK-2026-10-21, owner 2026-10-21:
---       "approved, would process with recommendation to approve all") a
---       PERSON ruled the pair (award_piid, pe_bli) wrong for its line in
---       dbt/seeds/link_line_rulings.csv: a production or long-lead contract
---       attributed to a modification line, or an O&M support task order
---       attributed to one. A `withdraw` ruling takes first precedence over
+--       "approved, would process with recommendation to approve all"; and
+--       R-DEC-LINK-2026-10-21-B, owner the same day: "proceed with
+--       recommendations") a PERSON ruled the pair (award_piid, pe_bli) wrong
+--       for its line in dbt/seeds/link_line_rulings.csv: a production or
+--       long-lead contract attributed to a modification line, an F-35
+--       production-support order (such as sustainment, FMS, redesign, HMDS
+--       or long-lead) attributed to F03500 F-35 Modifications (the B ruling),
+--       or an O&M support task order attributed to a modification line. A
+--       `withdraw` ruling takes first precedence over
 --       every demotion above and grades the link 'low' (not published), on
 --       every row of the pair — every edition, every method. Its reason is
 --       'precision_sample_refuted' instead whenever a held-out precision
@@ -136,9 +140,11 @@
 --       person read a pair assert_no_production_award_on_modification_line
 --       flags and ruled it correct. A `hold` grades nothing either: it
 --       records a flagged pair no owner has ruled on yet, kept as published
---       pending that ruling (controller, R-DEC-LINK-2026-10-21-HOLD). A withdraw ruling on a pair a hand
---       adjudication pinned here (award_verdict 'pinned', pair_reason
---       'pinned-here') stops the build
+--       pending that ruling (controller, R-DEC-LINK-2026-10-21-HOLD). The
+--       10 F03500 pairs once held are holds no longer: the B ruling withdrew
+--       them, so no seed row is a hold; the value stays valid for the next
+--       one. A withdraw ruling on a pair a hand adjudication pinned here
+--       (award_verdict 'pinned', pair_reason 'pinned-here') stops the build
 --       (assert_link_line_withdraw_not_on_pinned_pair).
 --
 -- Demotions only ever move a link DOWN (high → medium, or out of the

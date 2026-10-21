@@ -5,8 +5,11 @@ withdrew the 7 verified wrong evidence-graded links (production or long-lead
 contracts on aircraft-modification lines, and one O&M support task order on
 two modification lines) and the 34 `fpds-ap` production-on-modification-line
 links, and allowed the legitimate subsystem buys a modification line makes
-itself. The rulings live in dbt/seeds/link_line_rulings.csv, one row per
-(award_piid, pe_bli); audit_link_grading reads them:
+itself. A second owner ruling the same day, R-DEC-LINK-2026-10-21-B
+("proceed with recommendations"), withdrew the 10 F-35 production-support
+`fpds-ap` orders on F03500 the controller had held pending it: 51 withdrawn
+pairs in all. The rulings live in dbt/seeds/link_line_rulings.csv, one row
+per (award_piid, pe_bli); audit_link_grading reads them:
 
   * a `withdraw` ruling grades the link 'low' (not published) whatever any
     other rule would say, and binds every row of the pair (every edition,
@@ -130,7 +133,10 @@ def test_a_hold_ruling_keeps_the_link_published_as_it_was():
     pair the recurrence gate flags that no owner has ruled on — "recorded,
     kept as published, pending an owner ruling". It grades nothing: the link
     publishes exactly as it would with no ruling at all, and a precision
-    sample's refutation still moves it."""
+    sample's refutation still moves it. Since R-DEC-LINK-2026-10-21-B no seed
+    row is a hold (the owner ruled on all 10); the value stays valid for the
+    next flagged pair no owner has ruled on, so it is held to this here, on
+    fixtures."""
     awards = [("HOLD_FPDS", "F03500", FPDS, "medium"),
               ("HOLD_HIGH", "0592", ANN, "high"),
               ("HOLD_REFUTED", "0603", ANN, "high")]
@@ -228,16 +234,28 @@ VERIFIED_WRONG = {
 #: verify.md §1.2 — the three "unclear" links stay as they are (owner review).
 UNCLEAR = {("FA813423DB004", "C03200"), ("FA813423DB004", "C04000"),
            ("W58RGZ24C0021", "0756AA6601")}
-#: fix-brief-round2.md R3 (controller, 2026-10-21): the 10 F03500
-#: `production_associated_support` fpds-ap links the recurrence gate flags.
-#: The owner never ruled on them, so the ledger records them as `hold` —
-#: kept as published, pending an owner ruling — under the controller's
-#: R-DEC-LINK-2026-10-21-HOLD, never as an owner `allow`.
-HELD = {(piid, "F03500") for piid in (
-    "N0001912C0004", "N0001914C0026", "N0001915C0114", "N0001916C0004",
-    "N0001918C1069", "N0001918F0472", "N0001920C0005", "N0001920F0443",
-    "N0001920F0579", "N0001921C0006")}
+#: R-DEC-LINK-2026-10-21-B (owner, 2026-10-21: "proceed with
+#: recommendations"): the 10 F03500 `production_associated_support` fpds-ap
+#: links the recurrence gate flags (verify.md 1.2: "F-35
+#: production-associated support on F03500"), each with the FPDS base
+#: description its evidence quotes. Round 2 had recorded them as the
+#: controller's `hold` (R-DEC-LINK-2026-10-21-HOLD), kept as published
+#: pending this ruling; the owner withdrew all 10. Neither verify.md nor
+#: sweep.md names a line they belong on, so `correct_line` stays blank.
+PRODUCTION_SUPPORT = {
+    "N0001912C0004": "LONG LEAD-TIME ITEMS",
+    "N0001914C0026": "F135 LRIP LOT 7 SUSTAINMENT CONTRACT",
+    "N0001915C0114": "LRIP 9 NON ANNUALIZED AWARD",
+    "N0001916C0004": "LRIP 10 NA SUSTAINMENT FMS",
+    "N0001918C1069": "LRIP 11 NA PROCUREMENT",
+    "N0001918F0472": "LRIP 12 AME - FMS",
+    "N0001920C0005": "FMS LOT 12 NON ANNUAL",
+    "N0001920F0443": "LOT 12 DMS REDESIGNS",
+    "N0001920F0579": "LOT 14 HMDS",
+    "N0001921C0006": "LOT 13 NON-ANNUAL PROPULSION SUSTAINMENT",
+}
 OWNER_ID = "R-DEC-LINK-2026-10-21"
+OWNER_B_ID = "R-DEC-LINK-2026-10-21-B"
 HOLD_ID = "R-DEC-LINK-2026-10-21-HOLD"
 
 
@@ -246,34 +264,47 @@ def test_the_seed_carries_the_owners_rulings():
     assert list(rows[0]) == [c.strip() for c in RULING_COLS.split(",")]
     withdraw = {(r["award_piid"], r["pe_bli"]) for r in rows
                 if r["ruling"] == "withdraw"}
-    assert len(withdraw) == 41
+    assert len(withdraw) == 51
     assert VERIFIED_WRONG <= withdraw
     by_species = Counter(r["species"] for r in rows if r["ruling"] == "withdraw")
     assert by_species == {"production_on_modification_line": 39,
-                          "om_task_order_on_mod_line": 2}, by_species
+                          "om_task_order_on_mod_line": 2,
+                          "production_associated_support": 10}, by_species
     assert {r["species"] for r in rows if r["award_piid"] == "FA813423FB001"} == {
         "om_task_order_on_mod_line"}
-    # sweep.md §2 A2: 34 fpds-ap rows on seven modification lines
+    # sweep.md §2 A2: 34 fpds-ap rows on seven modification lines, withdrawn
+    # under R-DEC-LINK-2026-10-21 with the 7 verified wrong links
     a2 = Counter(r["pe_bli"] for r in rows if r["ruling"] == "withdraw"
+                 and r["ruling_id"] == OWNER_ID
                  and (r["award_piid"], r["pe_bli"]) not in VERIFIED_WRONG)
     assert a2 == {"F03500": 16, "0505": 5, "0590": 4, "0596": 4,
                   "3264AA0252": 2, "0962C50700": 2, "6552C67500": 1}, a2
     assert not UNCLEAR & {(r["award_piid"], r["pe_bli"]) for r in rows}
-    assert Counter(r["ruling"] for r in rows) == {
-        "withdraw": 41, "allow": 13, "hold": 10}
-    # the owner's rulings are the owner's; nothing else is attributed to them
+    # every row is an owner ruling of 2026-10-21; no seed row is a hold any
+    # more (the value stays valid: test_each_ruling_value_names_its_one_...)
+    assert Counter((r["ruling"], r["ruling_id"]) for r in rows) == {
+        ("withdraw", OWNER_ID): 41, ("allow", OWNER_ID): 13,
+        ("withdraw", OWNER_B_ID): 10}
     assert all(r["ruled_by"] == "owner" and r["ruled_on"] == "2026-10-21"
-               and r["ruling_id"] == OWNER_ID
-               for r in rows if r["ruling"] in ("withdraw", "allow"))
-    held = [r for r in rows if r["ruling"] == "hold"]
-    assert {(r["award_piid"], r["pe_bli"]) for r in held} == HELD
-    assert all(r["ruled_by"] == "controller" and r["ruling_id"] == HOLD_ID
-               and r["ruled_on"] == "2026-10-21"
-               and r["species"] == "production_associated_support"
-               and r["evidence"].startswith(
-                   "pending owner ruling; kept as published")
-               and "owner" not in r["evidence"].split("; kept as published", 1)[1]
-               for r in held), held
+               for r in rows), [r for r in rows if r["ruled_by"] != "owner"]
+    # the B ruling is exactly the 10 production-support orders on F03500
+    b = [r for r in rows if r["ruling_id"] == OWNER_B_ID]
+    assert {(r["award_piid"], r["pe_bli"]) for r in b} == {
+        (piid, "F03500") for piid in PRODUCTION_SUPPORT}
+    assert {(r["award_piid"], r["pe_bli"]) for r in rows
+            if r["species"] == "production_associated_support"} == {
+        (piid, "F03500") for piid in PRODUCTION_SUPPORT}
+    prefix = "owner ruling 2026-10-21 (R-DEC-LINK-2026-10-21-B): withdrawn. "
+    for r in b:
+        assert r["correct_line"] == "", r
+        assert r["evidence"].startswith(prefix), r["evidence"]
+        assert "pending" not in r["evidence"], r["evidence"]
+        # the FPDS description and the rest of the round-2 evidence are kept
+        assert r["evidence"][len(prefix):].startswith(
+            f"FPDS '{PRODUCTION_SUPPORT[r['award_piid']]}': "
+            "assert_no_production_award_on_modification_line flags this"
+            " fpds-ap medium link; verify.md 1.2 calls it F-35"
+            " production-associated support"), r["evidence"]
     pairs = [(r["award_piid"], r["pe_bli"]) for r in rows]
     assert len(pairs) == len(set(pairs))
 
@@ -360,8 +391,9 @@ def test_a_malformed_or_duplicated_ruling_stops_the_build():
 
 def test_each_ruling_value_names_its_one_ruler_and_ruling_id():
     """R3 (fix-brief-round2.md): a ledger row says WHO ruled. `withdraw` and
-    `allow` are the owner's (R-DEC-LINK-2026-10-21); `hold` — recorded, kept
-    as published, pending an owner ruling — is the controller's
+    `allow` are the owner's (R-DEC-LINK-2026-10-21; a withdraw may also be
+    the owner's R-DEC-LINK-2026-10-21-B, the next test); `hold` — recorded,
+    kept as published, pending an owner ruling — is the controller's
     (R-DEC-LINK-2026-10-21-HOLD). A hold attributed to the owner would record
     an owner ruling that does not exist; an owner ruling under the hold id,
     or under any other id, is not the ruling it claims to be."""
@@ -391,6 +423,38 @@ def test_each_ruling_value_names_its_one_ruler_and_ruling_id():
         "ALLOW_HOLD_ID", "ALLOW_OTHER_ID", "HOLD_BY_OWNER", "HOLD_OTHER_RULER",
         "HOLD_OWNER_ID", "WITHDRAW_BY_CONTROLLER", "WITHDRAW_OTHER_ID",
     ], failures
+
+
+def test_the_b_ruling_is_an_owner_withdrawal_and_nothing_else():
+    """R-DEC-LINK-2026-10-21-B (owner, 2026-10-21: "proceed with
+    recommendations") withdrew the 10 held F03500 rows. It is kept apart from
+    R-DEC-LINK-2026-10-21 because the owner's first approval did not cover
+    those rows. So a `withdraw` under the B id is the owner's and valid; the
+    B ruling allowed nothing, so an `allow` under it is not a ruling that
+    exists; and a B withdrawal recorded as the controller's, or a hold
+    under the B id, misstates who ruled."""
+    con = duckdb.connect()
+    _rulings_table(con, [
+        _ruling("WITHDRAW_B", "F03500", ruling_id=OWNER_B_ID,
+                species="production_associated_support"),
+        _ruling("ALLOW_B", "0515", "allow", ruling_id=OWNER_B_ID),
+        _ruling("WITHDRAW_B_BY_CONTROLLER", "F03500", ruled_by="controller",
+                ruling_id=OWNER_B_ID),
+        _ruling("HOLD_B_ID", "F03500", "hold", ruled_by="controller",
+                ruling_id=OWNER_B_ID),
+        # the round-1 ruling and the hold value stay valid beside it
+        _ruling("WITHDRAW", "0592"),
+        _ruling("ALLOW", "0505", "allow"),
+        _ruling("HOLD", "F03500", "hold", ruled_by="controller",
+                ruling_id=HOLD_ID),
+    ])
+    failures = sorted(r[0] for r in con.execute(
+        "select award_piid from (" + _test_sql(
+            "assert_link_line_rulings_well_formed",
+            {"{{ ref('link_line_rulings') }}": "rulings"}) + ")").fetchall())
+    con.close()
+    assert failures == [
+        "ALLOW_B", "HOLD_B_ID", "WITHDRAW_B_BY_CONTROLLER"], failures
 
 
 def _gate_a(published, lines, contracts, rulings=()):
@@ -588,7 +652,9 @@ KEPT = {
     ("N0001925C0070", "ATA000"): ("announcement+lexicon", "high"),
     ("N0001915C0036", "0515"): ("announcement+lexicon", "high"),   # allow
     ("FA813423DB004", "C03200"): ("announcement+lexicon", "high"),  # unclear
-    ("N0001912C0004", "F03500"): ("fpds-ap", "medium"),            # hold (R3)
+    # R-DEC-LINK-2026-10-21-B withdrew N0001912C0004 on F03500 only: the
+    # same order's fpds-ap link on ATA000 stays published (live, 2026-10-21)
+    ("N0001912C0004", "ATA000"): ("fpds-ap", "medium"),
 }
 
 
@@ -609,10 +675,12 @@ def _append_lake_rows(data_dir: Path, file: str, rows: list[dict]):
 
 
 def test_the_fixture_lake_withdraws_every_ruled_pair_and_nothing_else(tmp_path):
-    """(c) R-DEC-LINK-2026-10-21 end to end: the 41 withdrawn pairs, as the
-    live lake carries them (the 7 verified announcement links graded high by
-    the loader and each upheld by its wave survivor record; the 34 fpds-ap
-    links at medium), the four precision-sample refutations, and the links
+    """(c) R-DEC-LINK-2026-10-21 and -B end to end: the 51 withdrawn pairs,
+    as the live lake carries them (the 7 verified announcement links graded
+    high by the loader and each upheld by its wave survivor record; the 34
+    fpds-ap links of the first ruling and the 10 F03500 production-support
+    fpds-ap links of the B ruling, all at medium), the four precision-sample
+    refutations, and the links
     that must stay. After `dbt build` — every test included, the recurrence
     and refuted-sibling gates among them — no withdrawn pair publishes; the
     four refuted pairs record 'precision_sample_refuted' (graded low, so the
@@ -624,7 +692,7 @@ def test_the_fixture_lake_withdraws_every_ruled_pair_and_nothing_else(tmp_path):
     make_lake(tmp_path)
     withdraw = [(r["award_piid"], r["pe_bli"]) for r in _seed_rows()
                 if r["ruling"] == "withdraw"]
-    assert len(withdraw) == 41
+    assert len(withdraw) == 51
     links = {pair: (("announcement+lexicon", "high") if pair in VERIFIED_WRONG
                     else ("fpds-ap", "medium")) for pair in withdraw}
     links.update(KEPT)
