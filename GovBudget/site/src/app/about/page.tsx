@@ -153,8 +153,13 @@ export default function AboutPage() {
               title, page, and the value you believe is correct). We will
               investigate and respond.
             </p>
-            {/* R-DEC-LINK-2026-10-21 (owner, 2026-10-21): the owner's rule is
-                to publish the smaller true number AND label it a correction.
+            {/* R-DEC-LINK-2026-10-21 and R-DEC-LINK-2026-10-21-B (owner,
+                2026-10-21): the owner's rule is to publish the smaller true
+                number AND label it a correction. The B ruling withdrew the 10
+                F-35 production-support orders on F03500 (F-35 Modifications)
+                that were held pending it; their FPDS descriptions name
+                sustainment, FMS, DMS-redesign, HMDS, non-annual and long-lead
+                orders, so the sentence names them as their own species.
                 Every figure here is bound to dbt/seeds/link_line_rulings.csv
                 by src/__tests__/about-link-line-rulings.test.tsx. It sits on
                 /about/ because /methodology/ §6 has no page-weight room. The
@@ -170,10 +175,13 @@ export default function AboutPage() {
               className="text-muted-foreground leading-7 mt-4"
               data-correction="link-line-rulings"
             >
-              Correction issued 2026-10-21: 41 budget-to-contract links were
+              Correction issued 2026-10-21: 51 budget-to-contract links were
               withdrawn. 39 had attributed a production or long-lead contract
               (aircraft or missile production lots, long-lead parts and
               engines) to an aircraft- or missile-modification budget line;
+              10 had attributed an F-35 production-support order (such as
+              sustainment, foreign military sales, a parts redesign, helmet
+              displays or long-lead items) to the F-35 Modifications line;
               the other 2 had attributed one operations-and-maintenance
               support task order to two aircraft-modification lines. No link
               was moved to another line in their place. A Rolls-Royce

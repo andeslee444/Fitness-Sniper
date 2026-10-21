@@ -1,14 +1,16 @@
 /**
  * The correction label for the 2026-10-21 contract-link withdrawal
- * (R-DEC-LINK-2026-10-21; owner rule "publish the smaller true number" —
- * shrink the claim AND label it a correction).
+ * (R-DEC-LINK-2026-10-21 and R-DEC-LINK-2026-10-21-B; owner rule "publish
+ * the smaller true number" — shrink the claim AND label it a correction).
  *
  * /about/'s corrections policy states the correction in one paragraph. Its
  * figures are typed in the page, so this test binds each to the ruling seed
  * the withdrawal actually runs on (dbt/seeds/link_line_rulings.csv): the
- * withdrawn total, the production species, and the O&M task order's count
- * of awards and lines. A seed that gains or loses a withdrawal fails here
- * until the sentence is re-argued.
+ * withdrawn total and one count per withdrawn species — the production and
+ * long-lead contracts, the F-35 production-support orders (the B ruling),
+ * and the O&M task order's count of awards and lines. A seed that gains or
+ * loses a withdrawal, or a species, fails here until the sentence is
+ * re-argued.
  *
  * Placed on /about/, not /methodology/ §6: /methodology/ runs 77 gzip bytes
  * under a ceiling the next sentence there has to argue a raise for (build
@@ -42,10 +44,16 @@ describe("/about/ labels the contract-link withdrawal a correction", () => {
   it("states the seed's own counts", () => {
     const withdrawn = seedRows().filter((r) => r.ruling === "withdraw");
     const production = withdrawn.filter((r) => r.species === "production_on_modification_line");
+    const support = withdrawn.filter((r) => r.species === "production_associated_support");
     const om = withdrawn.filter((r) => r.species === "om_task_order_on_mod_line");
-    expect(production.length + om.length).toBe(withdrawn.length);
+    // every withdrawn row is one of the three species the sentence names
+    expect(production.length + support.length + om.length).toBe(withdrawn.length);
     const omAwards = new Set(om.map((r) => r.award_piid)).size;
     const omLines = new Set(om.map((r) => r.pe_bli)).size;
+    // R-DEC-LINK-2026-10-21-B: one order per link, all on F03500, whose
+    // programs.json title is "F-35 Modifications"
+    expect(new Set(support.map((r) => r.award_piid)).size).toBe(support.length);
+    expect([...new Set(support.map((r) => r.pe_bli))]).toEqual(["F03500"]);
 
     const { container } = render(<AboutPage />);
     const el = container.querySelector('[data-correction="link-line-rulings"]');
@@ -56,6 +64,23 @@ describe("/about/ labels the contract-link withdrawal a correction", () => {
     expect(text).toContain(
       `${production.length} had attributed a production or long-lead contract`,
     );
+    expect(text).toContain(
+      `${support.length} had attributed an F-35 production-support order (such as `,
+    );
+    expect(text).toContain(") to the F-35 Modifications line;");
+    // each kind of order the sentence names is one an FPDS description in
+    // the B ruling's evidence names
+    const kinds: [string, RegExp][] = [
+      ["sustainment", /SUSTAINMENT/],
+      ["foreign military sales", /\bFMS\b/],
+      ["a parts redesign", /REDESIGN/],
+      ["helmet displays", /\bHMDS\b/],
+      ["long-lead items", /LONG LEAD/],
+    ];
+    for (const [words, fpds] of kinds) {
+      expect(text).toContain(words);
+      expect(support.some((r) => fpds.test(r.evidence)), words).toBe(true);
+    }
     expect(text).toContain(
       `the other ${om.length} had attributed ${WORDS[omAwards]} operations-and-maintenance ` +
         `support task order to ${WORDS[omLines]} aircraft-modification lines`,

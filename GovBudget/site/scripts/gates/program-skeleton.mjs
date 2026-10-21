@@ -4226,8 +4226,12 @@ function runFamilyLeadLeg({ errors, notes }) {
 // support task order on C03200/C04000, and 34 fpds-ap production, long-lead,
 // multiyear and engine buys on seven modification lines (verify.md 1.1,
 // sweep.md 2 A2). The owner withdrew all 41 ("approved, would process with
-// recommendation to approve all"); dbt/seeds/link_line_rulings.csv records
-// them and audit_link_grading grades each pair low, so the mart drops it.
+// recommendation to approve all"), and, under R-DEC-LINK-2026-10-21-B the
+// same day ("proceed with recommendations"), the 10 fpds-ap F-35
+// production-support orders on F03500 (F-35 Modifications) that had been
+// held pending that ruling: 51 pairs in all. dbt/seeds/link_line_rulings.csv
+// records them and audit_link_grading grades each pair low, so the mart
+// drops it.
 //
 // This leg reads the SHIPPED artifacts, not the warehouse: for every
 // withdraw row, no program_details sidecar of the pair's code (an
@@ -4256,8 +4260,9 @@ function runFamilyLeadLeg({ errors, notes }) {
 //     later, legitimate F-35 award there is a change to argue for here.
 
 const LINE_RULINGS_SEED = path.resolve(siteRoot, "..", "dbt", "seeds", "link_line_rulings.csv");
-/** Measured 2026-10-21: the seed withdraws 41 pairs. */
-const MIN_WITHDRAWN_PAIRS = 41;
+/** Measured 2026-10-21: the seed withdraws 51 pairs (41 under
+ *  R-DEC-LINK-2026-10-21, 10 under R-DEC-LINK-2026-10-21-B). */
+const MIN_WITHDRAWN_PAIRS = 51;
 
 /** dbt/seeds/link_line_rulings.csv as rows of strings. */
 export function readLineRulings(seedPath = LINE_RULINGS_SEED) {
@@ -4327,7 +4332,7 @@ export function runLineRulingsLeg({
   if (withdrawn.length < minWithdraw) {
     errors.push(
       `program-skeleton(q): the line-ruling seed carries ${withdrawn.length} ` +
-        `withdraw row(s) (floor ${minWithdraw}, measured 2026-10-21 at 41). ` +
+        `withdraw row(s) (floor ${minWithdraw}, measured 2026-10-21 at 51). ` +
         `A seed that lost its withdraw rows would pass this leg vacuously ` +
         `while the pairs republish`,
     );

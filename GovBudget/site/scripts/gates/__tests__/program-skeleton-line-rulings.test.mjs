@@ -3,11 +3,14 @@
  * (program-skeleton.mjs runLineRulingsLeg), proof that it can fail.
  *
  * R-DEC-LINK-2026-10-21 (owner, 2026-10-21: "approved, would process with
- * recommendation to approve all"). dbt/seeds/link_line_rulings.csv withdraws
- * 41 (award, line) pairs — the Lot 12 and Lot 20 F-35 production contracts on
- * the F-35 modification lines 0592/0593, TH-73A full-rate production on 0549,
- * the C-32/C-40 O&M support task order on C03200/C04000, and 34 fpds-ap
- * production buys on seven modification lines. audit_link_grading grades
+ * recommendation to approve all") and R-DEC-LINK-2026-10-21-B (owner, the
+ * same day: "proceed with recommendations").
+ * dbt/seeds/link_line_rulings.csv withdraws 51 (award, line) pairs — the
+ * Lot 12 and Lot 20 F-35 production contracts on the F-35 modification
+ * lines 0592/0593, TH-73A full-rate production on 0549, the C-32/C-40 O&M
+ * support task order on C03200/C04000, 34 fpds-ap production buys on seven
+ * modification lines, and (the B ruling) 10 fpds-ap F-35 production-support
+ * orders on F03500. audit_link_grading grades
  * them low, so the mart, the program pages and the flows drop them; this leg
  * reads the SHIPPED sidecars, so an export that reached the site some other
  * way still fails.
@@ -117,7 +120,7 @@ describe("program-skeleton leg (q): withdrawn line rulings", () => {
 
   it("fails when citations.json or a cite shard still carries a withdrawn pair's fact id (review 1 M-3)", () => {
     const fid = linkFid("0592", "N0001917C0001");
-    expect(fid).toBe("98b6dcf90fc2fc67"); // one of the 41 measured leaving, 2026-10-21
+    expect(fid).toBe("98b6dcf90fc2fc67"); // one of the 51 measured leaving, 2026-10-21
     expect(run({ citations: { [fid]: { kind: "announcement" } } }).join("\n"))
       .toMatch(/citations\.json.*98b6dcf90fc2fc67.*N0001917C0001.*0592/);
     const shards = new Map([["98", { [fid]: { kind: "announcement" } }]]);
@@ -176,8 +179,31 @@ describe("program-skeleton leg (q): withdrawn line rulings", () => {
 
   it("reads the committed seed", () => {
     const rulings = readLineRulings();
-    expect(rulings.filter((r) => r.ruling === "withdraw")).toHaveLength(41);
+    expect(rulings.filter((r) => r.ruling === "withdraw")).toHaveLength(51);
     expect(rulings.find((r) => r.award_piid === "N0001925C0070" && r.pe_bli === "0592"))
       .toMatchObject({ ruling: "withdraw", species: "production_on_modification_line" });
+    // R-DEC-LINK-2026-10-21-B: the 10 F03500 production-support orders
+    const b = rulings.filter((r) => r.ruling_id === "R-DEC-LINK-2026-10-21-B");
+    expect(b).toHaveLength(10);
+    for (const r of b) {
+      expect(r).toMatchObject({
+        pe_bli: "F03500", ruling: "withdraw", ruled_by: "owner",
+        species: "production_associated_support",
+      });
+    }
+    expect(rulings.filter((r) => r.ruling === "hold")).toEqual([]);
+  });
+
+  it("holds the committed seed to its measured floor of 51 withdraw rows", () => {
+    // a seed that lost the B ruling's 10 rows, or any one row, fails the
+    // leg's own default floor rather than passing on the rows it kept
+    const fifty = Array.from({ length: 50 }, (_, i) => W(`N00019X${i}`, "F03500"));
+    const errors = [];
+    runLineRulingsLeg({
+      errors, notes: [], sidecars: clean(), programs: PROGRAMS, flows: cleanFlows(),
+      rulings: fifty, citations: {}, shards: new Map(),
+      districts: new Map([["IN-07", cleanIN07()]]),
+    });
+    expect(errors.join("\n")).toMatch(/50 withdraw row\(s\) \(floor 51, measured 2026-10-21 at 51\)/);
   });
 });
