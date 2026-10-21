@@ -208,7 +208,10 @@
  *      deobligations" cell whenever the page renders one (a cell whose own
  *      gross exceeds its net MUST render one). Non-vacuous: fails if fewer
  *      than 12 cells are published or if
- *      any sampled cell has no rows in the lake. (The brief called this leg
+ *      any sampled cell has no rows in the lake. Beside the stride it always
+ *      samples IN-07 FY2022 (DISTRICT_YEAR_PINNED, review r2 M-4), the cell
+ *      the N0001922F0001 collision inflated, and fails if that cell is no
+ *      longer published. (The brief called this leg
  *      (o); that letter was taken by the hand-adjudication leg above and
  *      (p)/(q) are reserved, so the by-year leg is (r).)
  *  (s) ERA-MAP DECISIONS (families piece 1, spec 2026-10-02 §6.4). /downloads/
@@ -5030,6 +5033,44 @@ export function runSourceCadenceLeg(errors, notes, injected) {
 const DISTRICT_YEAR_SAMPLE = 12;
 const TOL_DISTRICT_YEAR = 0.01;
 
+/** Cells sampled on EVERY run, beside the stride (review r2 M-4,
+ *  R-DEC-LINK-2026-10-21 R4). IN-07 FY2022 is where the Rolls-Royce NASM
+ *  maintenance order sharing the F-35 order number N0001922F0001 landed: a
+ *  district-totals mart regressed to the PIID-only link->award join publishes
+ *  $162,388,806.00 there instead of the named awards' $15,219,278.19
+ *  (measured read-only 2026-10-21). Leg q (gate 21) pins IN-07's F-35 rows,
+ *  not its totals, so only this pin makes the totals regression a finding on
+ *  every run. A pin the sidecars stop publishing is itself a finding. */
+export const DISTRICT_YEAR_PINNED = ["IN-07|2022"];
+
+/** The leg's sample: the deterministic stride over every published cell,
+ *  plus each pinned cell the stride missed (never twice). Exported for
+ *  site/scripts/gates/__tests__/district-year-lake.test.mjs.
+ *  @returns {{sample: object[], missingPins: string[]}} */
+export function sampleDistrictYearCells(
+  cells,
+  size = DISTRICT_YEAR_SAMPLE,
+  pinned = DISTRICT_YEAR_PINNED,
+) {
+  const keyOf = (c) => `${c.district}|${c.fy}`;
+  const stride = Math.floor(cells.length / size);
+  const sample = [];
+  for (let i = 0; i < size; i++) sample.push(cells[i * stride]);
+  const sampled = new Set(sample.map(keyOf));
+  const missingPins = [];
+  for (const pin of pinned) {
+    if (sampled.has(pin)) continue;
+    const cell = cells.find((c) => keyOf(c) === pin);
+    if (!cell) {
+      missingPins.push(pin);
+      continue;
+    }
+    sample.push(cell);
+    sampled.add(pin);
+  }
+  return { sample, missingPins };
+}
+
 /** formatAmount renders a negative as "-$4.2M", and normalizeAmount's regex
  *  only accepts a leading '$'. 53 of the 924 published cells were net-negative
  *  on 2026-09-10 (73 of 1,266 on chain C run 4's export, 2026-09-25),
@@ -5220,9 +5261,15 @@ function runDistrictYearLeg(errors, notes) {
     );
     return;
   }
-  const stride = Math.floor(cells.length / DISTRICT_YEAR_SAMPLE);
-  const sample = [];
-  for (let i = 0; i < DISTRICT_YEAR_SAMPLE; i++) sample.push(cells[i * stride]);
+  const { sample, missingPins } = sampleDistrictYearCells(cells);
+  for (const pin of missingPins) {
+    errors.push(
+      `leg r: the pinned cell ${pin} is not published by any district ` +
+        `sidecar — it is always sampled so a district-totals regression to the ` +
+        `PIID-only join (the N0001922F0001 collision, R-DEC-LINK-2026-10-21 R4) ` +
+        `is caught; measured 2026-10-21 it carries 4 awards, $15,219,278.19`,
+    );
+  }
 
   const script = path.resolve(__dirname, "districtyear-recompute.py");
   const res = spawnSync("uv", ["run", "python", script], {

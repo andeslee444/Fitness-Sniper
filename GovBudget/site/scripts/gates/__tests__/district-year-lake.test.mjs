@@ -16,7 +16,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { checkDistrictYearSample } from "../datatruth.mjs";
+import {
+  checkDistrictYearSample,
+  sampleDistrictYearCells,
+  DISTRICT_YEAR_PINNED,
+} from "../datatruth.mjs";
 
 const SAMPLE = [
   { district: "ZZ-01", fy: 2019, total: 124413254.06, positive: 125501811.59 },
@@ -247,5 +251,73 @@ describe("gate 24 leg r — district-year cells vs the lake and the page", () =>
     });
     expect(failures).toEqual([]);
     expect(checked).toBe(1);
+  });
+});
+
+/**
+ * Review r2 M-4 (R-DEC-LINK-2026-10-21 R4). Leg q pins IN-07's F-35 ROWS off
+ * the shipped district page, not IN-07's totals. If fct_district_totals_by_year
+ * alone regressed to the PIID-only join, IN-07 FY2022 would carry the
+ * Rolls-Royce order sharing N0001922F0001 again ($162,388,806.00 instead of
+ * $15,219,278.19, measured read-only 2026-10-21) and only a stride that
+ * happened to land on that cell would see it. The cell is therefore always
+ * sampled, beside the deterministic stride.
+ */
+describe("gate 24 leg r — the IN-07 FY2022 cell is always sampled (review r2 M-4)", () => {
+  const cellsOf = (n, extra = []) => [
+    ...Array.from({ length: n }, (_, i) => ({
+      district: `ZZ-${String(i).padStart(2, "0")}`, fy: 2020, total: i, positive: i,
+    })),
+    ...extra,
+  ];
+  const IN07 = { district: "IN-07", fy: 2022, total: 15219278.19, positive: 15219278.19 };
+  const key = (c) => `${c.district}|${c.fy}`;
+
+  it("pins IN-07|2022", () => {
+    expect(DISTRICT_YEAR_PINNED).toContain("IN-07|2022");
+  });
+
+  it("adds the pinned cell to the unchanged stride sample", () => {
+    const cells = cellsOf(36, [IN07]);
+    const { sample, missingPins } = sampleDistrictYearCells(cells);
+    expect(missingPins).toEqual([]);
+    // the stride is the leg's own: floor(37 / 12) = 3, cells 0, 3, ..., 33
+    expect(sample.slice(0, 12).map(key)).toEqual(
+      Array.from({ length: 12 }, (_, i) => key(cells[i * 3])),
+    );
+    expect(sample.map(key)).toContain("IN-07|2022");
+    expect(sample).toHaveLength(13);
+  });
+
+  it("never samples the pinned cell twice", () => {
+    // 12 cells: stride 1 lands on every cell, IN-07|2022 among them
+    const cells = cellsOf(11, [IN07]);
+    const { sample } = sampleDistrictYearCells(cells);
+    expect(sample.filter((c) => key(c) === "IN-07|2022")).toHaveLength(1);
+    expect(sample).toHaveLength(12);
+  });
+
+  it("reports a pinned cell the sidecars no longer publish", () => {
+    const { sample, missingPins } = sampleDistrictYearCells(cellsOf(40));
+    expect(missingPins).toEqual(["IN-07|2022"]);
+    expect(sample).toHaveLength(12);
+  });
+
+  it("catches the totals regressed to the PIID-only join on IN-07 FY2022", () => {
+    const regressed = { ...IN07, total: 162388806.0, positive: 173136574.12 };
+    const { sample } = sampleDistrictYearCells(cellsOf(36, [regressed]));
+    const truth = Object.fromEntries(
+      sample.map((c) => [key(c), {
+        award_count: 1, total_obligation: c.total, positive_obligation: c.positive,
+      }]),
+    );
+    // the helper restates the named-award rule: 4 awards, $15,219,278.19
+    truth["IN-07|2022"] = {
+      award_count: 4, total_obligation: 15219278.19, positive_obligation: 15219278.19,
+    };
+    const { failures } = checkDistrictYearSample({
+      sample, truth, readRendered: () => null,
+    });
+    expect(failures.join("\n")).toMatch(/IN-07\|2022: sidecar=162388806 lake=15219278\.19/);
   });
 });
