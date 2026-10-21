@@ -157,7 +157,11 @@ export default function AboutPage() {
                 to publish the smaller true number AND label it a correction.
                 Every figure here is bound to dbt/seeds/link_line_rulings.csv
                 by src/__tests__/about-link-line-rulings.test.tsx. It sits on
-                /about/ because /methodology/ §6 has no page-weight room. */}
+                /about/ because /methodology/ §6 has no page-weight room. The
+                last sentence is R4 of the same ruling (review 1, I-4): the
+                N0001922F0001 collision, removed from every surface that read
+                a link's award by PIID alone; its figure is the measured
+                removal, bound by the same test. */}
             <p
               className="text-muted-foreground leading-7 mt-4"
               data-correction="link-line-rulings"
@@ -168,7 +172,10 @@ export default function AboutPage() {
               engines) to an aircraft- or missile-modification budget line;
               the other 2 had attributed one operations-and-maintenance
               support task order to two aircraft-modification lines. No link
-              was moved to another line in their place.
+              was moved to another line in their place. A $157.9 million
+              Rolls-Royce maintenance order (N0001922F0001) that shares its
+              order number with an F-35 contract was removed from F-35
+              figures on the money-flow, district and concentration views.
             </p>
           </section>
 

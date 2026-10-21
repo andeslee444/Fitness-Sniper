@@ -411,10 +411,13 @@ the tier it carried when it was drawn —
 `fpds-ap+account` was withdrawn hours after the 2026-09-04 draw and its links
 moved into the `fpds-ap` medium tier, so counting by the drawn method printed a
 figure for a tier no reader can meet. A sampled link the corpus no
-longer publishes counts in neither direction. A link demoted to medium by its
-own sample's refutation still publishes under the same tier, so its "refuted"
-still counts: a demotion never flatters the figure that caused it (ROADMAP
-#110, a rule set 2026-09-26). A study run may re-judge one
+longer publishes counts in neither direction unless the study refuted it. A
+link demoted to medium by its own sample's refutation still publishes under
+the same tier, so its "refuted" still counts: a demotion never flatters the
+figure that caused it (ROADMAP #110, a rule set 2026-09-26). The same holds
+for a refuted link a line ruling later withdrew from publication (the
+2026-10-21 owner ruling withdrew four): it keeps counting as refuted in the
+tier it was tallied in, so the page's clause names that exception. A study run may re-judge one
 stratum only: each tier's figure comes from the latest run that judged that
 tier, a re-measurement replaces the number it corrects and never pools with it,
 and the page states every study date it draws on.

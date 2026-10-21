@@ -12,10 +12,12 @@ lands in `_withdrawn_link_rows`. Two rules decide what the tally does with it:
     announcement+lexicon stays 57/61;
   * any other line-ruled pair follows the population rule /methodology/
     states: "one the corpus no longer publishes is counted in neither
-    direction". Two of the 34 withdrawn fpds-ap pairs carry a 'confirmed'
-    verdict (F03500|N0001917C0020, link_precision_samples id 75;
-    3264AA0252|W58RGZ18F0050, id 120), so the fpds-ap figure loses them:
-    89/114 -> 87/112, the smaller true number.
+    direction unless the study refuted it" (the exception is the rule
+    above; controller ruling R-DEC-LINK-2026-10-21-R2). Two of the 34
+    withdrawn fpds-ap pairs carry a 'confirmed' verdict (F03500|N0001917C0020,
+    link_precision_samples id 75; 3264AA0252|W58RGZ18F0050, id 120), so the
+    fpds-ap figure loses them: 89/114 -> 87/112, the smaller true number
+    (controller ruling R-DEC-LINK-2026-10-21-R1: option B confirmed).
 
 And a per-pair ruling is not a withdrawn TIER. The `withdrawn` sub-block
 exists so the measurement that caused a tier's withdrawal survives it

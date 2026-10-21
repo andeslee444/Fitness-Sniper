@@ -70,9 +70,11 @@
  *     it names the page's own org, and the branch it picks agrees with
  *     site_meta.ingested_service_orgs. ROADMAP #14 — see leg o's own block.
  * (q) A pair the owner ruled withdrawn (dbt/seeds/link_line_rulings.csv,
- *     R-DEC-LINK-2026-10-21) is listed on no program page and summed in no
- *     flows file; 0592/0593 carry neither F-35 production PIID and 0549 has
- *     no awards — see leg q's own block at the bottom.
+ *     R-DEC-LINK-2026-10-21) is listed on no program page, summed in no
+ *     flows file and cited nowhere (citations.json, cite shards); 0592/0593
+ *     carry neither F-35 production PIID and 0549 has no awards; and the
+ *     N0001922F0001 Rolls-Royce order is off flows/ATA000.json and
+ *     /district/IN-07/ (R4) — see leg q's own block at the bottom.
  * (p) /families/f-15/ states the family funding history its export carries:
  *     the headline is the sum of the default actuals years, every annual
  *     total and matrix cell sums exactly its own workbook receipts, and the
@@ -80,6 +82,7 @@
  *     (codex/f15-family-browser, merged 2026-09-25) — see leg p's own block.
  */
 
+import { createHash } from "crypto";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -4235,6 +4238,21 @@ function runFamilyLeadLeg({ errors, notes }) {
 // awards at all — its only link was the TH-73A contract (a later, legitimate
 // link would be a change to argue for here, not to absorb). A seed that
 // lost its withdraw rows fails rather than passing vacuously.
+//
+// Round 2 (review 1 M-3, controller rulings 2026-10-21):
+//   * citations: no withdrawn pair's link fact id —
+//     export_site.fact_id_derived("budget_to_awards", "{pe}|{piid}", "link"),
+//     the id its program-page row cited — is in citations.json or in its cite
+//     shard (data/site/json/cite-shards and the built out/json/cite-shards);
+//   * R4, the N0001922F0001 collision: the PIID is a Lockheed Martin F-35
+//     order (the one the ATA000 link names, TX-12) and an unrelated
+//     Rolls-Royce NASM maintenance order ($157,917,295.93 positive, all in
+//     IN-07). flows/ATA000.json carries no Rolls-Royce row of it, and
+//     /district/IN-07/ lists no F-35 (ATA000) row in its programs or years,
+//     and its F-35 receipt (usaspending district_program IN|IN-07|ATA000,
+//     44ee093c2bab2ea8) is cited nowhere: measured read-only 2026-10-21, the
+//     Rolls-Royce order was the ONLY F-35 award that performed in IN-07. A
+//     later, legitimate F-35 award there is a change to argue for here.
 
 const LINE_RULINGS_SEED = path.resolve(siteRoot, "..", "dbt", "seeds", "link_line_rulings.csv");
 /** Measured 2026-10-21: the seed withdraws 41 pairs. */
@@ -4259,6 +4277,29 @@ function readShippedFlows() {
   return out;
 }
 
+const sha16 = (s) => createHash("sha256").update(s).digest("hex").slice(0, 16);
+/** export_site.fact_id_derived("budget_to_awards", f"{pe}|{piid}", "link") */
+export const linkFactId = (pe, piid) => sha16(`derived|budget_to_awards|${pe}|${piid}|link`);
+/** The F-35 receipt the N0001922F0001 collision minted on /district/IN-07/:
+ *  export_site.fact_id_usaspending("district_program", "IN|IN-07|ATA000",
+ *  "total_obligation"). */
+const IN07_F35_FACT_ID = sha16("usaspending|district_program|IN|IN-07|ATA000|total_obligation");
+const COLLISION_PIID = "N0001922F0001";
+
+/** The cite shards a set of fact ids land in, from every shipped copy. */
+function readShippedShards(fids) {
+  const out = new Map();
+  for (const prefix of new Set(fids.map((f) => f.slice(0, 2)))) {
+    for (const dir of [path.join(jsonDir, "cite-shards"), path.join(outDir, "json", "cite-shards")]) {
+      const file = path.join(dir, `${prefix}.json`);
+      if (!fs.existsSync(file)) continue;
+      const rel = path.relative(path.resolve(siteRoot, ".."), file);
+      out.set(rel, readJson(file));
+    }
+  }
+  return out;
+}
+
 export function runLineRulingsLeg({
   errors,
   notes,
@@ -4266,6 +4307,9 @@ export function runLineRulingsLeg({
   programs,
   flows,
   rulings,
+  citations,
+  shards,
+  districts,
   minWithdraw = MIN_WITHDRAWN_PAIRS,
 }) {
   let ruled = rulings;
@@ -4324,6 +4368,79 @@ export function runLineRulingsLeg({
     }
   }
 
+  // ── citations: no withdrawn pair's link fact id (review 1 M-3) ──────────
+  const fidPair = new Map(withdrawn.map((r) => [linkFactId(r.pe_bli, r.award_piid), r]));
+  const watched = [...fidPair.keys(), IN07_F35_FACT_ID];
+  let cited = citations;
+  if (!cited) {
+    const file = path.join(jsonDir, "citations.json");
+    cited = fs.existsSync(file) ? readJson(file) : null;
+    if (!cited) errors.push("program-skeleton(q): data/site/json/citations.json missing — the withdrawn pairs' citations cannot be checked");
+  }
+  // injected shards are keyed by their 2-char prefix; shipped ones by file
+  const shardMap = shards
+    ? new Map([...shards].map(([k, v]) => [k.length === 2 ? `cite-shards/${k}.json` : k, v]))
+    : readShippedShards(watched);
+  const whose = (fid) => {
+    const r = fidPair.get(fid);
+    return r
+      ? `award ${r.award_piid} on ${r.pe_bli}, a pair the owner withdrew (R-DEC-LINK-2026-10-21)`
+      : "the IN-07 F-35 receipt the N0001922F0001 collision minted (R4)";
+  };
+  for (const fid of watched) {
+    if (cited && Object.prototype.hasOwnProperty.call(cited, fid)) {
+      errors.push(`program-skeleton(q): citations.json carries fact ${fid} — ${whose(fid)}`);
+    }
+    for (const [where, shard] of shardMap) {
+      if (where.endsWith(`${fid.slice(0, 2)}.json`) && shard && Object.prototype.hasOwnProperty.call(shard, fid)) {
+        errors.push(`program-skeleton(q): ${where} carries fact ${fid} — ${whose(fid)}`);
+      }
+    }
+  }
+
+  // ── R4: the N0001922F0001 Rolls-Royce order is off the F-35 surfaces ─────
+  const f35Flow = shippedFlows.get("ATA000");
+  if (!f35Flow) {
+    errors.push("program-skeleton(q): flows/ATA000.json missing — the N0001922F0001 collision cannot be checked");
+  } else {
+    for (const a of f35Flow.awards ?? []) {
+      if (a.piid === COLLISION_PIID && /^ROLLS[- ]ROYCE/i.test(a.recipient_name ?? "")) {
+        errors.push(
+          `program-skeleton(q): flows/ATA000.json sums ${COLLISION_PIID} ` +
+            `${a.recipient_name} (${a.district}, $${a.dollars}) — the Rolls-Royce ` +
+            `NASM maintenance order that shares the F-35 order's number; the ` +
+            `ATA000 link names the Lockheed Martin award (R-DEC-LINK-2026-10-21 R4)`,
+        );
+      }
+    }
+  }
+  let in07 = districts?.get("IN-07");
+  if (!districts) {
+    const file = path.join(jsonDir, "districts", "IN-07.json");
+    in07 = fs.existsSync(file) ? readJson(file) : undefined;
+  }
+  if (!in07) {
+    errors.push("program-skeleton(q): districts/IN-07.json missing — the N0001922F0001 collision cannot be checked");
+  } else {
+    for (const p of in07.programs ?? []) {
+      if (p.pe_bli === "ATA000") {
+        errors.push(
+          `program-skeleton(q): /district/IN-07/ lists F-35 (ATA000) $${p.total_obligation} — ` +
+            `measured 2026-10-21, the only F-35 award that performed in IN-07 is the ` +
+            `Rolls-Royce order sharing ${COLLISION_PIID} (R-DEC-LINK-2026-10-21 R4)`,
+        );
+      }
+    }
+    for (const p of in07.by_year_programs ?? []) {
+      if (p.pe_bli === "ATA000") {
+        errors.push(
+          `program-skeleton(q): /district/IN-07/ lists F-35 (ATA000) in FY${p.fiscal_year} ` +
+            `($${p.total_obligation}) — the Rolls-Royce order sharing ${COLLISION_PIID} (R4)`,
+        );
+      }
+    }
+  }
+
   for (const slug of ["0592", "0593", "0549"]) {
     if (!sidecars.has(slug)) {
       errors.push(
@@ -4343,6 +4460,8 @@ export function runLineRulingsLeg({
   }
   notes.push(
     `line rulings: ${withdrawn.length} withdrawn pair(s) checked on ` +
-      `${pagesChecked} program page(s) and ${flowsChecked} flows file(s)`,
+      `${pagesChecked} program page(s), ${flowsChecked} flows file(s), ` +
+      `citations.json and ${shardMap.size} cite shard file(s); ` +
+      `${COLLISION_PIID} checked off flows/ATA000.json and /district/IN-07/`,
   );
 }

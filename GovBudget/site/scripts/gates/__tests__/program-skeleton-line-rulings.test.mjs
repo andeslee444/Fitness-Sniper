@@ -14,8 +14,13 @@
  *
  * Run via `npm test` (vitest).
  */
+import { createHash } from "crypto";
 import { describe, it, expect } from "vitest";
 import { runLineRulingsLeg, readLineRulings } from "../program-skeleton.mjs";
+
+const sha16 = (s) => createHash("sha256").update(s).digest("hex").slice(0, 16);
+/** export_site.fact_id_derived("budget_to_awards", f"{pe}|{piid}", "link") */
+const linkFid = (pe, piid) => sha16(`derived|budget_to_awards|${pe}|${piid}|link`);
 
 const W = (award_piid, pe_bli) => ({ award_piid, pe_bli, ruling: "withdraw" });
 const A = (award_piid, pe_bli) => ({ award_piid, pe_bli, ruling: "allow" });
@@ -43,10 +48,29 @@ const PROGRAMS = [
   { pe_bli: "0592", slug: "0592" },
 ];
 
-const run = ({ sidecars = clean(), flows = new Map(), rulings = RULINGS, minWithdraw = 7 } = {}) => {
+/** The F-35 flow and IN-07 as release 2026-10-21 must ship them (R4): the
+ *  Lockheed order N0001922F0001 stays; the Rolls-Royce one does not. */
+const cleanFlows = () =>
+  new Map([
+    ["ATA000", { awards: [
+      { piid: "N0001922F0001", recipient_name: "LOCKHEED MARTIN CORPORATION", district: "TX-12", dollars: 184551699.01 },
+    ] }],
+  ]);
+const cleanIN07 = () => ({
+  programs: [{ pe_bli: "0164", split_key: "0164", total_obligation: 1 }],
+  by_year_programs: [{ pe_bli: "0164", fiscal_year: 2022, total_obligation: 1 }],
+});
+
+const run = ({
+  sidecars = clean(), flows = cleanFlows(), rulings = RULINGS, minWithdraw = 7,
+  citations = {}, shards = new Map(), districts = new Map([["IN-07", cleanIN07()]]),
+} = {}) => {
   const errors = [];
   const notes = [];
-  runLineRulingsLeg({ errors, notes, sidecars, programs: PROGRAMS, flows, rulings, minWithdraw });
+  runLineRulingsLeg({
+    errors, notes, sidecars, programs: PROGRAMS, flows, rulings, minWithdraw,
+    citations, shards, districts,
+  });
   return errors;
 };
 
@@ -89,6 +113,41 @@ describe("program-skeleton leg (q): withdrawn line rulings", () => {
 
   it("fails when the seed lost its withdraw rows", () => {
     expect(run({ rulings: [A("N0001915C0036", "0515")] }).join("\n")).toMatch(/withdraw/);
+  });
+
+  it("fails when citations.json or a cite shard still carries a withdrawn pair's fact id (review 1 M-3)", () => {
+    const fid = linkFid("0592", "N0001917C0001");
+    expect(fid).toBe("98b6dcf90fc2fc67"); // one of the 41 measured leaving, 2026-10-21
+    expect(run({ citations: { [fid]: { kind: "announcement" } } }).join("\n"))
+      .toMatch(/citations\.json.*98b6dcf90fc2fc67.*N0001917C0001.*0592/);
+    const shards = new Map([["98", { [fid]: { kind: "announcement" } }]]);
+    expect(run({ shards }).join("\n")).toMatch(/cite-shards\/98\.json.*98b6dcf90fc2fc67/);
+    // a fact id of a pair nobody withdrew is no finding
+    expect(run({ citations: { [linkFid("ATA000", "N0001925C0070")]: {} } })).toEqual([]);
+  });
+
+  it("pins the N0001922F0001 collision off flows/ATA000.json and /district/IN-07/ (R4)", () => {
+    const flows = cleanFlows();
+    flows.get("ATA000").awards.push({
+      piid: "N0001922F0001", recipient_name: "ROLLS-ROYCE CORPORATION", district: "IN-07", dollars: 157917295.93,
+    });
+    expect(run({ flows }).join("\n")).toMatch(/flows\/ATA000\.json.*N0001922F0001.*ROLLS-ROYCE/);
+
+    const inProgram = cleanIN07();
+    inProgram.programs.push({ pe_bli: "ATA000", split_key: "ATA000", fact_id: "44ee093c2bab2ea8", total_obligation: 147027390.49 });
+    expect(run({ districts: new Map([["IN-07", inProgram]]) }).join("\n")).toMatch(/IN-07.*ATA000/);
+
+    const inYear = cleanIN07();
+    inYear.by_year_programs.push({ pe_bli: "ATA000", fiscal_year: 2022, total_obligation: 147169527.81 });
+    expect(run({ districts: new Map([["IN-07", inYear]]) }).join("\n")).toMatch(/IN-07.*ATA000.*2022/);
+
+    // the IN-07 F-35 receipt the collision minted (usaspending district_program)
+    expect(sha16("usaspending|district_program|IN|IN-07|ATA000|total_obligation")).toBe("44ee093c2bab2ea8");
+    expect(run({ citations: { "44ee093c2bab2ea8": {} } }).join("\n")).toMatch(/44ee093c2bab2ea8/);
+
+    // a missing file is a finding, never a silent pass
+    expect(run({ flows: new Map() }).join("\n")).toMatch(/flows\/ATA000\.json.*missing/);
+    expect(run({ districts: new Map() }).join("\n")).toMatch(/IN-07.*missing/);
   });
 
   it("reads the committed seed", () => {
