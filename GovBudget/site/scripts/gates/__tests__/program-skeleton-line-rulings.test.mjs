@@ -10,7 +10,7 @@
  * lines 0592/0593, TH-73A full-rate production on 0549, the C-32/C-40 O&M
  * support task order on C03200/C04000, 34 fpds-ap production buys on seven
  * modification lines, and (the B ruling) 10 fpds-ap F-35 production-support
- * orders on F03500. audit_link_grading grades
+ * contracts and orders on F03500. audit_link_grading grades
  * them low, so the mart, the program pages and the flows drop them; this leg
  * reads the SHIPPED sidecars, so an export that reached the site some other
  * way still fails.
@@ -25,7 +25,12 @@ const sha16 = (s) => createHash("sha256").update(s).digest("hex").slice(0, 16);
 /** export_site.fact_id_derived("budget_to_awards", f"{pe}|{piid}", "link") */
 const linkFid = (pe, piid) => sha16(`derived|budget_to_awards|${pe}|${piid}|link`);
 
-const W = (award_piid, pe_bli) => ({ award_piid, pe_bli, ruling: "withdraw" });
+const W = (award_piid, pe_bli, ruling_id = "R-DEC-LINK-2026-10-21") =>
+  ({ award_piid, pe_bli, ruling: "withdraw", ruling_id });
+/** An R-DEC-LINK-2026-10-21-B row: an F-35 production-support award on F03500. */
+const WB = (award_piid) => ({
+  ...W(award_piid, "F03500", "R-DEC-LINK-2026-10-21-B"), species: "production_associated_support",
+});
 const A = (award_piid, pe_bli) => ({ award_piid, pe_bli, ruling: "allow" });
 const award = (award_piid) => ({ award_piid, confidence: "high" });
 
@@ -49,7 +54,13 @@ const RULINGS = [
 const PROGRAMS = [
   { pe_bli: "3010", slug: "3010-SCN" },
   { pe_bli: "0592", slug: "0592" },
+  { pe_bli: "F03500", slug: "F03500", title: "F-35 Modifications" },
 ];
+/** /about/'s correction paragraph as the release builds it (whitespace collapsed). */
+const ABOUT =
+  "Correction issued 2026-10-21: 51 budget-to-contract links were withdrawn. … 10 had " +
+  "attributed an F-35 production-support contract or order (such as sustainment, …) to " +
+  "the F-35 Modifications line; the other 2 …";
 
 /** The F-35 flow and IN-07 as release 2026-10-21 must ship them (R4): the
  *  Lockheed order N0001922F0001 stays; the Rolls-Royce one does not. */
@@ -67,12 +78,13 @@ const cleanIN07 = () => ({
 const run = ({
   sidecars = clean(), flows = cleanFlows(), rulings = RULINGS, minWithdraw = 7,
   citations = {}, shards = new Map(), districts = new Map([["IN-07", cleanIN07()]]),
+  programs = PROGRAMS, about = ABOUT,
 } = {}) => {
   const errors = [];
   const notes = [];
   runLineRulingsLeg({
-    errors, notes, sidecars, programs: PROGRAMS, flows, rulings, minWithdraw,
-    citations, shards, districts,
+    errors, notes, sidecars, programs, flows, rulings, minWithdraw,
+    citations, shards, districts, about,
   });
   return errors;
 };
@@ -177,12 +189,53 @@ describe("program-skeleton leg (q): withdrawn line rulings", () => {
     expect(run({ flows })).toEqual([]);
   });
 
+  // Review r3 (1a M-1, 1b M-2): every message names the seed row's OWN
+  // ruling, so a B pair is never attributed to the first ruling
+  it("names each withdrawn pair's own ruling id (review r3 1a M-1, 1b M-2)", () => {
+    const rulings = [...RULINGS, WB("N0001916C0004")];
+    const fid = linkFid("F03500", "N0001916C0004");
+    const sidecars = clean();
+    sidecars.set("F03500", { awards: [award("N0001916C0004")] });
+    const flows = cleanFlows();
+    flows.set("F03500", { awards: [{ piid: "N0001916C0004", dollars: 1 }] });
+    const errors = run({
+      rulings, sidecars, flows,
+      citations: { [fid]: {} }, shards: new Map([[fid.slice(0, 2), { [fid]: {} }]]),
+    });
+    const b = errors.filter((e) => e.includes("N0001916C0004"));
+    expect(b).toHaveLength(4); // page, flows, citations.json, cite shard
+    for (const e of b) expect(e).toMatch(/R-DEC-LINK-2026-10-21-B\)/);
+    // a first-ruling pair still names the first ruling, never -B
+    const first = run({ sidecars: (() => {
+      const s = clean(); s.get("0592").awards.push(award("N0001917C0001")); return s;
+    })() }).join("\n");
+    expect(first).toMatch(/N0001917C0001.*\(dbt\/seeds\/link_line_rulings\.csv, R-DEC-LINK-2026-10-21\)/);
+    expect(first).not.toMatch(/-B\)/);
+  });
+
+  // Review r3-1b M-3: /about/ names the B ruling's line by its title; while
+  // the seed withdraws production-support awards, the built page must name
+  // each such line by its programs.json title
+  it("holds /about/'s line name to the support line's programs.json title (review r3-1b M-3)", () => {
+    const rulings = [...RULINGS, WB("N0001916C0004")];
+    expect(run({ rulings })).toEqual([]);
+    const renamed = PROGRAMS.map((p) => (p.pe_bli === "F03500" ? { ...p, title: "F-35 Mods" } : p));
+    expect(run({ rulings, programs: renamed }).join("\n"))
+      .toMatch(/\/about\/.*F03500.*"F-35 Mods"/);
+    expect(run({ rulings, about: ABOUT.replace("F-35 Modifications", "F-35 Upgrades") }).join("\n"))
+      .toMatch(/\/about\/.*F03500.*"F-35 Modifications"/);
+    expect(run({ rulings, about: null }).join("\n")).toMatch(/about.*missing/);
+    // no support row in the seed: nothing to hold the page to
+    expect(run({ about: null })).toEqual([]);
+  });
+
   it("reads the committed seed", () => {
     const rulings = readLineRulings();
     expect(rulings.filter((r) => r.ruling === "withdraw")).toHaveLength(51);
     expect(rulings.find((r) => r.award_piid === "N0001925C0070" && r.pe_bli === "0592"))
       .toMatchObject({ ruling: "withdraw", species: "production_on_modification_line" });
-    // R-DEC-LINK-2026-10-21-B: the 10 F03500 production-support orders
+    // R-DEC-LINK-2026-10-21-B: the 10 F03500 production-support awards
+    // (7 definitive contracts, 3 delivery orders)
     const b = rulings.filter((r) => r.ruling_id === "R-DEC-LINK-2026-10-21-B");
     expect(b).toHaveLength(10);
     for (const r of b) {

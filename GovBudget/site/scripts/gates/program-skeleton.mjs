@@ -4228,8 +4228,8 @@ function runFamilyLeadLeg({ errors, notes }) {
 // sweep.md 2 A2). The owner withdrew all 41 ("approved, would process with
 // recommendation to approve all"), and, under R-DEC-LINK-2026-10-21-B the
 // same day ("proceed with recommendations"), the 10 fpds-ap F-35
-// production-support orders on F03500 (F-35 Modifications) that had been
-// held pending that ruling: 51 pairs in all. dbt/seeds/link_line_rulings.csv
+// production-support contracts and orders on F03500 (F-35 Modifications)
+// that had been held pending that ruling: 51 pairs in all. dbt/seeds/link_line_rulings.csv
 // records them and audit_link_grading grades each pair low, so the mart
 // drops it.
 //
@@ -4258,11 +4258,33 @@ function runFamilyLeadLeg({ errors, notes }) {
 //     44ee093c2bab2ea8) is cited nowhere: measured read-only 2026-10-21, the
 //     Rolls-Royce order was the ONLY F-35 award that performed in IN-07. A
 //     later, legitimate F-35 award there is a change to argue for here.
+//
+// Round 3 review (r3-1a M-1, r3-1b M-2/M-3):
+//   * every message names the seed row's OWN ruling_id, so a pair the B
+//     ruling withdrew is never attributed to the first ruling;
+//   * /about/ names the B ruling's line by its title ("to the F-35
+//     Modifications line"). While the seed withdraws a
+//     production_associated_support pair, the built /about/ correction must
+//     name each such line as "the {programs.json title} line", so a renamed
+//     line fails here rather than leaving the page's name stale.
 
 const LINE_RULINGS_SEED = path.resolve(siteRoot, "..", "dbt", "seeds", "link_line_rulings.csv");
 /** Measured 2026-10-21: the seed withdraws 51 pairs (41 under
  *  R-DEC-LINK-2026-10-21, 10 under R-DEC-LINK-2026-10-21-B). */
 const MIN_WITHDRAWN_PAIRS = 51;
+
+/** The seed's species whose line /about/ names by its programs.json title. */
+const TITLED_SPECIES = "production_associated_support";
+/** Where /about/'s correction paragraph sits in the built page. */
+const ABOUT_HTML = path.join(outDir, "about", "index.html");
+
+/** The built /about/ correction paragraph's text (whitespace collapsed), or
+ *  null when the page or the paragraph is missing. */
+function readAboutCorrection(file = ABOUT_HTML) {
+  if (!fs.existsSync(file)) return null;
+  const el = parse(fs.readFileSync(file, "utf8")).querySelector('[data-correction="link-line-rulings"]');
+  return el ? el.textContent.replace(/\s+/g, " ").trim() : null;
+}
 
 /** dbt/seeds/link_line_rulings.csv as rows of strings. */
 export function readLineRulings(seedPath = LINE_RULINGS_SEED) {
@@ -4318,6 +4340,7 @@ export function runLineRulingsLeg({
   citations,
   shards,
   districts,
+  about,
   minWithdraw = MIN_WITHDRAWN_PAIRS,
 }) {
   let ruled = rulings;
@@ -4344,17 +4367,20 @@ export function runLineRulingsLeg({
     programRows = fs.existsSync(programsPath) ? readJson(programsPath) : [];
   }
   const codeOfSlug = new Map(programRows.map((p) => [p.slug, p.pe_bli]));
-  const pairs = new Set(withdrawn.map((r) => `${r.award_piid}|${r.pe_bli}`));
+  // pair -> its seed row, so each message names the row's own ruling
+  const pairs = new Map(withdrawn.map((r) => [`${r.award_piid}|${r.pe_bli}`, r]));
+  const rulingOf = (r) => r.ruling_id || "no ruling_id";
 
   let pagesChecked = 0;
   for (const [slug, d] of sidecars) {
     const code = codeOfSlug.get(slug) ?? slug;
     for (const a of d?.awards ?? []) {
-      if (pairs.has(`${a.award_piid}|${code}`)) {
+      const r = pairs.get(`${a.award_piid}|${code}`);
+      if (r) {
         errors.push(
           `program-skeleton(q): award ${a.award_piid} is listed on ` +
             `/program/${slug}/ (code ${code}), but the owner withdrew that pair ` +
-            `(dbt/seeds/link_line_rulings.csv, R-DEC-LINK-2026-10-21) — ` +
+            `(dbt/seeds/link_line_rulings.csv, ${rulingOf(r)}) — ` +
             `audit_link_grading must grade it low`,
         );
       }
@@ -4367,10 +4393,11 @@ export function runLineRulingsLeg({
   for (const [code, f] of shippedFlows) {
     flowsChecked++;
     for (const a of f?.awards ?? []) {
-      if (pairs.has(`${a.piid}|${code}`)) {
+      const r = pairs.get(`${a.piid}|${code}`);
+      if (r) {
         errors.push(
           `program-skeleton(q): flows/${code}.json sums award ${a.piid}, ` +
-            `a pair the owner withdrew (R-DEC-LINK-2026-10-21)`,
+            `a pair the owner withdrew (${rulingOf(r)})`,
         );
       }
     }
@@ -4392,7 +4419,7 @@ export function runLineRulingsLeg({
   const whose = (fid) => {
     const r = fidPair.get(fid);
     return r
-      ? `award ${r.award_piid} on ${r.pe_bli}, a pair the owner withdrew (R-DEC-LINK-2026-10-21)`
+      ? `award ${r.award_piid} on ${r.pe_bli}, a pair the owner withdrew (${rulingOf(r)})`
       : "the IN-07 F-35 receipt the N0001922F0001 collision minted (R4)";
   };
   for (const fid of watched) {
@@ -4451,6 +4478,30 @@ export function runLineRulingsLeg({
           `program-skeleton(q): /district/IN-07/ lists F-35 (ATA000) in FY${p.fiscal_year} ` +
             `($${p.total_obligation}) — the Rolls-Royce order sharing ${COLLISION_PIID} (R4)`,
         );
+      }
+    }
+  }
+
+  // ── /about/ names each production-support line by its title (r3-1b M-3) ──
+  const titledLines = [...new Set(withdrawn.filter((r) => r.species === TITLED_SPECIES).map((r) => r.pe_bli))];
+  if (titledLines.length) {
+    const text = about === undefined ? readAboutCorrection() : about;
+    if (!text) {
+      errors.push(
+        "program-skeleton(q): out/about/index.html or its link-line-rulings correction is missing — " +
+          `the line name it gives the ${TITLED_SPECIES} withdrawals cannot be checked`,
+      );
+    } else {
+      for (const pe of titledLines) {
+        const title = programRows.find((p) => p.pe_bli === pe && !p.account)?.title
+          ?? programRows.find((p) => p.pe_bli === pe)?.title;
+        if (!title || !text.includes(`to the ${title} line`)) {
+          errors.push(
+            `program-skeleton(q): /about/'s correction does not name ${pe} as "the ${title ?? "(no title)"} line" — ` +
+              `the seed withdraws its ${TITLED_SPECIES} pairs and programs.json titles it ` +
+              `${JSON.stringify(title ?? null)}; the sentence must name the line the reader can find`,
+          );
+        }
       }
     }
   }
