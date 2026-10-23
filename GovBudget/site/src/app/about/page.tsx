@@ -172,15 +172,18 @@ export default function AboutPage() {
                 /district/IN-07/ and the programs.json concentration dollars,
                 bound by the same test: the smaller true number, not the
                 $157.9M gross FY2022 figure (controller ruling on review r2
-                M-1). */}
+                M-1). The date is the two owner rulings' and says so: readers
+                see the correction on the deploy day, so "issued" would date
+                it to a day the links were still live (review r3-1b M-1). */}
             <p
               className="text-muted-foreground leading-7 mt-4"
               data-correction="link-line-rulings"
             >
-              Correction issued 2026-10-21: 51 budget-to-contract links were
-              withdrawn. 39 had attributed a production or long-lead contract
-              (aircraft or missile production lots, long-lead parts and
-              engines) to an aircraft- or missile-modification budget line;
+              Correction (owner rulings of 2026-10-21): 51 budget-to-contract
+              links were withdrawn. 39 had attributed a production or
+              long-lead contract (aircraft or missile production lots,
+              long-lead parts and engines) to an aircraft- or
+              missile-modification budget line;
               10 had attributed an F-35 production-support contract or order
               (such as sustainment, foreign military sales, a parts redesign,
               helmet displays or long-lead items) to the F-35 Modifications

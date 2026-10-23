@@ -58,7 +58,7 @@ const PROGRAMS = [
 ];
 /** /about/'s correction paragraph as the release builds it (whitespace collapsed). */
 const ABOUT =
-  "Correction issued 2026-10-21: 51 budget-to-contract links were withdrawn. … 10 had " +
+  "Correction (owner rulings of 2026-10-21): 51 budget-to-contract links were withdrawn. … 10 had " +
   "attributed an F-35 production-support contract or order (such as sustainment, …) to " +
   "the F-35 Modifications line; the other 2 …";
 

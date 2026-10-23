@@ -7,14 +7,14 @@
  * figures are typed in the page, so this test binds each to the ruling seed
  * the withdrawal actually runs on (dbt/seeds/link_line_rulings.csv): the
  * withdrawn total and one count per withdrawn species — the production and
- * long-lead contracts, the F-35 production-support orders (the B ruling),
- * and the O&M task order's count of awards and lines. A seed that gains or
- * loses a withdrawal, or a species, fails here until the sentence is
- * re-argued.
+ * long-lead contracts, the F-35 production-support contracts and orders (the
+ * B ruling), and the O&M task order's count of awards and lines. A seed that
+ * gains or loses a withdrawal, or a species, fails here until the sentence
+ * is re-argued.
  *
- * Placed on /about/, not /methodology/ §6: /methodology/ runs 77 gzip bytes
- * under a ceiling the next sentence there has to argue a raise for (build
- * gate 1), and the owner's brief rules out raising it.
+ * Placed on /about/, not /methodology/ §6: /methodology/ runs within about
+ * 40 gzip bytes of a ceiling the next sentence there has to argue a raise
+ * for (build gate 1), and the owner's brief rules out raising it.
  */
 import fs from "fs";
 import path from "path";
@@ -67,8 +67,19 @@ describe("/about/ labels the contract-link withdrawal a correction", () => {
     const el = container.querySelector('[data-correction="link-line-rulings"]');
     expect(el).not.toBeNull();
     const text = (el!.textContent ?? "").replace(/\s+/g, " ").trim();
-    expect(text).toContain("Correction issued 2026-10-21");
-    expect(text).toContain(`${withdrawn.length} budget-to-contract links were withdrawn`);
+    // Review r3-1b M-1: the date is the owner rulings' date, said as such.
+    // "Correction issued <date>" read as the day readers saw the correction,
+    // which is the deploy day, not the day the owner ruled. The date and the
+    // plural are the seed's own: one ruled_on over every withdrawal, under
+    // more than one ruling id.
+    const ruledOn = [...new Set(withdrawn.map((r) => r.ruled_on))];
+    expect(ruledOn).toEqual(["2026-10-21"]);
+    expect(new Set(withdrawn.map((r) => r.ruling_id)).size).toBeGreaterThan(1);
+    expect(text).toContain(
+      `Correction (owner rulings of ${ruledOn[0]}): ` +
+        `${withdrawn.length} budget-to-contract links were withdrawn`,
+    );
+    expect(text).not.toContain("Correction issued");
     expect(text).toContain(
       `${production.length} had attributed a production or long-lead contract`,
     );
@@ -101,6 +112,39 @@ describe("/about/ labels the contract-link withdrawal a correction", () => {
     );
     // the brief's rule 6: nothing was moved onto another line
     expect(text).toContain("No link was moved to another line in their place.");
+  });
+
+  /**
+   * Review r3-1b M-3: "No link was moved to another line in their place" is
+   * true only while nothing that builds, exports or renders the site reads
+   * the seed's correct-line column (named below, so that this file is not a
+   * hit of its own). 36 of the 41 first-ruling rows fill it, so a model that
+   * started re-attributing on it would make the sentence false with every
+   * other test green. The seed, its column type in
+   * dbt_project.yml and the dbt/Python tests may name the column; the trees
+   * that publish may not. A hit here means the sentence must be re-argued.
+   */
+  it("binds 'No link was moved' to code that never reads the correct-line column", () => {
+    const column = ["correct", "line"].join("_");
+    const root = path.resolve(__dirname, "../../..");
+    const trees = ["dbt/models", "dbt/macros", "src/govbudget", "site/src"];
+    const text = /\.(sql|py|ts|tsx|mts|mjs|js|jsx|yml|yaml|json|md|txt|csv)$/;
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) {
+          if (e.name !== "node_modules" && e.name !== "__pycache__") walk(p);
+        } else if (text.test(e.name) && fs.readFileSync(p, "utf8").includes(column)) {
+          hits.push(path.relative(root, p));
+        }
+      }
+    };
+    for (const t of trees) {
+      expect(fs.existsSync(path.join(root, t)), t).toBe(true);
+      walk(path.join(root, t));
+    }
+    expect(hits).toEqual([]);
   });
 
   /**
