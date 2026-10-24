@@ -3242,7 +3242,38 @@ def _cmd_platform_families(args) -> None:
         print(f"platform-families check: families={len(registry.families)} failures={len(report.failures)}"
               f" undecided={len(report.undecided)} stale={len(report.stale)}")
         sys.exit(1 if report.failures or (args.strict and (report.undecided or report.stale)) else 0)
-    raise NotImplementedError(f"{args.pf_action} lands in Task 7b/7c/7d")
+    if args.pf_action == "propose":
+        if args.seed_shipped is not None:
+            seed_flags = (args.duckdb, args.site_dir, args.decided_on, args.owner_reply)
+            family_flags = (args.family, args.family_json, args.rows)
+            if any(flag is not None for flag in family_flags) or any(flag is None for flag in seed_flags):
+                raise ValueError("--seed-shipped takes --duckdb, --site-dir, --decided-on and --owner-reply only")
+            from govbudget import f15_funding_history as f15
+
+            out = reg.seed_shipped_f15(
+                constants=reg.F15Constants(
+                    programs=f15.PROGRAMS, modern_members=f15.MODERN_MEMBERS, era_members=f15.ERA_MEMBERS,
+                    era_program_codes=f15.ERA_PROGRAM_CODES, program_notes=f15.PROGRAM_NOTES,
+                    note_receipts=f15.NOTE_RECEIPTS, scope_note=f15.SCOPE_NOTE,
+                    coverage_notes=f15.COVERAGE_NOTES,
+                    expected_from={m.code: m.coverage_expected_from_edition for m in f15.F15.counted}),
+                duckdb_path=args.duckdb, site_dir=args.site_dir, decided_on=args.decided_on,
+                owner_reply=args.owner_reply.read_text(encoding="utf-8"), paths=reg.DEFAULT_PATHS)
+            print(f"platform-families propose: f-15 seeded as R-DEC-FAM-F15-SEED; {out['members']} member row(s),"
+                  f" {out['era_lines']} era line(s), {out['rulings']} ruling -> data-seeds/")
+            return
+        if args.family is None or args.family_json is None or args.rows is None:
+            raise ValueError("propose needs --family, --family-json and --rows")
+        from govbudget import platform_family_review as review
+
+        out = review.propose(platform_family=args.family, family_json=args.family_json, rows_csv=args.rows,
+                             duckdb_path=args.duckdb or config.DUCKDB_PATH, paths=reg.DEFAULT_PATHS,
+                             review_root=reg.REVIEW_ROOT)
+        print(f"platform-families propose: {args.family} draft; {out['rows']} review row(s),"
+              f" {out['era_lines']} era line(s), {out['held_for_review']} held for review"
+              f" -> {reg.REVIEW_ROOT}/{args.family}/")
+        return
+    raise NotImplementedError(f"{args.pf_action} lands in Task 7c/7d")
 
 
 def cmd_refresh(args) -> None:
