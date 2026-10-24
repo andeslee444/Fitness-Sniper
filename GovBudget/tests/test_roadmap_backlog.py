@@ -353,3 +353,28 @@ def test_the_release_2_follow_ups_are_filed_once_with_effort_and_source(subject)
     assert body.rstrip().splitlines()[-1].strip().startswith("**Status:** "), (
         f"#{num} does not end with its Status line"
     )
+
+
+# Filed by the R-DEC-LINK-2026-10-21 release stamp (the contract-link
+# correction, with -B), by phrase: the loader species the release left, the
+# permalink and published-count gaps, the gate's measured recall, and the
+# unclear rows awaiting the owner. Each phrase sits on one line of its entry.
+LINK_FIX_RELEASE = [
+    "The link loaders still key award dollars on the PIID alone",
+    "A withdrawn fact's /fact/ permalink stops resolving",
+    "The published-link count ignores line rulings",
+    "Gate (a) misses 10 of the 51 withdrawn pairs",
+    "Three unclear links await owner review",
+]
+
+
+@pytest.mark.parametrize("subject", LINK_FIX_RELEASE)
+def test_the_link_fix_release_follow_ups_are_filed_once_with_effort_and_source(subject):
+    hits = [(num, body) for num, body in entries() if subject in body]
+    assert len(hits) == 1, f"{subject!r} filed {len(hits)} times, want 1"
+    num, body = hits[0]
+    assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
+    assert POINTER_RE.search(body), f"#{num} names no source path"
+    assert body.rstrip().splitlines()[-1].strip().startswith("**Status:** "), (
+        f"#{num} does not end with its Status line"
+    )

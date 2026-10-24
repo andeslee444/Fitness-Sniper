@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-10-19 (piece-1 follow-ups release 2 deployed at 1256ec35: #195; release-2 follow-ups #215–#221 filed); 2026-10-14 (families piece-1 follow-ups release 1 deployed at e362c0a7; SAM #10 status; Q23 filed for piece 2; release-1 findings #210–#214 filed); 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-10-24 (contract-link correction R-DEC-LINK-2026-10-21 and -B deployed at 9dce8219; follow-ups #222–#226 filed); 2026-10-19 (piece-1 follow-ups release 2 deployed at 1256ec35: #195; release-2 follow-ups #215–#221 filed); 2026-10-14 (families piece-1 follow-ups release 1 deployed at e362c0a7; SAM #10 status; Q23 filed for piece 2; release-1 findings #210–#214 filed); 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
@@ -245,6 +245,7 @@ dated findings and original backlog descriptions below remain historical records
 | Families-1 | Procurement history before FY2024 (platform families piece 1): PB2017–PB2023 P-1 points on procurement program pages through dated owner decisions on the printed budget code — `line_item_code` captured on every era P-1 row (migration 021), `p1_era_line_map` (6,927 era keys; class rulings R-DEC-ERA-SAME/EXCLUDE/HISTORY + owner batches R-DEC-ERA-B1…B6), `fct_program_decade_series`; F-15 fenced; F015E0 relabeled with its cited Lot 1 sentence | verify-era-map (legs a–f, in verify-phase5) + V5 F-15 identity + S4 A/B proof (diff = spec §10) + link-coverage V9 | ✅ DEPLOYED 2026-10-04 at 916ae88e (rollback tag 2026-10-04T210918Z) | 811/892 PB2026 + 79/89 decade-only procurement pages gain era points (629 and 42 of them with all seven editions), 16,494 points; citations 125,409 → 143,841 (+18,345 era, +87 SAM #10); era P-1 receipts complete PB2017–PB2023 2,205/2,232 · 2,322/2,355 · 2,368/2,403 · 2,465/2,496 · 2,553/2,622 · 2,670/2,697 · 2,658/2,697; F-15 default cells 67/67; gates: npm verify overall PASS (27/27), verify-phase5 PASS (eval 47/48, the miss q007 on the Lockheed Martin family's confidence level; citations 43/43), 5b1/5e/lineage/era-map PASS, link-coverage PASS, evals check PASS |
 | Families-1 FU-1 | Piece-1 follow-ups, release 1: `/years/` sharded (schema-2 core + lazy decade and detail shards) with its era fence lifted (#193, #206 T4, #207, #208); the 0390D Chem Demil O&M line under the route-safe key 0390DOM with a rollup-tier page and the era O&M chain as owner batch R-DEC-ERA-B7, the RDT&E line recorded as an R-1 restatement of 0708081D + 0708083D (#194); `p1_era_line_map.decided_on` (#206 T6); the v1 receipt files removed (#196); JASSM/C-130J search aliases (#197); one "tier pending" definition (T7); the F015E0 gloss (T9); verify-era-map legs g and h (T11); hardening #198–#205 | P1/P2/P2b/P3 proofs on snapshots fu-pre/fu-post, the write rehearsed on fu-post and fu-pre and its `--revert` on fu-pre ([proof](reviews/fu-release1-proof.md)) + yearsmatrix leg j + verify-era-map a–h + link-coverage V9 | ✅ DEPLOYED 2026-10-14 at e362c0a7 (rollback tag 2026-10-15T033621Z) | /years/ +14,985 era cells and the org-split rows' 63 modern cells, leg j 0 mismatches, core 1,100,823 / 344,303 gzip (budget 780,074), decade 1,390,739 / 433,932, detail 1,231,643 / 284,230 [p2b-report.json]; /program/0390DOM/ with 21 points before PB2024 [p1-content.txt]; totals chart panel 524 → 1,063 programs, FY2024A→FY2026R +9.34% → −2.61%, first→last +108.17% → +103.71% (Q15; told 2026-10-04: 524 → 1,056 and +9.3% → about −2.5%) [p2b-report.json]; citations 143,841 → 143,893 (+37 0390DOM, +15 SAM #10) [fu-release-counts.json]; 256 v1 receipt files gone; universe 385,268,393 → 385,271,636 ($385.3B); dbt assertions 196 → 199; gates: npm verify overall PASS, verify-phase5 PASS (eval 46/48, the misses q007, piece 1's, and q042, an analyst error filed as #210; citations 43/43), 5b1/5e/lineage/era-map a–h PASS, link-coverage PASS, evals check PASS; live: all 236 live-asset assertions and every live check passed [release-deploy.log, live-checks.txt] |
 | Families-1 follow-ups R2 | #195: each narrative citation names the volume of its book set that prints it — migration 022 (`provenance_pages.printed_document_sha256`), the book-set relocation (`provenance_pages.plan_narrative_relocations`, written once by `scripts/fu/s195_narratives.py` with a pre-image and `--revert`), the export citing and hosting the printing volume, and `verify-jbook-narratives` (verify-phase5b1 gate 5, full population) | release-2 A/B on one snapshot (P2 equal, P1 within `expected-diff-r2-narratives.json`, `narrative_relocation_report.py`), the write and its `--revert` rehearsed, gate 5 red before and green after | ✅ DEPLOYED 2026-10-19 at 1256ec35 (rollback tag 2026-10-20T000418Z) | 4,177 narrative citations gain a page and 228 move (fact IDs unchanged); 20 superseded PB2026 volumes hosted on R2 (162,040,168 B); 111 opening-only (Q26 ratchet) and 77 opening-seen pageless (ratchet the owner approved 2026-10-14) citations; 1,444 pageless (1,342 of them Navy RDTEN BA1–3 master-XML narratives whose books are not in the corpus); `/program/0601102A/` 1,169,983 / 147,323 of 1,180,000 / 151,000 and `/families/f-15/` 69,342 of 70,000 gzip (658 bytes left), ceilings unchanged [fu2-release-site-verify.log]; gates: npm verify overall PASS, verify-phase5 PASS (eval 46/48, the misses q007, piece 1's, and q042, the analyst's DATE crash #210; citations 43/43) [fu2-release-verify-phase5.log], 5b1 (gate 5)/5e/lineage/era-map PASS, link-coverage PASS, evals check PASS; citations 143,893, unchanged; SAM registrations shipped 0; hosted PDF files 225 → 245 [fu2-release-counts.json]; live writes 2026-10-15: state digest D0 equal to the proof's, D1 and D2 not, by a three-id rotation (#219), the post-write rows equal to the proof's by key [release-live-vs-D2-by-key.txt]; release export = proven export (`proof diff: EQUAL`) [fu2-release-vs-proof.txt]; live: all 236 live-asset assertions passed, the 20 new volumes probed by sha 39/39, every page and citation check as expected [fu2-release-deploy.log, fu2-release-live-pdfs.txt, fu2-release-live-checks.txt] |
+| Link fix R-DEC-LINK-2026-10-21 (+ -B) | Contract-link correction (owner, 2026-10-21): 51 budget-to-contract links withdrawn — 39 production or long-lead contracts on aircraft- or missile-modification lines, 10 F-35 production-support contracts and orders on the F-35 Modifications line (R-DEC-LINK-2026-10-21-B), one O&M support task order on two modification lines — by `dbt/seeds/link_line_rulings.csv` (51 withdraw: 41 R-DEC-LINK-2026-10-21, 10 R-DEC-LINK-2026-10-21-B; 13 allow; no hold), read first by `audit_link_grading`; the N0001922F0001 short-PIID collision removed from every link→award dollar join by `link_award_keys` (R4); build-stopping gates `assert_no_production_award_on_modification_line` and `assert_refuted_pair_siblings_ruled`; gate 21 leg q; the /about/ correction (three species); the /methodology/ precision clause (R2) | proof lf1: A (88538c6a) vs B (a44960e4) on one snapshot, `expected-diff-lf1.json` + `lf1_fact_check.py` PASS, B vs B2 control EQUAL; the abort rebuild by main's code rehearsed on a clone; live lake = lf1-B (`lake_parity.py`, 10 relations); release export = proven export (`proof diff: EQUAL`) | ✅ DEPLOYED 2026-10-24 at 9dce8219 (rollback tag 2026-10-24T135031Z) | links 3,685 → 3,634 (high 1,106 → 1,101, medium 2,579 → 2,533); award rows 0592 5→3, 0593 4→2, 0549 1→0, F03500 118→92, 0505 37→32, 0590 69→65, 0596 16→12, 0962C50700 6→4, 3264AA0252 7→5, 6552C67500 6→5, C03200 2→1, C04000 3→2; flows 0592 $49.71B → $3.32B, 0593 $7.69B → $3.32B, ATA000 without the $157.9M Rolls-Royce IN-07 row, no flows for 0549 and C03200; /district/IN-07/ $1.15B → $1.01B (no F-35 row), TX-12 $68.96B → $33.82B, /district/PA-02/ removed (districts 191 → 190); F03500 all-links concentration $127.65B → $17.63B, HHI 7,421.77 → 7,764.17 (B-C1); fpds-ap precision 89/114 → 86/111 (R1, B-C1); announcement high 1,047 → 1,042; citations 143,893 → 143,804 (-89: 51 links, 3 district receipts, PA-02's 16 district facts, 0549's 3 concentration facts, 16 feed facts) [lf1-release-counts.json]; one live warehouse write, `dbt build --select link_line_rulings+` (1 seed, 1 table, 8 views, 46 tests, PASS=56, 52.90 s), and the live export; no Postgres write; /methodology/ 161,453 / 45,359 of 162,000 / 45,400 (re-stamped, ceiling unchanged); dbt assertions 199 → 206; gates: npm verify overall PASS, verify-phase5 PASS (eval 47/48), 5b1/5e/lineage/era-map PASS, link-coverage PASS, evals check PASS (q018 536 → 535) |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog — refresh orchestrator shipped 2026-09-18 (#8: `govbudget refresh`, sync shrink guards, launchd templates; loading the scheduler is the owner's action); accounts/alerts tier and the public analyst surface still backlog | — |
 
 ## Evaluator framework (how each thing is judged)
@@ -282,6 +283,63 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
    *Used by: every phase's final review; 5B-4's NL eval (≥90% + REFUSE handling).*
 
 ## Findings log (what we learned; feeds future phases)
+
+- **2026-10-24: Contract-link correction (R-DEC-LINK-2026-10-21 and -B)
+  deployed.** The owner approved (2026-10-21) withdrawing 41
+  budget-to-contract links — 39 production or long-lead contracts attributed
+  to aircraft- or missile-modification lines and one O&M support task order
+  attributed to two modification lines — and the published N0001922F0001
+  short-PIID collision (an unrelated Rolls-Royce maintenance order, $147.0M
+  net and $157.9M gross FY2022, all in IN-07, summed as F-35 money because a
+  PIID is unique only under its parent IDV); the same day, answering "proceed
+  with recommendations" (R-DEC-LINK-2026-10-21-B), the owner also withdrew the
+  10 F-35 production-support contracts and orders on the F-35 Modifications
+  line (F03500) the controller had held: 51 links in all. Because F03500's
+  all-links concentration pools medium links, the B ruling also moved it
+  (controller ruling B-C1, the smaller true number): $127.65B → $17.63B, HHI
+  7,421.77 → 7,764.17, 92 awards. The withdrawals are rulings in
+  `dbt/seeds/link_line_rulings.csv` that `audit_link_grading` reads first (51
+  withdraw — 41 under R-DEC-LINK-2026-10-21, 10 under R-DEC-LINK-2026-10-21-B
+  — and 13 allow); `link_award_keys` resolves every published link to the
+  award it names, so every published link→award dollar join (six marts, the
+  export's flows and district reads, the flow chart's families) sums that
+  award alone. The release's one live warehouse write was `dbt build --select
+  link_line_rulings+` (52.90 s, PASS=56), followed by the export of the live
+  `data/site`; it wrote no Postgres row. Proven on snapshot lf1: A (main
+  88538c6a) against B (a44960e4) read exactly the rule list
+  `expected-diff-lf1.json` and passed `lf1_fact_check.py` (89 facts retired,
+  each traced; every concentration fact that moved listed with its value; the
+  77 facts that changed exactly the ones the release moves, each at its
+  measured value; 32 district formulas moved by their count alone; the shipped
+  parquet judged row by row); the abort rebuild by main's code was rehearsed
+  on a clone and restored the snapshot's lake; the live lake then equalled
+  lf1-B (`scripts/fu/lake_parity.py`) and the release export equalled the
+  proven export (`proof diff: EQUAL`) [lf1-logs/, lf1-release-*]. Beyond the
+  brief's list, measured before the release and named in the owner's go-ahead:
+  /district/PA-02/ left the site (its only high-confidence link was the
+  withdrawn 0549 trainer contract); 0549 left the crosswalk, so the /flow/
+  bridge's not-yet-crosswalked figure rose $12.2M to $227.6B; the F-35 FY2022
+  concentration card reads HHI 10,000 (was 7,125: Lockheed is the only
+  positive-dollar family left); 8 concentration feed cards left; 89 published
+  facts retired and their /fact/ permalinks stopped resolving (#223); eval
+  q018 went from 536 to 535 crosswalked programs (refreshed). /methodology/'s
+  weight stamp was re-measured at 161,453 / 45,358 on the proof build (the
+  stale stamp would have tripped gate 1's drift leg; ceiling unchanged), and
+  the release build weighs 161,453 / 45,359. The proof's first site verify
+  caught two defects the review rounds had missed, both fixed in the window
+  without touching an export input: /about/ had printed the withdrawn order's
+  $147.0 million with no citation or allowlist entry since review r2 M-1
+  (build gate 2; a unit test now applies gate 2's rule to /about/), and
+  `docs/methodology.md` §4 mirrors the shipped export's high census, a
+  release-time mirror the runbook had not listed (re-stated). The lesson: a
+  page edit is not reviewed until a full `npm run verify` has run on a build
+  of it. Deployed by `deploy.sh` (rollback tag 2026-10-24T135031Z); live: the
+  0592/0593 pages list neither withdrawn contract, /program/ATA000/ shows no
+  Rolls-Royce or IN-07 F-35 flow, /district/IN-07/ has no F-35 row,
+  /district/PA-02/ answers 404, /about/ carries the correction (51 links,
+  three species), /methodology/ reads fpds-ap 86/111, /program/F03500/ shows
+  92 awards, sitemap 4,349 [lf1-release-live-checks.txt]. Still open:
+  #222–#226.
 
 - **2026-10-19: Families piece-1 follow-ups, release 2 (#195) deployed.** The
   live writes ran on 2026-10-15, after the owner's go-ahead, in the proven order
@@ -5662,6 +5720,77 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   `src/govbudget/jbooks/provenance_pages.py`,
   `scripts/fu/narrative_relocation_report.py`. Effort: hours.
   **Status:** open (2026-10-19).
+
+- **#222 The link loaders still key award dollars on the PIID alone.**
+  `scripts/load_announcement_links.py` (`LAKE_AWARD_SQL`, the
+  `matched_obligation` it stores), `src/govbudget/jbooks/crosswalk.py`
+  (candidate generation) and `scripts/derive_ap_links.py` (the FPDS
+  acquisition-program tags) group the contracts lake by `award_id_piid`, and a
+  PIID is unique only under its parent IDV and agency: N0001922F0001 is a
+  Lockheed Martin F-35 order and an unrelated Rolls-Royce maintenance order.
+  R-DEC-LINK-2026-10-21 (R4) re-keyed every PUBLISHED join on
+  `link_award_keys`; these three are unpublished, and re-keying them changes
+  the loaders' contract and takes effect only on a loader re-run, a live
+  Postgres write. Source: `scripts/load_announcement_links.py`,
+  `src/govbudget/jbooks/crosswalk.py`, `scripts/derive_ap_links.py`. Effort:
+  days.
+  **Status:** open (2026-10-24).
+
+- **#223 A withdrawn fact's /fact/ permalink stops resolving.** /about/'s
+  corrections policy says "Existing permalinks continue to resolve
+  permanently. They show the current best value alongside the correction
+  history", and /methodology/ says the same, but a fact the export no longer
+  mints leaves `citations.json` and the cite shards, and the resolver has no
+  supersede display. True of every link withdrawn since #107(b), and of the 89
+  facts the R-DEC-LINK-2026-10-21 release retired (the 51 withdrawn links, the
+  IN-07 F-35 receipt `44ee093c2bab2ea8`, PA-02's district facts, 0549's
+  concentration facts, 16 feed facts). Fix: a retired-fact index the resolver
+  reads (the correction that retired each fact), or a softened policy sentence
+  in every copy of it: /about/'s corrections policy, /methodology/'s §6 text
+  and its FAQ answer, and the markdown mirror in `docs/methodology.md` §6.
+  Source: `site/src/app/fact/fact-resolver.tsx`,
+  `site/src/lib/fact-resolver.ts`, `site/src/app/about/page.tsx`,
+  `site/src/app/methodology/page.tsx`, `docs/methodology.md`. Effort: days.
+  **Status:** open (2026-10-24).
+
+- **#224 The published-link count ignores line rulings.**
+  `site_meta.link_adjudication.published` (12,866) and
+  `by_method[*].published` are counted from Postgres `budget_line_awards` by
+  `_link_adjudication_block`, not from the mart, so the 51 links
+  R-DEC-LINK-2026-10-21 and -B withdrew still count as published there, as the
+  #107(b) rows already did (fix report C2). Fix: count published links from
+  `fct_budget_to_awards`, with a test that binds the two. Source:
+  `src/govbudget/export_site.py` (`_link_adjudication_block`). Effort: hours.
+  **Status:** open (2026-10-24).
+
+- **#225 Gate (a) misses 10 of the 51 withdrawn pairs.**
+  `dbt/tests/assert_no_production_award_on_modification_line.sql` flags a
+  published link on a modification line only when the award's FPDS base
+  description matches its production pattern; measured 2026-10-21 it catches
+  41 of the 51 withdrawn pairs (31 of R-DEC-LINK-2026-10-21's 41 and all 10 of
+  R-DEC-LINK-2026-10-21-B's). It misses engine-production and bare
+  type-designator wording — N0001909C0019 "F/A-18 AIRCRAFT", N0001914C0032
+  "EA-18 G AIRCRAFT", N0001917C0003 ("KITS" excludes it) and N0001917C0047
+  "USN F414 ENGINES: EA-18G" on 0505; N0001917C0081 "AE1107C TURBOSHAFT
+  ENGINES" on 0590; W31P4Q09C0002 and W31P4Q10C0002 (PAC-3 production) on
+  0962C50700; W58RGZ18F0050 on 3264AA0252 — and FA813423FB001 on C03200 and
+  C04000, which gate (b) covers. Widening the pattern flags legitimate
+  subsystem buys too, so every new hit needs an owner-attributed allow.
+  Source: `dbt/tests/assert_no_production_award_on_modification_line.sql`.
+  Effort: hours (plus an owner batch).
+  **Status:** open (2026-10-24).
+
+- **#226 Three unclear links await owner review.** FA813423DB004 on C03200 and
+  on C04000 (the parent C-32/C-40 logistics-support IDIQ: it obligates $0, and
+  its scope announcement lists modification support) and W58RGZ24C0021 on
+  0756AA6601 (Gray Eagle 25M production-ready test assets; the narratives
+  support a funding split) were judged not demonstrably wrong by the link-fix
+  verification (2026-10-20) and left published, outside
+  `dbt/seeds/link_line_rulings.csv`, for owner review. What would settle each:
+  a child order carrying 057-3010 money or a C-32/C-40 P-3a naming the
+  vehicle; the FY2024 P-40/P-3a of 0756AA6601 or MQ-1 UAV execution. Source:
+  `dbt/seeds/link_line_rulings.csv`. Effort: hours.
+  **Status:** open (2026-10-24).
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
