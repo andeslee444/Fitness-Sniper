@@ -3273,7 +3273,30 @@ def _cmd_platform_families(args) -> None:
               f" {out['era_lines']} era line(s), {out['held_for_review']} held for review"
               f" -> {reg.REVIEW_ROOT}/{args.family}/")
         return
-    raise NotImplementedError(f"{args.pf_action} lands in Task 7c/7d")
+    if args.pf_action == "render":
+        from govbudget import platform_family_review as review
+
+        # D10: the preview scratch sits beside the snapshot (<snapshot dir>-preview-<pf>-<batch>).
+        site = args.site_dir.resolve()
+        preview_out = args.preview_out or site.parent.parent / f"{site.parent.name}-preview-{args.family}-{args.batch}"
+        out = review.render(platform_family=args.family, batch=args.batch, duckdb_path=args.duckdb,
+                            site_dir=args.site_dir, review_root=reg.REVIEW_ROOT, out_root=review.OUT_ROOT,
+                            preview_out=preview_out)
+        print(f"platform-families render: {args.family} {args.batch}: {out['rows']} row(s),"
+              f" {out['differences']} difference(s) -> {out['page']} (manifest {out['manifest']})")
+        return
+    if args.pf_action == "preview":
+        from govbudget import platform_family_review as review
+
+        result = review.preview(platform_family=args.family, draft=args.draft, site_dir=args.site_dir,
+                                duckdb_path=args.duckdb, out=args.out, paths=reg.DEFAULT_PATHS,
+                                review_root=reg.REVIEW_ROOT)
+        for year in result.years:
+            print(f"  FY{year['fy']} {year['kind']} PB{year['edition']} {year['total_thousands']:.3f}")
+        print(f"platform-families preview: {args.family} cumulative {result.cumulative_thousands:.3f} thousand"
+              f" -> {args.out}")
+        return
+    raise NotImplementedError(f"{args.pf_action} lands in Task 7d")
 
 
 def cmd_refresh(args) -> None:

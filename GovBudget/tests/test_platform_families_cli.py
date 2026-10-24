@@ -1,17 +1,21 @@
 """`govbudget platform-families …` (families piece 2; spec §8.3, §9.2, Review Focus 5).
 
-Task 7a: `check`. Task 7b: `propose` and the `--seed-shipped` wrapper. Tasks 7c–7d
-append render, answer, ratify and preview.
+Task 7a: `check`. Task 7b: `propose` and the `--seed-shipped` wrapper. Task 7c:
+`preview`, `compare_reference` and `render`. Task 7d appends answer and ratify.
 The lake is stubbed through module attributes (reg.open_lake, reg.check_lake,
-reg.measure_member).
+reg.measure_member) and the history export through hist.export_family_histories.
 """
 from __future__ import annotations
 
 import csv
 import dataclasses
 import datetime
+import hashlib
+import html
 import io
 import json
+import shutil
+from decimal import Decimal
 from types import SimpleNamespace
 
 import duckdb
@@ -20,11 +24,12 @@ import pytest
 from govbudget import cli, config
 from govbudget import f15_funding_history as f15
 from govbudget import platform_families as reg
+import govbudget.platform_family_history as hist
 import govbudget.platform_family_review as review
 import govbudget.verify_families as vf
-from platform_families_helpers import (ATA000, DRAFT_F35, F35_PREFILL, F35_RULING_ID, JSM000, MEASURES, MSAR,
-                                       FakeLake, add_family, add_source, f15_registry, ratified_f35,
-                                       write_prefill)
+from platform_families_helpers import (ATA000, B1_MART, B1_POINTS, B1_REF, DRAFT_F35, F35_PREFILL, F35_RULING_ID,
+                                       JSM000, MEASURES, MSAR, FakeLake, add_family, add_source, f15_registry,
+                                       fake_export, ratified_f35, site_tree, write_prefill)
 
 LOCK = 'IO Error: Could not set lock on file "/x/govbudget.duckdb": Conflicting lock is held in /usr/bin/python3 (PID 1)'
 
@@ -386,3 +391,182 @@ def test_cli_propose_refuses_mixed_seed_and_family_flags(proposing, capsys, argv
     assert _exit(["platform-families", "propose", *argv]) == 2
     assert capsys.readouterr().err.strip() == f"platform-families propose: ERROR — {message}"
     assert _registry_bytes(proposing.paths) == proposing.before
+
+
+# ---------------------------------------------------------------------------
+# preview, compare_reference and render (Task 7c; spec §8.2, §8.3; Review Focus 3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def rendering(proposing, monkeypatch):
+    """proposing, plus one propose run, B1_REF as reference-b1.json, a snapshot site
+    tree, the D10 preview scratch path, the history export stubbed with B1_POINTS and
+    the lake with B1_MART."""
+    p = proposing
+    review.propose(platform_family="f-35", family_json=p.fj, rows_csv=p.rc, duckdb_path=p.db, paths=p.paths,
+                   review_root=p.rr)
+    (p.rr / "f-35" / "reference-b1.json").write_text(json.dumps(B1_REF, indent=2) + "\n", encoding="utf-8")
+    site = site_tree(p.tmp_path)
+    scratch = p.tmp_path / "fam2-preview-f-35-B1"
+    monkeypatch.setattr(hist, "export_family_histories", fake_export(B1_POINTS))
+    monkeypatch.setattr(reg, "open_lake", lambda path: FakeLake(B1_MART))
+    return SimpleNamespace(**vars(p), site=site, scratch=scratch)
+
+
+def _rendered(r):
+    return r.site, r.db, r.scratch, r.paths, r.rr
+
+
+def test_preview_refuses_a_draft_without_the_draft_flag(rendering):
+    site, db, scratch, paths, rr = _rendered(rendering)
+    with pytest.raises(reg.RegistryError, match="--draft"):
+        review.preview(platform_family="f-35", draft=False, site_dir=site, duckdb_path=db, out=scratch, paths=paths, review_root=rr)
+    assert not scratch.exists()
+
+
+def test_preview_refuses_out_inside_the_site_dir(rendering, monkeypatch):
+    site, db, _scratch, paths, rr = _rendered(rendering)
+    tmp_path = rendering.tmp_path
+    monkeypatch.setattr(config, "SITE_DIR", tmp_path / "live-site")
+    with pytest.raises(reg.RegistryError, match="inside config.SITE_DIR"):
+        review.preview(platform_family="f-35", draft=True, site_dir=site, duckdb_path=db,
+                       out=tmp_path / "live-site" / "preview", paths=paths, review_root=rr)
+    assert not (tmp_path / "live-site").exists()
+
+
+def test_preview_builds_the_draft_into_a_scratch_clone(rendering):
+    site, db, scratch, paths, rr = _rendered(rendering)
+    before = sorted(p.relative_to(site) for p in site.rglob("*"))
+    result = review.preview(platform_family="f-35", draft=True, site_dir=site, duckdb_path=db, out=scratch, paths=paths, review_root=rr)
+    assert result.years[0] == {"fy": 2015, "kind": "actuals", "edition": 2017, "total_thousands": Decimal("4611600.000")}
+    assert result.cumulative_thousands == Decimal("4611600.000")
+    assert result.member_years[("P-1:3010F:AF:ATA000", 2015, "actuals")] == Decimal("4044700.000")
+    assert (scratch / review.PREVIEW_MARKER).is_file() and sorted(p.relative_to(site) for p in site.rglob("*")) == before
+    (call,) = hist.export_family_histories.calls
+    assert call["families"] == ["f-35"] and call["preview"] is True and call["out_dir"] == scratch
+    assert call["registry"]["f-35"].status == "ratified"
+    assert [m.member_id for m in call["registry"]["f-35"].counted] == ["P-1:3010F:AF:ATA000", "R-1:3600F:AF:0604800F"]
+
+
+def test_preview_replaces_only_its_own_scratch(rendering):
+    site, db, scratch, paths, rr = _rendered(rendering)
+    kw = dict(platform_family="f-35", draft=True, site_dir=site, duckdb_path=db, out=scratch, paths=paths, review_root=rr)
+    scratch.mkdir(); (scratch / "keep.txt").write_text("x")
+    with pytest.raises(reg.RegistryError, match="not a preview scratch"):
+        review.preview(**kw)
+    assert (scratch / "keep.txt").read_text() == "x"
+    shutil.rmtree(scratch); review.preview(**kw); review.preview(**kw)  # second run replaces
+
+
+def test_preview_compares_at_b1_precision(tmp_path):            # Review Focus 3
+    ata = "P-1:3010F:AF:ATA000"
+    ref = {"lines": {"ATA000": {"2015": 4044.7, "2025": 4972.5, "2026": 4086.7}},
+           "totals": {"2015": 4044.7, "2025": 4972.5, "2026": 4086.7}, "cumulative": 4044.7,
+           "fy2025_enacted": 4972.5, "fy2026_request": 4086.7}
+    def result(k2015):
+        years = [(2015, "actuals", 2017, k2015), (2025, "enacted", 2026, "4972500"), (2026, "request", 2026, "4086700")]
+        return review.PreviewResult(years=[{"fy": f, "kind": k, "edition": e, "total_thousands": Decimal(t)} for f, k, e, t in years],
+                                    cumulative_thousands=Decimal(k2015),
+                                    member_years={(ata, f, k): Decimal(t) for f, k, e, t in years}, out_dir=tmp_path)
+    lake = FakeLake({"ATA000": {(2015, "actuals"): Decimal("4044700"), (2025, "enacted"): Decimal("4972500"), (2026, "request"): Decimal("4086700")}})
+    assert review.compare_reference(result("4044650"), ref, lake=lake) == []       # 4044.65 → 4044.7 only under ROUND_HALF_UP
+    diffs = review.compare_reference(result("4044649.999"), ref, lake=lake)
+    assert {"fy": 2015, "kind": "actuals", "member_id": ata, "preview_k": Decimal("4044649.999"),
+            "reference_m": Decimal("4044.7"), "cause": "proposal row", "blocks": True} in diffs
+    assert len(diffs) == 3 and all(d["blocks"] for d in diffs)   # the member, the FY2015 total, the cumulative
+
+
+def test_preview_keeps_real_zero_distinct_from_absent(tmp_path):  # Review Focus 3
+    f40, n10 = "R-1:3600F:AF:0604840F", "R-1:1319N:NAVY:0604810N"
+    ref = {"lines": {"0604840F": {"2018": 0.0, "2019": 0.0, "2026": 1182.1}, "0604810N": {"2019": None, "2020": None, "2026": None}},
+           "totals": {"2018": 0.0, "2019": 0.0, "2026": 1182.1}, "cumulative": 0.0, "fy2025_enacted": None, "fy2026_request": 1182.1}
+    member_years = {(f40, 2019, "actuals"): Decimal("0"), (f40, 2026, "request"): Decimal("1182100"), (n10, 2019, "actuals"): Decimal("0")}
+    result = review.PreviewResult(   # years and cumulative agree with ref; 0604840F FY2018 is absent from the preview
+        years=[{"fy": 2018, "kind": "actuals", "edition": 2020, "total_thousands": Decimal("0")},
+               {"fy": 2019, "kind": "actuals", "edition": 2021, "total_thousands": Decimal("0")},
+               {"fy": 2026, "kind": "request", "edition": 2026, "total_thousands": Decimal("1182100")}],
+        cumulative_thousands=Decimal("0"), member_years=member_years, out_dir=tmp_path)
+    lake = FakeLake({"0604840F": {(2018, "actuals"): Decimal("0"), (2019, "actuals"): Decimal("0"), (2026, "request"): Decimal("1182100")}})
+    diffs = {(d["fy"], d["member_id"]): d for d in review.compare_reference(result, ref, lake=lake) if d["member_id"]}
+    assert set(diffs) == {(2018, f40), (2019, n10)}
+    assert (diffs[(2018, f40)]["preview_k"], diffs[(2018, f40)]["reference_m"]) == (None, Decimal("0.0"))
+    assert (diffs[(2019, n10)]["preview_k"], diffs[(2019, n10)]["reference_m"]) == (Decimal("0"), None)
+    assert all(d["cause"] == "proposal row" for d in diffs.values())
+
+
+def test_render_blocks_a_proposal_row_difference_and_shows_lake_drift(rendering, monkeypatch):  # Review Focus 3
+    site, db, scratch, _paths, rr = _rendered(rendering)
+    out_root = rendering.out_root
+    wrong = [(2015, "actuals", 2017, "4611549.999", {"P-1:3010F:AF:ATA000": "4044649.999", "R-1:3600F:AF:0604800F": "566900.000"}), *B1_POINTS[1:]]  # 4044.6 ≠ 4044.7
+    monkeypatch.setattr(hist, "export_family_histories", fake_export(wrong))
+    with pytest.raises(reg.RegistryError, match="proposal row"):
+        review.render(platform_family="f-35", batch="B1", duckdb_path=db, site_dir=site, review_root=rr, out_root=out_root, preview_out=scratch)
+    assert not (out_root / "f-35" / "B1.html").exists() and not (out_root / "f-35" / "B1.json").exists()
+    drift = [(2015, "actuals", 2017, "4616900.000", {"P-1:3010F:AF:ATA000": "4050000.000", "R-1:3600F:AF:0604800F": "566900.000"}), *B1_POINTS[1:]]
+    monkeypatch.setattr(hist, "export_family_histories", fake_export(drift))
+    monkeypatch.setattr(reg, "open_lake", lambda p: FakeLake(B1_MART | {"ATA000": B1_MART["ATA000"] | {(2015, "actuals"): Decimal("4050000")}}))
+    out = review.render(platform_family="f-35", batch="B1", duckdb_path=db, site_dir=site, review_root=rr, out_root=out_root, preview_out=scratch)
+    assert out["differences"] == 3
+    assert "lake since 2026-10-19" in out["page"].read_text()
+    member = [d for d in json.loads(out["manifest"].read_text())["preview"]["differences"] if d["member_id"]]
+    assert member == [{"fy": 2015, "kind": "actuals", "member_id": "P-1:3010F:AF:ATA000", "preview_k": "4050000.000",
+                       "reference_m": "4044.7", "cause": "lake since 2026-10-19", "blocks": False}]
+
+
+def test_render_writes_no_page_when_the_preview_fails(rendering, monkeypatch):
+    site, db, scratch, _paths, rr = _rendered(rendering)
+
+    def failing(**kwargs):
+        raise ValueError("Unreviewed F-35 workbook identity: 2026/0604999F")
+
+    monkeypatch.setattr(hist, "export_family_histories", failing)
+    with pytest.raises(ValueError, match="Unreviewed F-35 workbook identity: 2026/0604999F"):
+        review.render(platform_family="f-35", batch="B1", duckdb_path=db, site_dir=site, review_root=rr,
+                      out_root=rendering.out_root, preview_out=scratch)
+    assert list((rendering.out_root / "f-35").glob("B1.*")) == []
+
+
+def test_render_orders_the_page_and_records_the_manifest(rendering):
+    site, db, scratch, paths, rr = _rendered(rendering)
+    out = review.render(platform_family="f-35", batch="B1", duckdb_path=db, site_dir=site, review_root=rr,
+                        out_root=rendering.out_root, preview_out=scratch)
+    assert (out["rows"], out["differences"]) == (4, 0)
+    page = out["page"].read_text(encoding="utf-8")
+    text = html.unescape(page)
+    assert (page.index("P-1:3010F:AF:ATA000") < page.index("R-1:3600F:AF:0604800F") < page.index("not counted")
+            < page.index("P-1:3020F:AF:JSM000") < page.index("R-1:3600F:AF:0207268F") < page.index("Exclusions"))
+    assert "53,368.3" in text and "1,939.5" in text
+    quote = ("yes this is good, except we should break out the sub contractors because it doesn't end with lockheed "
+             "and pratt & W")
+    assert quote == review.PRIOR_APPROVALS["f-35"][1] and quote in text
+    assert "piece 7" in text
+    assert "src:msar-pb2027#p25 (G)" in text and "era:ATA000|3010F||2017-2023 (era decision)" in text
+    manifest = json.loads(out["manifest"].read_text(encoding="utf-8"))
+    assert set(manifest) == {"schema_version", "platform_family", "batch", "rows", "review_sha256",
+                             "review_era_lines_sha256", "family_sha256", "preview"}
+    assert set(manifest["preview"]) == {"years", "cumulative_thousands", "differences"}
+    assert [r["member_row_id"] for r in manifest["rows"]] == [
+        "f-35|P-1:3010F:AF:ATA000|2017-2026", "f-35|R-1:3600F:AF:0604800F|2017-2023",
+        "f-35|P-1:3020F:AF:JSM000|2022-2026", "f-35|R-1:3600F:AF:0207268F|2017-2026"]
+    assert manifest["review_sha256"] == hashlib.sha256((rr / "f-35" / "review.csv").read_bytes()).hexdigest()
+    assert manifest["review_era_lines_sha256"] == hashlib.sha256(
+        (rr / "f-35" / "review_era_lines.csv").read_bytes()).hexdigest()
+    assert manifest["family_sha256"] == reg.family_hash(json.loads(paths.json.read_text(encoding="utf-8")), "f-35")
+    assert manifest["preview"]["years"][0] == {"fy": 2015, "kind": "actuals", "edition": 2017,
+                                               "total_thousands": "4611600.000"}
+    assert manifest["preview"]["differences"] == []
+
+
+def test_compare_reference_refuses_a_reference_whose_named_years_disagree(tmp_path):
+    result = review.PreviewResult(years=[], cumulative_thousands=Decimal("0"), member_years={}, out_dir=tmp_path)
+    with pytest.raises(ValueError, match=r"fy2025_enacted 1.0 differs from totals\[2025\] 4972.5"):
+        review.compare_reference(result, B1_REF | {"fy2025_enacted": 1.0}, lake=FakeLake(B1_MART))
+
+
+@pytest.mark.parametrize("argv", [
+    ["platform-families", "render", "--family", "f-35", "--batch", "B1"],
+    ["platform-families", "preview", "--family", "f-35", "--draft", "--out", "x"],
+], ids=["render", "preview"])
+def test_cli_render_and_preview_require_duckdb_and_site_dir(argv):
+    assert _exit(argv) == 2
