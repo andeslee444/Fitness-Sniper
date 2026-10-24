@@ -80,6 +80,11 @@
  *     total and matrix cell sums exactly its own workbook receipts, and the
  *     shipped history sidecar and cite shards equal the audited export
  *     (codex/f15-family-browser, merged 2026-09-25) — see leg p's own block.
+ * (r) Every family json/families/index.json lists has its history artifact in
+ *     data/site/json and a built page at out/families/<id>/index.html, and a
+ *     missing or empty index fails rather than skips (families piece 2, spec
+ *     2026-10-20 §13; the index lists published families only) — see leg r's
+ *     own block at the bottom.
  */
 
 import { createHash } from "crypto";
@@ -87,7 +92,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { parse } from "node-html-parser";
-import { checkFamilyHistory, checkFamilyHistoryAssets } from "./family-history.mjs";
+import { checkFamilyHistory, checkFamilyHistoryAssets, checkFamilyIndex } from "./family-history.mjs";
 import { readConcentrationFloor, withheldFloorClause } from "./concentration-floor.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -567,6 +572,9 @@ export async function runProgramSkeletonGate() {
   // ── (q) a pair the owner ruled withdrawn publishes nowhere ──────────────
   //        (R-DEC-LINK-2026-10-21)
   runLineRulingsLeg({ errors, notes, sidecars });
+
+  // ── (r) every family in json/families/index.json has its history and its page ──
+  runFamilyIndexLeg({ errors, notes });
 
   return { pass: errors.length === 0, errors, notes };
 }
@@ -4529,4 +4537,28 @@ export function runLineRulingsLeg({
       `citations.json and ${shardMap.size} cite shard file(s); ` +
       `${COLLISION_PIID} checked off flows/ATA000.json and /district/IN-07/`,
   );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// leg r — every family in json/families/index.json has its history and page
+//          (families piece 2, spec 2026-10-20 §13)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// The platform-family registry exports json/families/index.json, which lists
+// the PUBLISHED families only (a draft or ratified family never reaches
+// data/site). Each entry names its own history artifact (`history`, relative
+// to data/site) and its platform_family id. This leg checks every listed
+// family has that artifact and a built page at out/families/<id>/index.html
+// (family-history.mjs checkFamilyIndex). It reads each entry's own paths,
+// never a hard-coded F-15 one, and leaves the F-15's content to leg p. An
+// absent, unreadable or empty index fails rather than skips (D8, K1): the
+// export that has not yet written the index stays red here until it does.
+// Lettered (r) because the link fix took (q) (D8); gate 24 (datatruth.mjs)
+// has its own, unrelated leg r (district by-year cells).
+function runFamilyIndexLeg({ errors, notes }) {
+  const findings = checkFamilyIndex(path.dirname(jsonDir), outDir);
+  errors.push(...findings.map((message) => `program-skeleton(r): ${message}`));
+  if (findings.length) return;
+  const n = readJson(path.join(jsonDir, "families/index.json")).families.length;
+  notes.push(`leg r: ${n} family index entr${n === 1 ? "y" : "ies"} with history and built page ✓`);
 }

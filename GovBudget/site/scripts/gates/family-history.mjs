@@ -1,5 +1,7 @@
 import { normalizeAmount, valuesAgree } from "./basis.mjs";
 import { isDeepStrictEqual } from "node:util";
+import fs from "node:fs";
+import path from "node:path";
 
 /** Older rows and receipts must remain available outside the initial page. */
 export function checkFamilyHistoryAssets(history, citations, shippedHistory, shippedShards) {
@@ -169,4 +171,38 @@ export function checkFamilyHistoryNotes(root, history, citations) {
     }
   }
   return errors;
+}
+
+/**
+ * Gate 21 leg (r) — families piece 2, spec 2026-10-20 §13. Every family that
+ * json/families/index.json lists (published families only, D7) must have its
+ * own history artifact (`family.history`, relative to the data/site root) and
+ * a built page at out/families/<platform_family>/index.html. An absent or
+ * empty index fails, never skips (D8, K1): a broken index stops at its single
+ * finding before any family is read.
+ *
+ * @param {string} dataDir the data/site root
+ * @param {string} outDir site/out
+ * @returns {string[]} findings, in index order; empty when every family checks
+ */
+export function checkFamilyIndex(dataDir, outDir) {
+  const name = "json/families/index.json";
+  const file = path.join(dataDir, name);
+  if (!fs.existsSync(file)) return [`${name} is missing`];
+  let index;
+  try {
+    index = JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (error) {
+    return [`${name} is not JSON: ${error.message}`];
+  }
+  if (index?.schema_version !== 1) return [`${name} schema_version is ${JSON.stringify(index?.schema_version) ?? "absent"}, not 1`];
+  if (!Array.isArray(index.families) || index.families.length === 0) return [`${name} lists no family`];
+  const findings = [];
+  for (const family of index.families) {
+    const id = family?.platform_family;
+    const history = family?.history;
+    if (!(typeof history === "string" && fs.existsSync(path.join(dataDir, history)))) findings.push(`${id}: ${history} is missing`);
+    if (!(typeof id === "string" && fs.existsSync(path.join(outDir, "families", id, "index.html")))) findings.push(`${id}: families/${id}/index.html is not built`);
+  }
+  return findings;
 }
