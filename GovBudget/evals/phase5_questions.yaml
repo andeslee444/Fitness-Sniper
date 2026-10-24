@@ -190,11 +190,13 @@
     award records in the crosswalk?
   answer_sql: |
     select count(distinct pe_bli) from fct_budget_to_awards
-  expected_answer: '536'
+  expected_answer: '535'
   expected_citation_kind: warehouse
   notes: fct_budget_to_awards PE coverage. 24 at pin (DARPA-only crosswalk, pinned
     2026-06-10, 66d18a88); 444 after the 2026-09-04 tiers (fpds-ap / announcement+lexicon
-    / subaward+lexicon; created_at 2026-09-04); refreshed 2026-09-12
+    / subaward+lexicon; created_at 2026-09-04); refreshed 2026-09-12; 535 after R-DEC-LINK-2026-10-21
+    withdrew 0549's only link (the trainer contract on a modification line), measured
+    2026-10-24
 - id: q019
   question: Which DARPA program has the most individual award contracts (distinct
     award PIIDs) linked in the budget-to-awards crosswalk mart (fct_budget_to_awards)?
