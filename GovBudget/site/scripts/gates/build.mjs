@@ -734,7 +734,12 @@ export const PAGE_WEIGHT_BUDGET = [
   // abff1e97 on B@fu-post: T7, Q13 and the dbt assertion count; gate 1's
   // weigh(), zlib level 9): 161,353 / 45,336 -> 161,373 / 45,323. CEILINGS
   // UNCHANGED; 627 raw / 77 gzip left.
-  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,373 / 45,323" },
+  // RE-MEASURED 2026-10-24 (the R-DEC-LINK-2026-10-21 proof build of a44960e4 on
+  // lf1-B: R2's clause "except a refuted link a ruling withdrew", fpds-ap
+  // 86/111, "9 refuted by the precision study" and the dbt assertion count;
+  // gate 1's weigh(), zlib level 9): 161,373 / 45,323 -> 161,453 / 45,358.
+  // CEILINGS UNCHANGED; 547 raw / 42 gzip left.
+  { label: "/methodology/", file: "methodology/index.html", maxRaw: 162_000, maxGzip: 45_400, measured: "161,453 / 45,358" },
   // Task 6 (§Coverage). Twelve rows of prose; it grows a paragraph at a time
   // as features land, which is exactly the shape §P2-1 wants weighed.
   //
