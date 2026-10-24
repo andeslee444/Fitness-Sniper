@@ -250,9 +250,9 @@ individually hand-adjudicated … a link publishes as high only if neither
 link the crosswalk grades high or medium. Backlog #109 carries the remaining
 five-path evidence pass.) *High*: affirmative
 program-level evidence — the contract names a program the budget line's own
-J-book pages also name. 60 of the 1,106 links published at high carry a
+J-book pages also name. 60 of the 1,101 links published at high carry a
 per-award hand adjudication, all 60 challenged by two independent
-adversarial reviewers; the other 1,046 rest on the announcement+lexicon path.
+adversarial reviewers; the other 1,041 rest on the announcement+lexicon path.
 (From the decisions wave's export on, ROADMAP #110, decided 2026-09-25: every
 link published at high carries a RECORDED review, and the page states how
 many rest on each kind, each link counted once under its strongest record —
@@ -267,8 +267,12 @@ the split is stated rather than folded into one "reviewed" figure (ROADMAP
 #110, a rule set 2026-09-26). Every count comes from `site_meta.link_adjudication.high`
 (`reviewed_high`, `reviewed_by_kind`), and gate 24 leg o binds each to its
 slot; none is typed here.)
-(Re-measured 2026-09-26 on the decisions wave's chain G export, from the
-export's own `site_meta.link_adjudication.high`. On the 2026-09-25 run-4
+(Re-measured 2026-10-24 on the export of the contract-link correction (the
+owner's rulings of 2026-10-21), from the export's own
+`site_meta.link_adjudication.high`; that correction withdrew 5 announcement
+links that had published at high. On the decisions wave's chain G export of
+2026-09-26 the tier stood at 1,106 links, 1,047 of them announcement links,
+754 with a recorded match basis. On the 2026-09-25 run-4
 export, as on 2026-09-19 (chain C) after the announcement pass's wave 4
 added 367 links to that path, the tier stood at 1,133 links, 1,074 of them
 announcement links; on 2026-09-11 it stood at 768 links, 60 adjudicated, all
@@ -278,7 +282,7 @@ The census is taken over the MART — the tier a reader meets, not
 `budget_line_awards`: dbt demotes an unadjudicated `account+tokens` high row
 to medium and Postgres has no column for it, so re-deriving the tier there
 counted 881 links against the 768 the site published on 2026-09-11. Of the
-1,047 announcement links, a match basis is recorded on 754 —
+1,042 announcement links, a match basis is recorded on 751 —
 `site_meta.link_adjudication.high.by_path` carries the figure and gate 24 leg
 o binds every number the sentence states, plus the rule that each path
 publishing at high with no adjudication is NAMED. This replaced
