@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import csv
 import gzip
+import importlib
 import json
+import shutil
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
@@ -14,6 +16,8 @@ import duckdb
 import pytest
 
 from govbudget import config
+from govbudget import f15_funding_history as facade
+from govbudget import platform_families as pf
 from govbudget.jbooks import era_map
 from govbudget.platform_families import (DEFAULT_PATHS, F15_SEED_RULING_TEXT, F15_SEED_SPEC,
                                          F15Constants, RegistryError, load_registry, registry_texts,
@@ -361,3 +365,54 @@ def test_committed_registry_loads_with_the_f15_published():
         "published", "R-DEC-FAM-F15-SEED", 8, 31)
     assert reg.rulings["R-DEC-FAM-F15-SEED"].platform_family == "f-15"
     assert "f-15" in [f.platform_family for f in reg.published()]
+
+
+FACADE_FIELDS = {
+    "MODERN_MEMBERS": "modern_members", "ERA_MEMBERS": "era_members",
+    "ERA_PROGRAM_CODES": "era_program_codes", "PROGRAMS": "programs",
+    "PROGRAM_NOTES": "program_notes", "NOTE_RECEIPTS": "note_receipts",
+    "SCOPE_NOTE": "scope_note", "COVERAGE_NOTES": "coverage_notes",
+}
+
+
+@pytest.mark.parametrize("name,field", sorted(FACADE_FIELDS.items()))
+def test_facade_constant_equals_its_88538c6a_literal(name, field):
+    assert getattr(facade, name) == getattr(SHIPPED, field)
+
+
+def test_facade_constants_keep_the_88538c6a_order_and_types():
+    assert list(facade.MODERN_MEMBERS) == ["0207134F", "0207146F", "0207171F", "F01500", "F015EX", "F15EWS"]
+    assert list(facade.ERA_MEMBERS) == list(range(2017, 2024)) == list(facade.ERA_PROGRAM_CODES)
+    for edition, rows in facade.ERA_MEMBERS.items():
+        assert [line for line, _, _ in rows] == sorted(line for line, _, _ in rows)
+        assert list(facade.ERA_PROGRAM_CODES[edition]) == sorted(facade.ERA_PROGRAM_CODES[edition])
+    assert sum(map(len, facade.ERA_MEMBERS.values())) == 31
+    assert [p["code"] for p in facade.PROGRAMS] == [
+        "0207134F", "0207146F", "0207171F", "F01500", "F015EX", "F15EWS", "F0150P", "F015E0"]
+    assert type(facade.COVERAGE_NOTES) is list and len(facade.COVERAGE_NOTES) == 7
+
+
+def test_registry_coverage_columns_reproduce_the_88538c6a_expected_rule():
+    counted = {m.code: m for m in facade.F15.counted}
+    assert {code: m.coverage_expected_from_edition for code, m in counted.items()} == dict(SHIPPED.expected_from)
+    assert all(m.valid_to_edition == 2026 for m in counted.values() if m.coverage_expected_from_edition is not None)
+
+
+def test_a_registry_fault_at_import_names_the_file_and_the_row(tmp_path, monkeypatch):
+    bad = pf.RegistryPaths(*(tmp_path / p.name for p in (pf.DEFAULT_PATHS.json, pf.DEFAULT_PATHS.members,
+                                                          pf.DEFAULT_PATHS.era_lines)))
+    for src, dst in zip((pf.DEFAULT_PATHS.json, pf.DEFAULT_PATHS.members, pf.DEFAULT_PATHS.era_lines),
+                        (bad.json, bad.members, bad.era_lines)):   # RegistryPaths is not iterable
+        shutil.copyfile(src, dst)
+    row = "f-15|R-1:3600F:AF:0207146F|2021-2026"
+    lines = bad.members.read_text(encoding="utf-8").split("\n")
+    lines = [l.replace(",counted,approved,", ",counted,maybe,", 1) if l.startswith(row + ",") else l for l in lines]
+    bad.members.write_text("\n".join(lines), encoding="utf-8")
+    monkeypatch.setattr(pf, "DEFAULT_PATHS", bad)
+    try:
+        with pytest.raises(pf.RegistryError) as raised:
+            importlib.reload(facade)
+    finally:
+        monkeypatch.undo()
+        importlib.reload(facade)
+    assert "platform_family_members.csv" in str(raised.value) and row in str(raised.value)

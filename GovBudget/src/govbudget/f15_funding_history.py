@@ -16,96 +16,75 @@ import os
 from pathlib import Path
 import tempfile
 
-MODERN_MEMBERS = {
-    "0207134F": ("R-1", "3600F", "F-15E Squadrons"),
-    "0207146F": ("R-1", "3600F", "F-15EX"),
-    "0207171F": ("R-1", "3600F", "F-15 EPAWSS"),
-    "F01500": ("P-1", "3010F", "F-15"),
-    "F015EX": ("P-1", "3010F", "F-15EX"),
-    "F15EWS": ("P-1", "3010F", "F-15 EPAW"),
-}
-# PB2017–23 P-1 line roster, confirmed against the imported official workbooks.
-# Values: (line number, budget activity, exact title). Reused line numbers are
-# intentionally repeated by edition; a bare Lxx is never an identity mapping.
-ERA_MEMBERS = {
-    2017: [(21, "05", "F-15"), (69, "07", "F-15")],
-    2018: [(23, "05", "F-15"), (79, "07", "F-15"), (80, "07", "F-15")],
-    2019: [(25, "05", "F-15"), (30, "05", "F-15 EPAW"), (79, "07", "F-15"), (80, "07", "F-15")],
-    2020: [(3, "01", "F-15e"), (25, "05", "F-15"), (31, "05", "F-15 EPAW"), (79, "07", "F-15"), (80, "07", "F-15")],
-    2021: [(3, "01", "F-15e"), (4, "01", "F-15EX"), (5, "01", "F-15EX"), (29, "05", "F-15"), (34, "05", "F-15 EPAW"), (80, "07", "F-15")],
-    2022: [(4, "01", "F-15e"), (5, "01", "F-15EX"), (6, "01", "F-15EX"), (30, "05", "F-15"), (34, "05", "F-15 EPAW"), (78, "07", "F-15")],
-    2023: [(5, "01", "F-15EX"), (6, "01", "F-15EX"), (28, "05", "F-15"), (32, "05", "F-15 EPAW"), (74, "07", "F-15")],
-}
-# The permanent code is read from the actual XLSX code column. These reviewed
-# expectations prevent a changed or reused edition-local line from silently
-# moving money into another matrix row. F0150P and F015E0 remain separate lines.
-ERA_PROGRAM_CODES = {
-    2017: {21: "F01500", 69: "F0150P"},
-    2018: {23: "F01500", 79: "F01500", 80: "F0150P"},
-    2019: {25: "F01500", 30: "F15EWS", 79: "F01500", 80: "F0150P"},
-    2020: {3: "F015E0", 25: "F01500", 31: "F15EWS", 79: "F01500", 80: "F0150P"},
-    2021: {3: "F015E0", 4: "F015EX", 5: "F015EX", 29: "F01500", 34: "F15EWS", 80: "F01500"},
-    2022: {4: "F015E0", 5: "F015EX", 6: "F015EX", 30: "F01500", 34: "F15EWS", 78: "F01500"},
-    2023: {5: "F015EX", 6: "F015EX", 28: "F01500", 32: "F15EWS", 74: "F01500"},
-}
-# A program note quotes the one budget-book sentence that states what a line
-# bought, cited to that sentence's narrative receipt (spec §6.5; the owner
-# signed off the exact strings, recorded in the ROADMAP). F015E0: PB2026 AF
-# Aircraft Procurement Vol I, F015EX P-40 description, PDF p.71, the only page
-# that prints it. The quote is verbatim; each [bracketed] gloss is ours. The
-# first names the exhibit "This exhibit" means — the PB2026 F-15EX AP
-# (F015EX) P-40, P-1 line #7, not the line-44 "F-15EX" P-40 in Vol II — so the
-# sentence no longer reads as F015E0's own exhibit (owner, 2026-10-04; #206
-# T9, design Q17). The second is read from ERA_PROGRAM_CODES (F015E0 is line 3
-# in PB2020–21, line 4 in PB2022).
-PROGRAM_NOTES = {
-    "F015E0": dict(
-        note=("This exhibit [the PB2026 F-15EX AP (F015EX) P-40] does not include the eight aircraft in "
-              "Lot 1 which were funded outside this "
-              "exhibit in FY 2020 (two test aircraft were purchased with RDT&E funds (PE 0207134F); four "
-              "operationally representative test aircraft and two operational aircraft were purchased with "
-              "procurement funds (F015E0, Line #3 [line 3 of the PB2020–21 P-1 (line 4 in PB2022)]))."),
-        note_fact_id="e7d5bcfb4a30f458",
-    ),
-}
-# What each note_fact_id must resolve to in the exported registry: the
-# jbook_narrative receipt for that paragraph, in that exact PDF, under the
-# budget line whose exhibit prints it (the code the note's first gloss names).
-NOTE_RECEIPTS = {
-    "e7d5bcfb4a30f458": dict(kind="jbook_narrative", page_number=71, pe_bli="F015EX",
-                             sha256="528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e"),
-}
+from govbudget import platform_families
+from govbudget.jbooks.era_keys import _ERA_KEY_RE
+
+# Source: the registry entry f-15 in data-seeds/platform_families.json and its two CSVs; tests/test_f15_registry_parity.py holds the 88538c6a literals.
+F15 = platform_families.load_registry(platform_families.DEFAULT_PATHS)["f-15"]
+
+
+def _facade_error(file: str, row: str, reason: str) -> platform_families.RegistryError:
+    return platform_families.RegistryError([f"platform-families: {file}:{row}: the F-15 facade {reason}"])
+
+
+def _one_title(member: platform_families.Member) -> str:
+    titles = {title for _edition, title in member.titles_seen}
+    if len(titles) != 1:
+        raise _facade_error("platform_family_members.csv", member.member_row_id,
+                            f"needs one title in titles_seen, found {sorted(titles)}")
+    return next(iter(titles))
+
+
+def _era_rows(family: platform_families.Family) -> list[tuple[int, int, platform_families.EraLine]]:
+    """(edition, line, era line), editions and lines ascending as integers: the CSV's
+    string order puts L25 before L3, so file order is never kept."""
+    rows = []
+    for era in family.era_lines:
+        match = _ERA_KEY_RE.fullmatch(era.era_key)
+        try:
+            line = int(match.group(3)) if match else None
+        except ValueError:
+            line = None
+        if line is None:
+            raise _facade_error("platform_family_era_lines.csv", f"f-15|{era.edition}|{era.era_key}",
+                                "needs an integer line number")
+        rows.append((era.edition, line, era))
+    return sorted(rows, key=lambda row: row[:2])
+
+
+def _era_members(family: platform_families.Family) -> dict[int, list[tuple[int, str, str]]]:
+    out: dict[int, list[tuple[int, str, str]]] = {}
+    for edition, line, era in _era_rows(family):
+        out.setdefault(edition, []).append((line, era.budget_activity, era.filed_title))
+    return out
+
+
+def _era_program_codes(family: platform_families.Family) -> dict[int, dict[int, str]]:
+    code_of = {m.member_id: m.code for m in family.members}
+    out: dict[int, dict[int, str]] = {}
+    for edition, line, era in _era_rows(family):
+        out.setdefault(edition, {})[line] = code_of[era.member_id]
+    return out
+
+
+def _note_fields(note: platform_families.ProgramNote) -> dict:
+    return dict(note=note.note, note_fact_id=note.note_fact_id)
+
+
+MODERN_MEMBERS = {m.code: (m.exhibit, m.account, _one_title(m)) for m in F15.code_keyed}
+ERA_MEMBERS = _era_members(F15)
+ERA_PROGRAM_CODES = _era_program_codes(F15)
+PROGRAM_NOTES = {next(m.code for m in F15.counted if m.member_id == member_id): _note_fields(note)
+                 for member_id, note in F15.program_notes.items()}
+NOTE_RECEIPTS = {pn.note_fact_id: dict(pn.expected_receipt) for pn in F15.program_notes.values()}
 PROGRAMS = [
-    dict(id=f"{exhibit}:{account}:AF:{code}", code=code, title=title,
-         program_slug=code if code in MODERN_MEMBERS else None,
-         exhibit=exhibit, account=account, organization="AF",
-         **PROGRAM_NOTES.get(code, {}))
-    for code, exhibit, account, title in [
-        ("0207134F", "R-1", "3600F", "F-15E Squadrons"),
-        ("0207146F", "R-1", "3600F", "F-15EX"),
-        ("0207171F", "R-1", "3600F", "F-15 EPAWSS"),
-        ("F01500", "P-1", "3010F", "F-15"),
-        ("F015EX", "P-1", "3010F", "F-15EX"),
-        ("F15EWS", "P-1", "3010F", "F-15 EPAW"),
-        ("F0150P", "P-1", "3010F", "F-15 (legacy support line)"),
-        ("F015E0", "P-1", "3010F", "F-15e (FY2020 F-15EX Lot 1 aircraft)"),
-    ]
+    dict(id=m.member_id, code=m.code, title=m.display_title, program_slug=m.page_slug or None,
+         exhibit=m.exhibit, account=m.account, organization=m.organization,
+         **(_note_fields(F15.program_notes[m.member_id]) if m.member_id in F15.program_notes else {}))
+    for m in F15.counted
 ]
-SCOPE_NOTE = (
-    "Recorded F-15-named research, development and procurement budget lines in "
-    "the imported P-1/R-1 workbooks. This is a covered-record total, not the "
-    "aircraft family's lifetime cost. Personnel, operations and maintenance, "
-    "and unallocated shared support are outside this calculation."
-)
-COVERAGE_NOTES = [
-    "Coverage begins with FY2015 actuals in PB2017. Earlier funding, including early F-15A–D development, is not represented.",
-    "The locally imported records do not contain PE 0207130F; no amount or zero is invented for it.",
-    "Historical procurement line numbers change between editions. Each legacy line is matched within its own budget edition, without asserting a modern-program or aircraft-variant allocation, except where a budget book states one (F015E0).",
-    "Actuals, current-year figures and requests are separate snapshots. Requests and current-year figures are excluded from the cumulative actuals figure.",
-    "Amounts are nominal dollars of total obligational authority (TOA), not contract obligations, cash outlays or inflation-adjusted dollars.",
-    "Missing workbook figures are not zero spending. Some current-year columns contain requests adjusted for continuing resolutions rather than final enacted appropriations.",
-    "The totals exclude classified funding and military construction.",
-]
+SCOPE_NOTE = F15.scope_note
+COVERAGE_NOTES = list(F15.coverage_notes)
 
 
 def _json_bytes(value):
