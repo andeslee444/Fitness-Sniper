@@ -2306,3 +2306,299 @@ def check_lake(registry: Registry, *, lake: LakeReader, site_dir: Path,
                 report.undecided.append(_line(MEMBERS_CSV.name, m.member_row_id,
                                               "deferred row, recorded and never exported"))
     return report
+
+
+# ---------------------------------------------------------------------------
+# The one-off F-15 seed (spec §7.6, §8.1; D13, R6)
+# ---------------------------------------------------------------------------
+
+F15_SEED_SPEC = ("docs/superpowers/specs/2026-10-20-families-piece2-registry-design.md"
+                 "#81-r-dec-fam-f15-seed-class-ruling-pending-owner-approval-with-this-spec")
+F15_SEED_RULING_TEXT = (
+    "The F-15 family's registry entry records the eight budget lines the shipped F-15 history counts,"
+    " as they ship at main 88538c6a. It records: their order, identities and display titles; the"
+    " coverage rule (which lines are expected in which editions); the 31-line era roster; the F015E0"
+    " note and its receipt; the family's scope and coverage notes. It changes no published figure,"
+    " text or fact ID. Its evidence basis is the shipped family history (the F-15 family funding"
+    " correction recorded in the ROADMAP on 2026-09-24), the piece-1 era decisions and the page's"
+    " record-link narratives. Piece 3 must add an independent signal for each line before any F-15"
+    " row changes.")
+# §7.6's values the Python module does not hold.
+F15_SEED_ROWS = {  # code: (valid_from, valid_to, era_decision_ids, record-link fact, purpose, variant_ids, variant_scope, program_tag)
+    "0207134F": (2017, 2026, (), "0026c924483c6624", "develop", "C;D;E;EX", "shared", "F-15"),
+    "0207146F": (2021, 2026, (), "d9982379a24ebac6", "develop", "EX", "variant", "F-15EX"),
+    "0207171F": (2017, 2026, (), "b30fae1fd23999e4", "develop", "E;EX", "shared", "EPAWSS"),
+    "F01500": (2017, 2026, ("F01500|3010F||2017-2023",), "c9e5c28dfebc879e", "upgrade", "C;D;E", "shared", "F-15"),
+    "F015EX": (2021, 2026, ("F015EX|3010F||2021-2023",), "e7d5bcfb4a30f458", "buy", "EX", "variant", "F-15EX"),
+    "F15EWS": (2019, 2026, ("F15EWS|3010F||2019-2023",), "b3dbc6ed30814fdf", "upgrade", "E", "variant", "EPAWSS"),
+    "F0150P": (2017, 2020, ("F0150P|3010F||2017-2020",), None, "", "", "", "F-15"),
+    "F015E0": (2020, 2022, ("F015E0|3010F||2020-2022",), None, "", "", "", "F-15EX"),
+}
+# RECORD_CONFIG[code].scopeNote, verbatim from site/src/lib/f15-family-data.ts:10-15
+# (Task 7e's mirror test proves them against the TypeScript). The two
+# history-only rows have no site record, so no scope note.
+F15_SEED_SCOPE_NOTES: Mapping[str, str] = {
+    "0207134F": ("Shared across C, D, E and EX: the software narrative explicitly names all four. The program "
+                 "total is not allocated among variants."),
+    "0207146F": ("F-15EX research, development, integration and test funding. Separate from aircraft "
+                 "procurement."),
+    "0207171F": ("Related EPAWSS system development. E and EX use the system; this record does not allocate "
+                 "development funding between variants. No FY2025 or FY2026 TOA figure is published here."),
+    "F01500": ("Shared C, D and E modifications and support equipment. The BLI total is not a "
+               "variant-specific price or allocation."),
+    "F015EX": ("This procurement BLI combines aircraft, modifications and support across budget activities. "
+               "It is broader than the price of new aircraft alone."),
+    "F15EWS": ("The procurement narrative describes EPAWSS installation and related support for F-15E "
+               "aircraft. This amount is not assigned to F-15EX."),
+}
+_F15 = "f-15"
+_F15_HISTORY_FILE = "f15_funding_history.json"
+_ABSENT = object()
+
+
+@dataclass(frozen=True)
+class F15Constants:
+    """The shipped F-15 constants the seed reads: f15_funding_history.py's
+    (88538c6a) plus the hardcoded expected set as expected_from (code -> the
+    first edition its absence is reported, None for never)."""
+
+    programs: Sequence[Mapping]
+    modern_members: Mapping[str, tuple[str, str, str]]
+    era_members: Mapping[int, Sequence[tuple[int, str, str]]]
+    era_program_codes: Mapping[int, Mapping[int, str]]
+    program_notes: Mapping[str, Mapping[str, str]]
+    note_receipts: Mapping[str, Mapping[str, object]]
+    scope_note: str
+    coverage_notes: Sequence[str]
+    expected_from: Mapping[str, int | None]
+
+
+def _csv_data_rows(path: Path) -> int:
+    text = path.read_bytes().decode("utf-8", errors="replace")
+    return sum(1 for fields in list(csv.reader(io.StringIO(text, newline="")))[1:] if fields)
+
+
+def _f15_seed_registry_refusals(paths: RegistryPaths) -> list[str]:
+    """The seed is one-off: it writes only where the registry holds nothing
+    (it replaces the three files whole)."""
+    errors: list[str] = []
+    name = paths.json.name
+    if paths.json.exists():
+        text, faults = _read_text(paths.json)
+        doc, json_faults = _parse_json(text) if text is not None else (None, [])
+        for fault in faults + json_faults:
+            errors.append(_line(name, None, f"{fault}; the seed writes only into an empty registry"))
+        top = doc if isinstance(doc, dict) else {}
+        held = {key: [_entry_id(entry, id_key, f"{key}[{i}]") for i, entry in enumerate(top.get(key))]
+                for key, id_key in (("families", "platform_family"), ("rulings", "ruling_id"),
+                                    ("sources", "source_id"))
+                if isinstance(top.get(key), list)}
+        if held.get("families"):
+            errors.append(_line(name, None, f"registry already holds {', '.join(held['families'])}; the seed "
+                                            "writes only into an empty registry"))
+        if _F15 in held.get("families", ()):
+            errors.append(_line(name, _F15, f"{_F15} already in {name} (the seed is one-off)"))
+        for key in ("rulings", "sources"):
+            if held.get(key):
+                errors.append(_line(name, None, f"registry already holds {key} {', '.join(held[key])}; the "
+                                                "seed writes only into an empty registry"))
+    for path in (paths.members, paths.era_lines):
+        if path.exists() and (n := _csv_data_rows(path)):
+            errors.append(_line(path.name, None, f"already holds {n} data row(s); the seed writes only into "
+                                                 "an empty registry"))
+    return errors
+
+
+def _show(entry: Mapping, key: str) -> str:
+    value = entry.get(key, _ABSENT)
+    return "nothing" if value is _ABSENT else repr(value)
+
+
+def _f15_shipped_refusals(constants: F15Constants, site_dir: Path) -> list[str]:
+    """The constants against the shipped output (§7.6): fam2's
+    json/f15_funding_history.json, whose sha256 must first equal the pin.
+    The values are compared only against the pinned bytes."""
+    from govbudget import verify_era_map
+
+    errors: list[str] = []
+
+    def add(reason: str) -> None:
+        errors.append(_line(_F15_HISTORY_FILE, None, reason))
+
+    path, pin_path = Path(site_dir) / "json" / _F15_HISTORY_FILE, verify_era_map.F15_HISTORY_PIN
+    if not path.is_file():
+        add(f"the shipped history is missing (no file at {path}); the seed compares the constants with it")
+        return errors
+    tokens = pin_path.read_text(encoding="utf-8").split() if pin_path.is_file() else []
+    if not tokens or not _SHA256_RE.fullmatch(tokens[0]):
+        add(f"the pin {pin_path} is missing or does not start with a sha256 hex digest")
+        return errors
+    data = path.read_bytes()
+    actual = hashlib.sha256(data).hexdigest()
+    if actual != tokens[0]:
+        add(f"sha256 {actual} of {path} is not the pin {tokens[0]} ({pin_path}); the seed compares the "
+            "constants only with the pinned shipped history")
+        return errors
+    payload = json.loads(data)
+    mine, shipped = list(constants.programs), payload["programs"]
+    if len(mine) != len(shipped):
+        add(f"programs: the constants have {len(mine)} entries, the shipped history has {len(shipped)}")
+    for i, (a, b) in enumerate(zip(mine, shipped)):
+        for key in dict.fromkeys([*a, *b]):
+            if a.get(key, _ABSENT) != b.get(key, _ABSENT):
+                add(f"programs[{i}].{key}: the constants have {_show(a, key)}, the shipped history has "
+                    f"{_show(b, key)}")
+    if constants.scope_note != payload["scope_note"]:
+        add(f"scope_note: the constants have {constants.scope_note!r}, the shipped history has "
+            f"{payload['scope_note']!r}")
+    notes, shipped_notes = list(constants.coverage_notes), payload["coverage_notes"]
+    if len(notes) != len(shipped_notes):
+        add(f"coverage_notes: the constants have {len(notes)} notes, the shipped history has "
+            f"{len(shipped_notes)}")
+    for i, (a, b) in enumerate(zip(notes, shipped_notes)):
+        if a != b:
+            add(f"coverage_notes[{i}]: the constants have {a!r}, the shipped history has {b!r}")
+    return errors
+
+
+def _f15_seed_doc(constants: F15Constants, *, decided_on: str, owner_reply: str) -> dict:
+    """§7.2's F-15 column, the ruling (§8.1) and no sources."""
+    notes = {}
+    for program in constants.programs:
+        note = constants.program_notes.get(program["code"])
+        if note is not None:
+            fid = note["note_fact_id"]
+            notes[program["id"]] = {"note": note["note"], "note_fact_id": fid,
+                                    "expected_receipt": dict(constants.note_receipts.get(fid, {}))}
+    family = {
+        "platform_family": _F15, "status": "published", "published_ruling_id": F15_SEED_RULING_ID,
+        "short_name": "F-15", "history_dataset": "f15_funding_history", "on_partial_corpus": "skip",
+        "headline": {"measure": "cumulative_actuals", "first_fy": 2015, "last_fy": 2024},
+        "scope_note": constants.scope_note, "coverage_notes": list(constants.coverage_notes),
+        "review_guard": {"exhibits": ["P-1", "R-1"], "title_substrings": ["F-15", "F15"]},
+        "program_notes": notes,
+        "variants": [{"id": v} for v in ("A", "B", "C", "D", "E", "EX")],
+        "program_tags": [{"tag": t, "mdap_code": None} for t in ("F-15", "F-15EX", "EPAWSS")],
+        "purpose_tags": [], "caveat_ids": ["classified", "construction", "nominal_dollars", "cr_years"],
+        "exclusions": [], "aliases": [], "contract_routes": None, "official_estimates": None, "art": None,
+    }
+    ruling = {"ruling_id": F15_SEED_RULING_ID, "kind": "class", "platform_family": _F15,
+              "decided_by": "owner", "decided_on": decided_on, "owner_reply": owner_reply,
+              "spec": F15_SEED_SPEC, "text": F15_SEED_RULING_TEXT, "seed_basis": True}
+    return {"schema_version": 1, "rulings": [ruling], "sources": [], "families": [family]}
+
+
+def _f15_seed_member_rows(constants: F15Constants, *, decided_on: str) -> list[dict[str, str]]:
+    """One counted row per program, in order; the lake columns are blank
+    until measured."""
+    rows = []
+    for position, program in enumerate(constants.programs, start=1):
+        code = program["code"]
+        frm, to, era_ids, fact, purpose, variants, scope, tag = F15_SEED_ROWS[code]
+        expected_from = constants.expected_from[code]
+        row = dict.fromkeys(MEMBER_COLUMNS, "")
+        row.update(
+            member_row_id=f"{_F15}|{program['id']}|{frm}-{to}", platform_family=_F15,
+            member_id=program["id"], exhibit=program["exhibit"], account=program["account"],
+            organization=program["organization"], code=code, role="counted", verdict="approved",
+            appropriation="procurement" if program["exhibit"] == "P-1" else "rdte",
+            display_title=program["title"], page_slug=program["program_slug"] or "",
+            valid_from_edition=str(frm), valid_to_edition=str(to),
+            coverage_expected_from_edition="" if expected_from is None else str(expected_from),
+            era_decision_ids=";".join(era_ids), member_order=str(position), program_tag=tag,
+            purpose=purpose, variant_ids=variants, variant_scope=scope,
+            scope_note=F15_SEED_SCOPE_NOTES.get(code, ""), services_using="USAF", paying_org="AF",
+            evidence=";".join([f"era:{d}" for d in era_ids] + ([f"fact:{fact}"] if fact else [])),
+            decided_by="owner", ruling_id=F15_SEED_RULING_ID, decided_on=decided_on)
+        rows.append(row)
+    return rows
+
+
+def _f15_seed_era_rows(constants: F15Constants) -> list[dict[str, str]]:
+    """ERA_MEMBERS x ERA_PROGRAM_CODES, each line under its member's one era
+    decision (§7.4)."""
+    rows = []
+    for edition, lines in constants.era_members.items():
+        for line, budget_activity, title in lines:
+            # A line without a code or decision gets a blank one, which the
+            # roster check refuses (never a KeyError).
+            code = constants.era_program_codes.get(edition, {}).get(line, "")
+            decisions = F15_SEED_ROWS[code][2] if code in F15_SEED_ROWS else ()
+            decision_id = decisions[0] if len(decisions) == 1 else ""
+            rows.append({"platform_family": _F15, "member_id": f"P-1:3010F:AF:{code}", "edition": str(edition),
+                         "era_key": f"3010F-AF-L{line}", "budget_activity": budget_activity,
+                         "filed_title": title, "decision_id": decision_id})
+    return rows
+
+
+def _f15_roster_refusals(era_rows: Sequence[Mapping[str, str]], measured: set[tuple],
+                         era_name: str) -> list[str]:
+    """§7.6: the shipped roster against the p1_era_line_map lines under the
+    members' era decisions, as (member_id, edition, era_key, budget_activity,
+    filed_title, decision_id)."""
+    roster = {(r["member_id"], int(r["edition"]), r["era_key"], r["budget_activity"], r["filed_title"],
+               r["decision_id"]) for r in era_rows}
+    errors = []
+    for key in sorted(roster - measured, key=_none_as_empty):
+        member_id, edition, era_key, ba, title, decision_id = key
+        errors.append(_line(era_name, f"{_F15}|{edition}|{era_key}",
+                            f"roster: the shipped roster line ({member_id}, BA {ba!r}, filed title {title!r}, "
+                            f"decision {decision_id!r}) is not a p1_era_line_map line under that decision"))
+    for key in sorted(measured - roster, key=_none_as_empty):
+        member_id, edition, era_key, ba, title, decision_id = key
+        errors.append(_line(era_name, f"{_F15}|{edition}|{era_key}",
+                            f"roster: the p1_era_line_map line ({member_id}, BA {ba!r}, filed title {title!r}, "
+                            f"decision {decision_id!r}) is not in the shipped roster (ERA_MEMBERS x "
+                            "ERA_PROGRAM_CODES)"))
+    return errors
+
+
+def seed_shipped_f15(*, constants: F15Constants, duckdb_path: Path, site_dir: Path, decided_on: str,
+                     owner_reply: str, paths: RegistryPaths = DEFAULT_PATHS) -> dict:
+    """`propose --seed-shipped f-15` (§7.6): write the F-15 as registry entry
+    #1, `published` under R-DEC-FAM-F15-SEED, from the shipped constants and
+    §7.6's table, measured against the lake. The input refusals are listed
+    together before the lake opens (R6); then the roster refusals; then stage
+    1 and stage 2 on the result. A refusal writes nothing; the write replaces
+    the three files atomically. `owner_reply` loses exactly one trailing
+    newline (D13), so a caller passes the reply file's text as read."""
+    owner_reply = owner_reply.removesuffix("\n")
+    errors = _f15_seed_registry_refusals(paths)
+    if not owner_reply.strip():
+        errors.append(_line(paths.json.name, F15_SEED_RULING_ID,
+                            f"owner_reply {owner_reply!r} is blank (the owner's verbatim approval is required)"))
+    if not _iso_date(decided_on):
+        errors.append(_line(paths.json.name, F15_SEED_RULING_ID,
+                            f"decided_on {decided_on!r} is not an ISO date (YYYY-MM-DD)"))
+    errors += _f15_shipped_refusals(constants, site_dir)
+    codes = sorted(p["code"] for p in constants.programs)
+    if sorted(constants.expected_from) != codes:
+        errors.append(_line(paths.members.name, None,
+                            f"expected_from has codes {sorted(constants.expected_from)}; the programs' codes are "
+                            f"{codes} (coverage_expected_from_edition needs exactly one entry per program)"))
+    if errors:
+        raise RegistryError(errors)
+
+    doc = _f15_seed_doc(constants, decided_on=decided_on, owner_reply=owner_reply)
+    rows = _f15_seed_member_rows(constants, decided_on=decided_on)
+    era_rows = _f15_seed_era_rows(constants)
+    headline = Headline(**doc["families"][0]["headline"])
+    lake = open_lake(duckdb_path)
+    try:
+        measured: set[tuple] = set()
+        for row in rows:
+            m = measure_member(lake, Member.from_row(row), headline=headline)
+            row.update(titles_seen="; ".join(f"{e}: {t}" for e, t in m.titles_seen),
+                       budget_activities=";".join(m.budget_activities), drift_sha256=m.drift_sha256)
+            measured |= {(e.member_id, e.edition, e.era_key, e.budget_activity, e.filed_title, e.decision_id)
+                         for e in m.era_lines}
+        roster = _f15_roster_refusals(era_rows, measured, paths.era_lines.name)
+        if roster:
+            raise RegistryError(roster)
+        decisions = {d["decision_id"]: d for d in era_map.read_seed(era_map.default_seed_path())}
+        registry = parse_registry(doc, rows, era_rows, era_decisions=decisions, paths=paths)
+        check_lake(registry, lake=lake, site_dir=site_dir, families=[_F15]).raise_if_failed()
+    finally:
+        lake.close()
+    write_registry(paths, doc=doc, members=rows, era_lines=era_rows)
+    return {"members": len(rows), "era_lines": len(era_rows), "rulings": 1}

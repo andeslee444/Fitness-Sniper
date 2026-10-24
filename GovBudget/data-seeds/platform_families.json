@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "rulings": [
+    {
+      "ruling_id": "R-DEC-FAM-F15-SEED",
+      "kind": "class",
+      "platform_family": "f-15",
+      "decided_by": "owner",
+      "decided_on": "2026-10-21",
+      "owner_reply": "approved, would process with recommendation to approve all",
+      "spec": "docs/superpowers/specs/2026-10-20-families-piece2-registry-design.md#81-r-dec-fam-f15-seed-class-ruling-pending-owner-approval-with-this-spec",
+      "text": "The F-15 family's registry entry records the eight budget lines the shipped F-15 history counts, as they ship at main 88538c6a. It records: their order, identities and display titles; the coverage rule (which lines are expected in which editions); the 31-line era roster; the F015E0 note and its receipt; the family's scope and coverage notes. It changes no published figure, text or fact ID. Its evidence basis is the shipped family history (the F-15 family funding correction recorded in the ROADMAP on 2026-09-24), the piece-1 era decisions and the page's record-link narratives. Piece 3 must add an independent signal for each line before any F-15 row changes.",
+      "seed_basis": true
+    }
+  ],
+  "sources": [],
+  "families": [
+    {
+      "platform_family": "f-15",
+      "status": "published",
+      "published_ruling_id": "R-DEC-FAM-F15-SEED",
+      "short_name": "F-15",
+      "history_dataset": "f15_funding_history",
+      "on_partial_corpus": "skip",
+      "headline": {
+        "measure": "cumulative_actuals",
+        "first_fy": 2015,
+        "last_fy": 2024
+      },
+      "scope_note": "Recorded F-15-named research, development and procurement budget lines in the imported P-1/R-1 workbooks. This is a covered-record total, not the aircraft family's lifetime cost. Personnel, operations and maintenance, and unallocated shared support are outside this calculation.",
+      "coverage_notes": [
+        "Coverage begins with FY2015 actuals in PB2017. Earlier funding, including early F-15A–D development, is not represented.",
+        "The locally imported records do not contain PE 0207130F; no amount or zero is invented for it.",
+        "Historical procurement line numbers change between editions. Each legacy line is matched within its own budget edition, without asserting a modern-program or aircraft-variant allocation, except where a budget book states one (F015E0).",
+        "Actuals, current-year figures and requests are separate snapshots. Requests and current-year figures are excluded from the cumulative actuals figure.",
+        "Amounts are nominal dollars of total obligational authority (TOA), not contract obligations, cash outlays or inflation-adjusted dollars.",
+        "Missing workbook figures are not zero spending. Some current-year columns contain requests adjusted for continuing resolutions rather than final enacted appropriations.",
+        "The totals exclude classified funding and military construction."
+      ],
+      "review_guard": {
+        "exhibits": [
+          "P-1",
+          "R-1"
+        ],
+        "title_substrings": [
+          "F-15",
+          "F15"
+        ]
+      },
+      "program_notes": {
+        "P-1:3010F:AF:F015E0": {
+          "note": "This exhibit [the PB2026 F-15EX AP (F015EX) P-40] does not include the eight aircraft in Lot 1 which were funded outside this exhibit in FY 2020 (two test aircraft were purchased with RDT&E funds (PE 0207134F); four operationally representative test aircraft and two operational aircraft were purchased with procurement funds (F015E0, Line #3 [line 3 of the PB2020–21 P-1 (line 4 in PB2022)])).",
+          "note_fact_id": "e7d5bcfb4a30f458",
+          "expected_receipt": {
+            "kind": "jbook_narrative",
+            "page_number": 71,
+            "pe_bli": "F015EX",
+            "sha256": "528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e"
+          }
+        }
+      },
+      "variants": [
+        {
+          "id": "A"
+        },
+        {
+          "id": "B"
+        },
+        {
+          "id": "C"
+        },
+        {
+          "id": "D"
+        },
+        {
+          "id": "E"
+        },
+        {
+          "id": "EX"
+        }
+      ],
+      "program_tags": [
+        {
+          "tag": "F-15",
+          "mdap_code": null
+        },
+        {
+          "tag": "F-15EX",
+          "mdap_code": null
+        },
+        {
+          "tag": "EPAWSS",
+          "mdap_code": null
+        }
+      ],
+      "purpose_tags": [],
+      "caveat_ids": [
+        "classified",
+        "construction",
+        "nominal_dollars",
+        "cr_years"
+      ],
+      "exclusions": [],
+      "aliases": [],
+      "contract_routes": null,
+      "official_estimates": null,
+      "art": null
+    }
+  ]
+}
