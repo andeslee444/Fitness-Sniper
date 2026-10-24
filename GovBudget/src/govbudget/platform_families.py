@@ -11,7 +11,11 @@ normalizes a value.
 Module-level imports are the standard library, govbudget.config and
 govbudget.jbooks.era_map (with govbudget.jbooks.era_keys, which era_map itself
 imports) only: stage 1 runs on every import of the F-15 facade,
-program_pdf_receipts and export_site.
+program_pdf_receipts and export_site. Stage 2 (§9.2: the lake, read-only, and
+the doc:/src: files under the site directory) imports duckdb,
+govbudget.export_site, govbudget.jbooks.collision_keys,
+govbudget.jbooks.provenance_pages and openpyxl inside the functions that use
+them.
 """
 from __future__ import annotations
 
@@ -22,10 +26,12 @@ import hashlib
 import io
 import json
 import re
+import unicodedata
 from collections import defaultdict
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 from functools import partial
 from pathlib import Path
 
@@ -1736,3 +1742,567 @@ def family_hash(doc: dict, platform_family: str) -> str:
     text = json.dumps({"family": fam, "sources": sources}, sort_keys=True, separators=(",", ":"),
                       ensure_ascii=False)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# Stage 2 (spec §9.2): the lake, read-only
+# ---------------------------------------------------------------------------
+
+
+class LakeReader:
+    """Read-only queries over the warehouse and its jbooks parquet (open_lake).
+
+    No query filters editions, so a PB2027 row reaches stage 2 and fails item
+    1 (R2; §17 risk 7). Every budget_lines query reads its edition as
+    cast(fiscal_year as integer); results are distinct and sorted. A
+    duckdb.IOException (another writer's lock) is never caught here.
+    """
+
+    def __init__(self, con, budget_lines: Path, documents: Path):
+        self._con = con
+        self.budget_lines = budget_lines
+        self.documents = documents
+
+    def __enter__(self) -> LakeReader:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+    def close(self) -> None:
+        self._con.close()
+
+    def _budget_lines_sql(self) -> str:
+        return f"read_parquet('{era_map._sql_path(self.budget_lines)}')"
+
+    def _dicts(self, sql: str, params: Sequence[object] = ()) -> list[dict]:
+        cur = self._con.execute(sql, list(params))
+        names = [d[0] for d in cur.description]
+        return [dict(zip(names, row)) for row in cur.fetchall()]
+
+    def code_rows(self, exhibit: str, account: str, organizations: set[str], code: str) -> list[dict]:
+        """The code-keyed lines printing `code` (pe_bli) in the exhibit and
+        account under any of the organizations: {edition, organization,
+        budget_activity, title}, by (edition, budget_activity, title,
+        organization)."""
+        orgs = sorted(organizations)
+        if not orgs:
+            return []
+        return self._dicts(
+            "select distinct cast(fiscal_year as integer) as edition, organization, budget_activity, title"
+            f" from {self._budget_lines_sql()}"
+            " where exhibit = ? and account = ? and pe_bli = ?"
+            f" and organization in ({', '.join('?' * len(orgs))})"
+            " order by edition, budget_activity, title, organization",
+            [exhibit, account, code, *orgs])
+
+    def era_map_rows(self, code: str, account: str, organization: str | None) -> list[dict]:
+        """p1_era_line_map lines printing `code` in the account (and the
+        organization, when given), every decision, by (edition, era_key)."""
+        sql = ("select distinct cast(edition as integer) as edition, account, organization,"
+               " budget_activity, era_key, line_item_code, filed_title, program_key, decision,"
+               " decision_id from p1_era_line_map where line_item_code = ? and account = ?")
+        params: list[object] = [code, account]
+        if organization is not None:
+            sql += " and organization = ?"
+            params.append(organization)
+        return self._dicts(sql + " order by edition, era_key, decision_id", params)
+
+    def guard_rows(self, guard: ReviewGuard) -> list[dict]:
+        """The lines of the guard's exhibits whose upper-cased title contains
+        any guard substring: {edition, exhibit, account, organization,
+        budget_activity, pe_bli, title, line_item_code}, by (edition, exhibit,
+        pe_bli, account, organization)."""
+        exhibits, subs = sorted(guard.exhibits), list(guard.title_substrings)
+        if not exhibits or not subs:
+            return []
+        return self._dicts(
+            "select distinct cast(fiscal_year as integer) as edition, exhibit, account, organization,"
+            " budget_activity, pe_bli, title, line_item_code"
+            f" from {self._budget_lines_sql()}"
+            f" where exhibit in ({', '.join('?' * len(exhibits))})"
+            f" and ({' or '.join(['contains(upper(title), ?)'] * len(subs))})"
+            " order by edition, exhibit, pe_bli, account, organization, budget_activity, title,"
+            " line_item_code",
+            [*exhibits, *subs])
+
+    def collision_codes(self) -> frozenset[str]:
+        """The codes dim_programs reuses across accounts or organizations
+        (collision_keys.classify_shared_keys)."""
+        from govbudget.jbooks.collision_keys import classify_shared_keys
+
+        rows = self._con.execute("select pe_bli, account, org from dim_programs").fetchall()
+        return frozenset(classify_shared_keys(rows))
+
+    def series_codes(self) -> frozenset[str]:
+        """Every pe_bli of fct_decade_series; empty when the table is absent
+        (a small export's warehouse)."""
+        import duckdb
+
+        try:
+            rows = self._con.execute("select distinct pe_bli from fct_decade_series").fetchall()
+        except duckdb.CatalogException:
+            return frozenset()
+        return frozenset(pe for (pe,) in rows)
+
+    def actuals(self, keys: Iterable[tuple[str, int]]) -> dict[tuple[str, int], Decimal]:
+        """Per requested (pe_bli, edition): the summed fct_decade_series
+        actuals at fy = edition - 2 of that edition. A key with no row is
+        absent (so is every key when the table is absent, as series_codes)."""
+        import duckdb
+
+        wanted = set(keys)
+        if not wanted:
+            return {}
+        codes = sorted({pe for pe, _ in wanted})
+        try:
+            rows = self._con.execute(
+                "select pe_bli, edition_year, sum(amount) from fct_decade_series"
+                " where amount_type_kind = 'actuals' and fy = edition_year - 2"
+                f" and pe_bli in ({', '.join('?' * len(codes))})"
+                " group by pe_bli, edition_year order by pe_bli, edition_year", codes).fetchall()
+        except duckdb.CatalogException:
+            return {}
+        return {(pe, int(ed)): Decimal(str(v)) for pe, ed, v in rows
+                if (pe, int(ed)) in wanted and v is not None}
+
+    def program_series(self, code: str) -> dict[tuple[int, str], Decimal]:
+        """fct_program_decade_series for one program_key under the edition
+        rule (actuals from edition fy + 2, enacted from fy + 1, request from
+        fy), summed per (fy, amount_type_kind) in $K; {} when nothing matches
+        or the table is absent."""
+        import duckdb
+
+        try:
+            rows = self._con.execute(
+                "select fy, amount_type_kind, sum(amount_thousands) from fct_program_decade_series"
+                " where program_key = ? and ((amount_type_kind = 'actuals' and edition_year = fy + 2)"
+                " or (amount_type_kind = 'enacted' and edition_year = fy + 1)"
+                " or (amount_type_kind = 'request' and edition_year = fy))"
+                " group by fy, amount_type_kind order by fy, amount_type_kind", [code]).fetchall()
+        except duckdb.CatalogException:
+            return {}
+        return {(int(fy), kind): Decimal(str(v)) for fy, kind, v in rows if v is not None}
+
+
+def open_lake(duckdb_path: Path) -> LakeReader:
+    """One read-only DuckDB connection (it reads the jbooks parquet too). A
+    second writer's lock surfaces as duckdb.IOException, uncaught."""
+    import duckdb
+
+    from govbudget.export_site import _stage_parquet_path
+
+    budget_lines = _stage_parquet_path(duckdb_path, "jbooks", "budget_lines.parquet")
+    documents = _stage_parquet_path(duckdb_path, "jbooks", "documents.parquet")
+    if budget_lines is None or documents is None:
+        base = Path(duckdb_path).parent
+        roots = (base / "parquet" / "jbooks", base.parent / "parquet" / "jbooks",
+                 base.parent / "data" / "parquet" / "jbooks")
+        raise FileNotFoundError(
+            f"platform-families: budget_lines.parquet and documents.parquet must both be beside "
+            f"{duckdb_path} (looked in {', '.join(map(str, roots))})")
+    con = duckdb.connect(str(duckdb_path), read_only=True)
+    return LakeReader(con, budget_lines, documents)
+
+
+@dataclass(frozen=True)
+class MemberMeasure:
+    """A member row's lake-derived columns (§7.3 rows 12, 13 and 21), its era
+    lines and its headline actuals ($K)."""
+
+    titles_seen: tuple[tuple[int, str], ...]
+    budget_activities: tuple[str, ...]
+    editions: tuple[int, ...]
+    drift_sha256: str
+    era_lines: tuple[EraLine, ...]
+    headline_actuals_k: Decimal | None
+
+
+def _era_org(member: Member) -> str | None:
+    """The organization filter of the member's era lines: its own for an
+    organization-split code, none otherwise."""
+    return member.organization if member.code in era_map.ORG_SPLIT_CODES else None
+
+
+def _member_lines(lake: LakeReader, member: Member) -> tuple[list[dict], list[dict]]:
+    """(the code-keyed lines, every p1_era_line_map line printing the code)."""
+    orgs = {member.organization, era_map.ERA_ORG_TO_MODERN.get(member.organization, member.organization)}
+    return (lake.code_rows(member.exhibit, member.account, orgs, member.code),
+            lake.era_map_rows(member.code, member.account, _era_org(member)))
+
+
+def _in_editions(member: Member, edition: int) -> bool:
+    return member.valid_from_edition <= edition <= member.valid_to_edition
+
+
+def _bound_era_rows(member: Member, map_rows: Sequence[dict]) -> list[dict]:
+    """The map lines under the member's era_decision_ids, any edition."""
+    return [r for r in map_rows if r["decision_id"] in member.era_decision_ids]
+
+
+def _drift_keys(member: Member, code_lines: Sequence[dict],
+                era_rows: Sequence[dict]) -> set[tuple[int, str, str, str]]:
+    """§7.3 row 21: the distinct lines the row binds within its editions."""
+    keys = {(r["edition"], member.code, r["budget_activity"], r["title"])
+            for r in code_lines if _in_editions(member, r["edition"])}
+    keys |= {(r["edition"], r["era_key"], r["budget_activity"], r["filed_title"])
+             for r in era_rows if _in_editions(member, r["edition"])}
+    return keys
+
+
+def _measure(lake: LakeReader, member: Member, headline: Headline, code_lines: Sequence[dict],
+             map_rows: Sequence[dict]) -> MemberMeasure:
+    era_rows = _bound_era_rows(member, map_rows)
+    inside_code = [r for r in code_lines if _in_editions(member, r["edition"])]
+    inside_era = [r for r in era_rows if _in_editions(member, r["edition"])]
+    keys = _drift_keys(member, code_lines, era_rows)
+    amounts = lake.actuals({(line, edition) for edition, line, _ba, _title in keys
+                            if headline.first_fy <= edition - 2 <= headline.last_fy})
+    return MemberMeasure(
+        titles_seen=tuple(sorted({(r["edition"], r["title"]) for r in inside_code})),
+        budget_activities=tuple(sorted({r["budget_activity"] for r in inside_code + inside_era})),
+        editions=tuple(sorted({r["edition"] for r in [*code_lines, *era_rows]})),
+        drift_sha256=era_map.keys_sha256(keys),
+        era_lines=tuple(EraLine(member.platform_family, member.member_id, r["edition"], r["era_key"],
+                                r["budget_activity"], r["filed_title"], r["decision_id"])
+                        for r in era_rows),
+        headline_actuals_k=sum(amounts.values(), Decimal(0)) if amounts else None)
+
+
+def measure_member(lake: LakeReader, member: Member, *, headline: Headline) -> MemberMeasure:
+    """Measure one member row against the lake (propose fills its lake
+    columns from this; stage 2 item 2 recomputes its drift_sha256)."""
+    return _measure(lake, member, headline, *_member_lines(lake, member))
+
+
+# doc: quotes (§7.5, Review Focus 2): NFKC, then every hyphen/dash and the
+# minus sign to '-', curly single and double quotes to straight ones, then
+# whitespace runs to one space. Case is kept.
+_QUOTE_FOLD = str.maketrans({
+    **dict.fromkeys(map(chr, range(0x2010, 0x2016)), "-"), "−": "-",
+    **dict.fromkeys("‘’‚‛", "'"),
+    **dict.fromkeys("“”„‟", '"'),
+})
+_PAGE_TEXTS: dict[Path, tuple[str, ...]] = {}       # page texts per file, for the life of the process
+
+
+def normalize_quote_text(text: str) -> str:
+    """The form both a doc: quote and its page text take before the
+    substring test."""
+    return " ".join(unicodedata.normalize("NFKC", text).translate(_QUOTE_FOLD).split())
+
+
+def _workbook_page_texts(path: Path) -> tuple[str, ...]:
+    """Page n of a workbook is its n-th worksheet: every non-empty cell's
+    value, row-major, joined by one space."""
+    from openpyxl import load_workbook
+
+    wb = load_workbook(path, read_only=True, data_only=True)
+    try:
+        return tuple(" ".join(str(v) for row in ws.iter_rows(values_only=True) for v in row
+                              if v is not None and str(v) != "")
+                     for ws in wb.worksheets)
+    finally:
+        wb.close()
+
+
+def _doc_page_texts(path: Path) -> tuple[str, ...]:
+    if path not in _PAGE_TEXTS:
+        if path.suffix == ".pdf":
+            from govbudget.jbooks.provenance_pages import _page_texts
+
+            _PAGE_TEXTS[path] = tuple(_page_texts(path))
+        else:
+            _PAGE_TEXTS[path] = _workbook_page_texts(path)
+    return _PAGE_TEXTS[path]
+
+
+def resolve_doc_ref(ref: str, *, site_dir: Path) -> str | None:
+    """None when the doc: ref resolves (§7.5): the sha-pinned PDF
+    (pdfs/<sha>.pdf) or workbook (workbooks/<sha>.xlsx) exists, the page is
+    in range and the quote, if any, is on that page once both are normalized
+    (normalize_quote_text). Otherwise the reason."""
+    try:
+        prefix, parts = parse_ref(ref)
+    except ValueError as exc:
+        return str(exc)
+    if prefix != "doc":
+        return f"{ref!r} is not a doc: ref"
+    sha, page, quote = parts["sha256"], parts["page"], parts["quote"]
+    head = f"doc:{sha}#p{page}"
+    site = Path(site_dir)
+    pdf, workbook = site / "pdfs" / f"{sha}.pdf", site / "workbooks" / f"{sha}.xlsx"
+    if pdf.is_file():
+        texts = _doc_page_texts(pdf)
+    elif workbook.is_file():
+        texts = _doc_page_texts(workbook)
+    else:
+        return f"{head}: no file at {pdf} or {workbook}"
+    if not 1 <= page <= len(texts):
+        return f"{head}: page out of range (1–{len(texts)})"
+    if quote is not None and normalize_quote_text(quote) not in normalize_quote_text(texts[page - 1]):
+        return f"{head}: quote not found: {quote!r}"
+    return None
+
+
+def corpus_gate(family: Family, series_codes: frozenset[str]) -> bool:
+    """D5, the partial-corpus gate: True when every code-keyed counted code is
+    in fct_decade_series; otherwise False for on_partial_corpus 'skip', and a
+    RegistryError for 'raise'."""
+    missing = sorted({m.code for m in family.code_keyed} - series_codes)
+    if not missing:
+        return True
+    if family.on_partial_corpus == "skip":
+        return False
+    raise RegistryError([_line(REGISTRY_JSON.name, family.platform_family,
+                               f"{family.short_name} family history requires every counted workbook "
+                               f"member: missing {', '.join(missing)}")])
+
+
+@dataclass
+class LakeReport:
+    """Stage 2's result (R4): failures and stale block; undecided never does."""
+
+    failures: list[str]
+    undecided: list[str]
+    stale: list[str]
+
+    def raise_if_failed(self) -> None:
+        if self.failures or self.stale:
+            raise RegistryError(self.failures + self.stale)
+
+
+def _guard_text(row: Mapping[str, object]) -> str:
+    return (f"PB{row['edition']} {row['exhibit']} {row['account']}/{row['organization']} "
+            f"{row['pe_bli']} {row['title']!r}")
+
+
+def _covers(member: Member, row: Mapping[str, object]) -> bool:
+    """Item 5: the member row covers the guard-matching lake row. An era-keyed
+    row is matched by its printed line_item_code, a code-keyed one by pe_bli;
+    the organization may be the member's spelling or its modern one."""
+    pe_bli = row["pe_bli"]
+    code = row["line_item_code"] if era_keys.is_era_procurement_key(pe_bli) else pe_bli
+    orgs = {member.organization, era_map.ERA_ORG_TO_MODERN.get(member.organization, member.organization)}
+    return ((member.exhibit, member.account, member.code) == (row["exhibit"], row["account"], code)
+            and row["organization"] in orgs and _in_editions(member, row["edition"]))
+
+
+def _refs(member: Member) -> list[tuple[str, str]]:
+    """(column, ref) for every ref a member row carries."""
+    alloc = _split_ref_items(member.allocation_source)[0]
+    return ([("evidence", r) for r in member.evidence] + [("link_evidence", r) for r in member.link_evidence]
+            + [("allocation_source", r) for r in alloc])
+
+
+def _exclusion_refs(family: Family) -> list[tuple[int, str]]:
+    return [(j, ref) for j, exclusion in enumerate(family.exclusions)
+            for ref in exclusion.get("evidence") or ()]
+
+
+def _none_as_empty(key: tuple) -> tuple:
+    """A sort key for era-line tuples whose text fields may be NULL."""
+    return tuple("" if v is None else v for v in key)
+
+
+class _FamilyLake:
+    """check_lake for one family: report lines in Task 2a's format."""
+
+    def __init__(self, family: Family, report: LakeReport):
+        self.family = family
+        self.report = report
+
+    def json_failure(self, reason: str, row: str | None = None) -> None:
+        self.report.failures.append(_line(REGISTRY_JSON.name, row or self.family.platform_family, reason))
+
+    def member_failure(self, member: Member, reason: str) -> None:
+        self.report.failures.append(_line(MEMBERS_CSV.name, member.member_row_id, reason))
+
+    def era_failure(self, edition: int, era_key: str, reason: str) -> None:
+        row = f"{self.family.platform_family}|{edition}|{era_key}"
+        self.report.failures.append(_line(ERA_LINES_CSV.name, row, reason))
+
+    def doc_refs(self, site_dir: Path, members: Sequence[Member]) -> None:
+        """Item 7."""
+        for member in members:
+            for col, ref in _refs(member):
+                if ref.startswith("doc:"):
+                    reason = resolve_doc_ref(ref, site_dir=site_dir)
+                    if reason is not None:
+                        self.member_failure(member, f"{col}: {reason}")
+        for j, ref in _exclusion_refs(self.family):
+            if ref.startswith("doc:"):
+                reason = resolve_doc_ref(ref, site_dir=site_dir)
+                if reason is not None:
+                    self.json_failure(f"exclusions[{j}] evidence: {reason}")
+
+    def code_keyed(self, member: Member, code_lines: Sequence[dict]) -> None:
+        """Item 1."""
+        expected = dict(member.titles_seen)
+        printed = {r["edition"] for r in code_lines}
+        reasons: list[str] = []
+        for edition, title in member.titles_seen:
+            if edition not in printed:
+                reasons.append(f"titles_seen lists PB{edition} {title!r}, but the lake has no code-keyed "
+                               f"{member.exhibit} {member.account} {member.code} line in PB{edition} "
+                               "(missing)")
+        for r in code_lines:
+            edition, title = r["edition"], r["title"]
+            if not _in_editions(member, edition):
+                reasons.append(f"code-keyed line PB{edition} {member.code} {title!r} is outside the member's "
+                               f"editions {member.valid_from_edition}–{member.valid_to_edition}")
+            elif edition not in expected:
+                reasons.append(f"code-keyed line PB{edition} {member.code} {title!r} is in an edition "
+                               "titles_seen omits")
+            elif title != expected[edition]:
+                reasons.append(f"code-keyed line PB{edition} {member.code} has title {title!r}; titles_seen "
+                               f"has {expected[edition]!r} for PB{edition}")
+        for reason in dict.fromkeys(reasons):
+            self.member_failure(member, reason)
+
+    def roster(self, member: Member, measure: MemberMeasure, map_rows: Sequence[dict]) -> None:
+        """Item 3: the member's era-lines rows equal the map's lines under its
+        era_decision_ids, whose program_key and line_item_code are its code."""
+        mine = {(e.edition, e.era_key, e.budget_activity, e.filed_title, e.decision_id)
+                for e in self.family.era_lines if e.member_id == member.member_id}
+        measured = {(e.edition, e.era_key, e.budget_activity, e.filed_title, e.decision_id)
+                    for e in measure.era_lines}
+        for key in sorted(mine - measured, key=_none_as_empty):
+            self.era_failure(key[0], key[1], f"roster: the era-lines row (BA {key[2]!r}, filed title "
+                                             f"{key[3]!r}, decision {key[4]!r}) of {member.member_id!r} is not "
+                                             "a p1_era_line_map line under its era_decision_ids")
+        for key in sorted(measured - mine, key=_none_as_empty):
+            self.era_failure(key[0], key[1], f"roster: the p1_era_line_map line (BA {key[2]!r}, filed title "
+                                             f"{key[3]!r}, decision {key[4]!r}) under the era_decision_ids of "
+                                             f"{member.member_id!r} is not in the era-lines file")
+        for r in _bound_era_rows(member, map_rows):
+            if (r["program_key"], r["line_item_code"]) != (member.code, member.code):
+                self.era_failure(r["edition"], r["era_key"],
+                                 f"roster: the p1_era_line_map line has program_key {r['program_key']!r} and "
+                                 f"line_item_code {r['line_item_code']!r}; both must be the code "
+                                 f"{member.code!r} of {member.member_id!r}")
+
+    def unmapped(self, member: Member, map_rows: Sequence[dict]) -> None:
+        """Item 4."""
+        bound = {(e.edition, e.era_key) for e in self.family.era_lines}
+        for r in map_rows:
+            if (r["edition"], r["era_key"]) in bound or str(r["decision"] or "").startswith("exclude_"):
+                continue
+            self.member_failure(member, f"unmapped era line PB{r['edition']} {r['era_key']} prints code "
+                                        f"{member.code} (decision {r['decision']!r}, {r['decision_id']!r}); "
+                                        "it is neither in the era-lines file nor under an exclude_* decision")
+
+    def guard(self, guard_rows: Sequence[dict]) -> None:
+        """Item 5."""
+        fam = self.family
+        for row in guard_rows:
+            covering = [m for m in fam.members if _covers(m, row)]
+            if any(m.verdict in ("approved", "rejected") for m in covering):
+                continue
+            deferred = [m.member_row_id for m in covering if m.verdict == "deferred"]
+            if deferred:
+                self.report.undecided.append(_line(
+                    REGISTRY_JSON.name, fam.platform_family,
+                    f"undecided guard match {_guard_text(row)}: covered only by deferred row "
+                    f"{', '.join(deferred)}"))
+            else:
+                self.json_failure(f"Unreviewed {fam.short_name} workbook identity: "
+                                  f"{row['edition']}/{row['pe_bli']}")
+
+    def sources(self, registry: Registry, site_dir: Path, members: Sequence[Member]) -> None:
+        """Item 8 (a published family only)."""
+        cited = set()
+        for ref in [r for m in members for _, r in _refs(m)] + [r for _, r in _exclusion_refs(self.family)]:
+            if ref.startswith("src:"):
+                try:
+                    cited.add(parse_ref(ref)[1]["source_id"])
+                except ValueError:
+                    continue
+        for sid, source in registry.sources.items():
+            if sid not in cited:
+                continue
+            if not source.archived:
+                self.json_failure(f"source {sid!r}, cited by published family "
+                                  f"{self.family.platform_family!r}, is not archived", row=sid)
+                continue
+            path = Path(site_dir) / (source.archive_path or "")
+            if source.sha256 is None:
+                self.json_failure(f"source {sid!r} has no sha256, so its archived copy {path} is unverifiable",
+                                  row=sid)
+            elif not path.is_file():
+                self.json_failure(f"the archived copy {path} of source {sid!r} is missing (expected sha256 "
+                                  f"{source.sha256})", row=sid)
+            else:
+                actual = hashlib.sha256(path.read_bytes()).hexdigest()
+                if actual != source.sha256:
+                    self.json_failure(f"the archived copy {path} of source {sid!r} has sha256 {actual}, "
+                                      f"expected {source.sha256}", row=sid)
+
+
+def check_lake(registry: Registry, *, lake: LakeReader, site_dir: Path,
+               families: Sequence[str] | None = None) -> LakeReport:
+    """Stage 2 (§9.2) for every family, or only those named, in JSON order.
+    A draft family gets item 7 on its exclusions' doc: refs and reports its
+    guard matches as undecided; a ratified or published one gets items 1–7,
+    9 and 10, and item 8 too when published (R4: a recorded deferral is
+    undecided, a moved drift_sha256 is stale)."""
+    if families is None:
+        chosen = registry.families
+    else:
+        named = {registry[pf].platform_family for pf in families}
+        chosen = tuple(f for f in registry.families if f.platform_family in named)
+    report = LakeReport([], [], [])
+    lake_sets: dict[str, frozenset[str]] = {}
+    for fam in chosen:
+        check = _FamilyLake(fam, report)
+        guard_rows = lake.guard_rows(fam.review_guard)
+        if fam.status == "draft":
+            check.doc_refs(site_dir, ())
+            for row in guard_rows:
+                report.undecided.append(_line(REGISTRY_JSON.name, fam.platform_family,
+                                              f"undecided guard match {_guard_text(row)}"))
+            continue
+        if not lake_sets:
+            lake_sets.update(collision=lake.collision_codes(), series=lake.series_codes())
+        members = sorted(fam.members, key=lambda m: m.member_row_id)
+        counted = [m for m in members if m.verdict == "approved" and m.role == "counted"]
+        counted_ids = {m.member_row_id for m in counted}
+        measured_rows = [m for m in members if m.drift_sha256 or m.member_row_id in counted_ids]
+        lines = {m.member_row_id: _member_lines(lake, m) for m in measured_rows}
+        measures = {m.member_row_id: _measure(lake, m, fam.headline, *lines[m.member_row_id])
+                    for m in measured_rows}
+
+        for m in counted:                                                    # item 1
+            check.code_keyed(m, lines[m.member_row_id][0])
+        for m in measured_rows:                                              # item 2
+            measured = measures[m.member_row_id]
+            if m.drift_sha256 and measured.drift_sha256 != m.drift_sha256:
+                code_lines, map_rows = lines[m.member_row_id]
+                n = len(_drift_keys(m, code_lines, _bound_era_rows(m, map_rows)))
+                report.stale.append(_line(
+                    MEMBERS_CSV.name, m.member_row_id,
+                    f"drift_sha256 {m.drift_sha256} != {measured.drift_sha256} ({n} lines): the lake lines "
+                    "this row binds changed since it was reviewed"))
+        for m in counted:                                                    # items 3 and 4
+            check.roster(m, measures[m.member_row_id], lines[m.member_row_id][1])
+        for m in counted:
+            check.unmapped(m, lines[m.member_row_id][1])
+        check.guard(guard_rows)                                              # item 5
+        for m in counted:                                                    # item 6
+            if m.code in lake_sets["collision"]:
+                check.member_failure(m, f"code {m.code!r} is a collision code (dim_programs reuses it across "
+                                        "accounts or organizations); the series key cannot tell its members "
+                                        "apart")
+        check.doc_refs(site_dir, members)                                    # item 7
+        if fam.status == "published":                                        # item 8
+            check.sources(registry, site_dir, members)
+        if fam.on_partial_corpus == "raise":                                 # item 9
+            try:
+                corpus_gate(fam, lake_sets["series"])
+            except RegistryError as exc:
+                report.failures.extend(exc.errors)
+        for m in members:                                                    # item 10
+            if m.verdict == "deferred":
+                report.undecided.append(_line(MEMBERS_CSV.name, m.member_row_id,
+                                              "deferred row, recorded and never exported"))
+    return report

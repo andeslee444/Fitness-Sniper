@@ -4,8 +4,13 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import subprocess
+import sys
+from decimal import Decimal
 
+import duckdb
 import pytest
+from openpyxl import Workbook
 
 from govbudget.jbooks import era_map
 from govbudget.platform_families import (
@@ -13,9 +18,13 @@ from govbudget.platform_families import (
     EXHIBITS, FAMILY_KEYS, F15_SEED_RULING_ID, HISTORY_DATASET_RE, LINK_BASES, MEMBER_COLUMNS,
     MEMBER_ID_RE, PAYING_ORGS, PLATFORM_FAMILY_RE, PREFILL_COLUMNS, PURPOSES, REVIEW_COLUMNS,
     REVIEW_ROOT, ROLES, RULING_ID_RE, SEED_BASIS_ALLOWED, SERVICES, SHORT_NAME_RE, SOURCE_ID_RE,
-    SOURCE_TIERS, STATUSES, TOP_KEYS, VARIANT_SCOPES, VERDICTS, EraLine, Headline, RegistryError,
-    ReviewGuard, family_hash, load_registry, parse_ref, registry_texts, split_refs, write_registry)
-from platform_family_fixtures import (DOC_SHA, ERA_XA, RULING_X1, World, XA, XC, XR, ruling, tmp_paths,
+    SOURCE_TIERS, STATUSES, TOP_KEYS, VARIANT_SCOPES, VERDICTS, EraLine, Headline, LakeReport,
+    MemberMeasure, RegistryError, ReviewGuard, check_lake, corpus_gate, family_hash, load_registry,
+    measure_member, normalize_quote_text, open_lake, parse_ref, registry_texts, resolve_doc_ref,
+    split_refs, write_registry)
+from pdf_factory import make_pdf
+from platform_family_fixtures import (DOC_SHA, DRIFT, ERA_XA, MAP_ROWS, PROGRAM_ROWS, RULING_X1, SRC_SHA,
+                                      World, XA, XC, XR, make_lake, make_site, ruling, tmp_paths,
                                       write_world)
 
 J, M, E = "platform_families.json", "platform_family_members.csv", "platform_family_era_lines.csv"
@@ -571,3 +580,232 @@ def test_a_seed_basis_ruling_stands_without_an_independent_signal():
     w.member("XA0001").update(evidence=f"era:{ERA_XA}")
     w.member("XR0001").update(evidence="fact:0026c924483c6624")
     assert [m.code for m in w.parse()["x-1"].counted] == ["XA0001", "XR0001"]
+
+
+HEAD = Headline("cumulative_actuals", 2015, 2024)
+
+
+def _check(tmp_path, w=None, **lake_kw):
+    w = w or World()
+    db, site = make_lake(tmp_path, **lake_kw), make_site(tmp_path)
+    with open_lake(db) as lake:
+        return check_lake(w.parse(), lake=lake, site_dir=site)
+
+
+def test_lake_reader_reads_the_world(tmp_path):
+    with open_lake(make_lake(tmp_path)) as lake:
+        assert lake.code_rows("P-1", "3010F", {"AF", "F"}, "XA0001") == [
+            {"edition": e, "organization": "F", "budget_activity": "05", "title": "X-1"} for e in (2024, 2025, 2026)]
+        assert [(r["edition"], r["era_key"], r["decision_id"]) for r in lake.era_map_rows("XA0001", "3010F", None)] == [
+            (2023, "3010F-AF-L7", ERA_XA)]
+        assert len(lake.guard_rows(ReviewGuard(("P-1", "R-1"), ("X-1",)))) == 9
+        assert lake.collision_codes() == frozenset({"0145"})
+        assert lake.series_codes() == frozenset({"3010F-AF-L7", "XA0001", "XR0001", "XC0001", "ZZ0001"})
+        assert lake.actuals([("XA0001", 2024), ("XA0001", 2017)]) == {("XA0001", 2024): Decimal("200")}
+
+
+def test_lake_reader_program_series_uses_the_edition_rule(tmp_path):
+    with open_lake(make_lake(tmp_path)) as lake:
+        series = lake.program_series("XA0001")
+        assert (series[(2021, "actuals")], series[(2024, "actuals")]) == (Decimal("100"), Decimal("220"))
+        assert series[(2025, "enacted")] == Decimal("0") and (2024, "request") not in series
+        assert lake.program_series("QQ0001") == {}
+
+
+def test_open_lake_opens_duckdb_read_only(tmp_path, monkeypatch):
+    db, real, calls = make_lake(tmp_path), duckdb.connect, []
+    monkeypatch.setattr(duckdb, "connect", lambda *a, **k: calls.append((a, k)) or real(*a, **k))
+    open_lake(db).close()
+    assert [k for a, k in calls if a and a[0] == str(db)] == [{"read_only": True}]
+
+
+def test_open_lake_surfaces_a_duckdb_lock_as_an_exception(tmp_path):
+    db = make_lake(tmp_path)
+    holder = subprocess.Popen([sys.executable, "-c", "import duckdb, sys, time; c = duckdb.connect(sys.argv[1]);"
+                               " print('ready', flush=True); time.sleep(30)", str(db)],
+                              stdout=subprocess.PIPE, text=True)
+    try:
+        assert holder.stdout.readline().strip() == "ready"
+        with pytest.raises(duckdb.IOException, match="Could not set lock"):
+            open_lake(db)
+    finally:
+        holder.kill()
+
+
+def test_measure_member_measures_each_row(tmp_path):
+    x = World().parse()["x-1"]
+    with open_lake(make_lake(tmp_path)) as lake:
+        xa, xr = (measure_member(lake, m, headline=HEAD) for m in x.counted)
+        xc = measure_member(lake, x.context[0], headline=HEAD)
+    assert xa == MemberMeasure(((2024, "X-1"), (2025, "X-1"), (2026, "X-1")), ("05",), (2023, 2024, 2025, 2026),
+                               DRIFT["XA0001"], x.era_lines, Decimal("730"))
+    assert xr == MemberMeasure(((2025, "X-1 Dev"), (2026, "X-1 Dev")), ("07",), (2025, 2026), DRIFT["XR0001"],
+                               (), Decimal("110"))
+    assert (xc.drift_sha256, xc.headline_actuals_k) == (DRIFT["XC0001"], Decimal("33"))
+
+
+def test_measure_member_keeps_each_editions_titles(tmp_path):
+    xa = World().parse()["x-1"].counted[0]
+    with open_lake(make_lake(tmp_path, add=[("P-1", 2025, "3010F", "F", "05", "XA0001", "X-1 Lot 2", "XA0001", "0")],
+                             drop={(2026, "XA0001")})) as lake:
+        got = measure_member(lake, xa, headline=HEAD)
+    assert got.titles_seen == ((2024, "X-1"), (2025, "X-1"), (2025, "X-1 Lot 2"))
+    assert got.editions == (2023, 2024, 2025)
+
+
+def test_check_lake_passes_the_minimal_world(tmp_path):
+    assert _check(tmp_path) == LakeReport([], [], [])
+
+
+def _failures(report, file, row, fragment):
+    assert refused(report.failures, file, row, fragment), "\n".join(report.failures)
+
+
+def test_code_keyed_title_drift_fails(tmp_path):
+    _failures(_check(tmp_path, retitle={(2025, "XA0001"): "X-1 Lot"}), M, XA_ID, "'X-1 Lot'")
+
+
+def test_code_keyed_row_in_an_edition_titles_seen_omits_fails(tmp_path):
+    report = _check(tmp_path, add=[("P-1", 2023, "3010F", "F", "05", "XA0001", "X-1", "XA0001", "90")])
+    _failures(report, M, XA_ID, "PB2023")
+
+
+def test_code_keyed_row_outside_the_range_fails(tmp_path):
+    report = _check(tmp_path, add=[("P-1", 2022, "3010F", "F", "05", "XA0001", "X-1", "XA0001", "90")])
+    _failures(report, M, XA_ID, "PB2022")
+
+
+def test_a_pb2027_code_keyed_row_fails_loudly(tmp_path):      # no reader filters editions (R2; §17 risk 7)
+    report = _check(tmp_path, add=[("P-1", 2027, "3010F", "F", "05", "XA0001", "X-1", "XA0001", "230")])
+    _failures(report, M, XA_ID, "PB2027")
+
+
+def test_drift_sha_mismatch_is_stale_and_blocks(tmp_path):
+    w = World()
+    w.member("XA0001").update(drift_sha256="0" * 64)
+    report = _check(tmp_path, w)
+    assert report.failures == [] and refused(report.stale, M, XA_ID, "drift_sha256")
+    with pytest.raises(RegistryError):
+        report.raise_if_failed()
+
+
+def test_roster_unlike_the_map_fails(tmp_path):
+    w = World()
+    w.era_rows.clear()
+    _failures(_check(tmp_path, w), E, ERA_ID, "roster")
+
+
+def test_unmapped_era_line_fails_unless_excluded(tmp_path):
+    extra = (2022, "3010F", "AF", "05", "3010F-AF-L9", "XA0001", "X-1", "XA0001", "same_program",
+             "XA0001|3010F||2022-2022")
+    _failures(_check(tmp_path / "a", map_rows=MAP_ROWS + [extra]), M, XA_ID, "3010F-AF-L9")
+    excluded = extra[:8] + ("exclude_placeholder", "XA0001|3010F||2017-2022")
+    assert _check(tmp_path / "b", map_rows=MAP_ROWS + [excluded]) == LakeReport([], [], [])
+
+
+def test_unreviewed_guard_match_fails_with_the_f15_wording(tmp_path):
+    report = _check(tmp_path, add=[("P-1", 2026, "3010F", "F", "07", "XD0001", "X-1 Trainer", "XD0001", "1")])
+    _failures(report, J, "x-1", "Unreviewed X-1 workbook identity: 2026/XD0001")
+
+
+def test_guard_match_covered_only_by_a_deferred_row_is_undecided(tmp_path):
+    w = World()
+    w.add_member("x-1", "P-1:3010F:AF:XD0001", 2026, 2026, role="counted", verdict="deferred",
+                 display_title="X-1 Trainer")   # rule 11 requires it
+    report = _check(tmp_path, w, add=[("P-1", 2026, "3010F", "F", "07", "XD0001", "X-1 Trainer", "XD0001", "1")])
+    assert report.failures == [] and any("XD0001" in line for line in report.undecided)
+
+
+def test_a_recorded_deferred_row_is_undecided_never_a_failure(tmp_path):      # §8.3, R4
+    w = World()
+    w.add_member("x-1", "R-1:3600F:AF:XS0001", 2026, 2026, role="project_slice", verdict="deferred",
+                 project_number="675365", display_title="X-1 slice")
+    report = _check(tmp_path, w)
+    assert report.failures == [] and report.stale == []
+    assert refused(report.undecided, M, "x-1|R-1:3600F:AF:XS0001|2026-2026", "deferred")
+
+
+def test_collision_code_fails(tmp_path):
+    _failures(_check(tmp_path, programs=PROGRAM_ROWS + [("XA0001", "3011F", "F")]), M, XA_ID, "collision")
+
+
+def test_doc_ref_missing_file_and_page_out_of_range_fail(tmp_path):
+    for i, ref, fragment in [(0, f"doc:{'e' * 64}#p1", "pdfs/"), (1, f"doc:{DOC_SHA}#p2", "out of range")]:
+        w = World()
+        w.member("XR0001").update(evidence=ref)
+        _failures(_check(tmp_path / str(i), w), M, XR_ID, fragment)
+
+
+def test_doc_ref_miss_names_sha_page_and_quote(tmp_path):
+    site = make_site(tmp_path)
+    reason = resolve_doc_ref(f"doc:{DOC_SHA}#p1;q=X-2 development", site_dir=site)
+    assert DOC_SHA in reason and "p1" in reason and "'X-2 development'" in reason
+    assert resolve_doc_ref(f"doc:{DOC_SHA}#p1;q=X-1 development continues", site_dir=site) is None
+
+
+def test_doc_ref_quote_matches_across_breaks_nbsp_dashes_and_curly_quotes(tmp_path):
+    site = make_site(tmp_path)
+    make_pdf(site / "pdfs" / f"{'e' * 64}.pdf", [['F-35 "Lightning" II - Block 4', "modernization continues"]])
+    quote = "F‑35 “Lightning” II – Block 4 modernization"   # NB hyphen, curly quotes, en dash, NBSP; the page breaks after "Block 4"
+    assert resolve_doc_ref(f"doc:{'e' * 64}#p1;q={quote}", site_dir=site) is None
+    assert resolve_doc_ref(f"doc:{'e' * 64}#p1;q=f-35", site_dir=site) is not None    # case-sensitive
+
+
+def test_normalize_quote_text_folds_and_keeps_case():
+    assert normalize_quote_text(" a  b\n–− “q” ‘s’ ") == "a b -- \"q\" 's'"
+    assert normalize_quote_text("Block") != normalize_quote_text("block")
+
+
+def test_doc_ref_on_a_workbook_reads_the_sheet(tmp_path):
+    site = make_site(tmp_path)
+    wb = Workbook()
+    wb.active["A1"], wb.active["B2"] = "X-1 line", "Lot 2"
+    (site / "workbooks").mkdir()
+    wb.save(site / "workbooks" / f"{'b' * 64}.xlsx")
+    assert resolve_doc_ref(f"doc:{'b' * 64}#p1;q=X-1 line Lot 2", site_dir=site) is None
+    assert "out of range" in resolve_doc_ref(f"doc:{'b' * 64}#p2", site_dir=site)
+
+
+def test_unarchived_or_changed_source_fails_only_for_a_published_family(tmp_path):
+    w = World()
+    w.doc["sources"][0].update(archived=False)
+    w.doc["sources"][0].pop("archive_path")
+    _failures(_check(tmp_path / "a", w), J, "x-book", "not archived")
+    w.family().update(status="ratified")
+    w.family().pop("published_ruling_id")
+    assert _check(tmp_path / "b", w).failures == []
+    db, site = make_lake(tmp_path / "c"), make_site(tmp_path / "c")
+    (site / "sources" / "x-book.txt").write_bytes(b"another copy\n")
+    with open_lake(db) as lake:
+        _failures(check_lake(World().parse(), lake=lake, site_dir=site), J, "x-book", SRC_SHA)
+
+
+def test_partial_corpus_raises_for_raise_and_skips_for_skip(tmp_path):
+    message = "X-1 family history requires every counted workbook member: missing XR0001"
+    _failures(_check(tmp_path / "a", series_skip=frozenset({"XR0001"})), J, "x-1", message)
+    x = World().parse()["x-1"]
+    with open_lake(make_lake(tmp_path / "b", series_skip=frozenset({"XR0001"}))) as lake:
+        series = lake.series_codes()
+    with pytest.raises(RegistryError, match=message):
+        corpus_gate(x, series)
+    w = World()
+    w.family().update(on_partial_corpus="skip")
+    assert corpus_gate(w.parse()["x-1"], series) is False
+    assert corpus_gate(x, series | {"XR0001"}) is True
+    assert _check(tmp_path / "c", w, series_skip=frozenset({"XR0001"})).failures == []
+
+
+def test_draft_family_gets_only_doc_refs_and_undecided_guard_matches(tmp_path):
+    w = World()
+    w.family("y-1")["exclusions"] = [{"exclusion_id": "classified", "kind": "outside_scope", "label": "Classified",
+                                      "size_text": "Classified funding: unknown", "evidence": [f"doc:{'f' * 64}#p1"]}]
+    report = _check(tmp_path, w, add=[("P-1", 2026, "3010F", "F", "01", "YA0001", "Y-1 Aircraft", "YA0001", "1")])
+    assert [line for line in report.failures if ":y-1: " in line and "doc:" + "f" * 64 not in line] == []
+    _failures(report, J, "y-1", "f" * 64)
+    assert refused(report.undecided, J, "y-1", "YA0001")
+
+
+def test_check_lake_families_argument_limits_the_families(tmp_path):
+    db, site = make_lake(tmp_path, add=[("P-1", 2026, "3010F", "F", "01", "YA0001", "Y-1 Aircraft", "YA0001", "1")]), make_site(tmp_path)
+    with open_lake(db) as lake:
+        assert check_lake(World().parse(), lake=lake, site_dir=site, families=["x-1"]) == LakeReport([], [], [])

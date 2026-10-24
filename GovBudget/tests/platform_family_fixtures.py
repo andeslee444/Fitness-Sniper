@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import copy
 import hashlib
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+
+import duckdb
 
 from govbudget.jbooks import era_map
 from govbudget.jbooks.era_map import keys_sha256
 from govbudget.platform_families import MEMBER_COLUMNS, RegistryPaths, parse_registry, write_registry
+from pdf_factory import make_pdf
 
 ON = "2026-10-21"
 RULING_X1 = "R-DEC-FAM-X1-B1"
@@ -161,3 +165,112 @@ def write_world(root: Path, world: World) -> tuple[RegistryPaths, Path]:
     seed = root / "p1_era_code_decisions.csv"
     era_map.write_csv(seed, era_map.SEED_COLUMNS, world.decisions.values())
     return paths, seed
+
+
+# ---------------------------------------------------------------------------
+# The lake and the site (Task 2c): the layout of tests/jbooks/era_map_fixtures.py,
+# {root}/duckdb/govbudget.duckdb beside {root}/parquet/jbooks/*.parquet, and
+# {root}/site/.
+# ---------------------------------------------------------------------------
+
+BL_COLS = ("exhibit", "fiscal_year", "account", "account_title", "organization", "budget_activity",
+           "budget_activity_title", "pe_bli", "title", "amount_type", "amount_thousands",
+           "source_document_id", "source_sheet", "source_cells", "line_item_code")
+# (exhibit, edition, account, organization, ba, pe_bli, title, line_item_code, actuals_k)
+LAKE_ROWS = [
+    ("P-1", 2023, "3010F", "AF", "05", "3010F-AF-L7", "X-1", "XA0001", "100"),
+    ("P-1", 2024, "3010F", "F", "05", "XA0001", "X-1", "XA0001", "200"),
+    ("P-1", 2025, "3010F", "F", "05", "XA0001", "X-1", "XA0001", "210"),
+    ("P-1", 2026, "3010F", "F", "05", "XA0001", "X-1", "XA0001", "220"),
+    ("R-1", 2025, "3600F", "F", "07", "XR0001", "X-1 Dev", "", "50"),
+    ("R-1", 2026, "3600F", "F", "07", "XR0001", "X-1 Dev", "", "60"),
+    ("P-1", 2024, "3010F", "F", "06", "XC0001", "X-1 Spares", "XC0001", "10"),
+    ("P-1", 2025, "3010F", "F", "06", "XC0001", "X-1 Spares", "XC0001", "11"),
+    ("P-1", 2026, "3010F", "F", "06", "XC0001", "X-1 Spares", "XC0001", "12"),
+    ("P-1", 2026, "3010F", "F", "07", "ZZ0001", "Unrelated Line", "ZZ0001", "5"),
+]
+# (edition, account, organization, ba, era_key, line_item_code, filed_title, program_key, decision, decision_id)
+MAP_ROWS = [(2023, "3010F", "AF", "05", "3010F-AF-L7", "XA0001", "X-1", "XA0001", "same_program", ERA_XA)]
+PROGRAM_ROWS = [("XA0001", "3010F", "F"), ("XR0001", "3600F", "F"), ("XC0001", "3010F", "F"),
+                ("0145", "1506N", "N"), ("0145", "1810N", "N")]      # one collision key, no member's
+MAP_COLUMNS = ("edition", "account", "organization", "budget_activity", "era_key", "line_item_code",
+               "filed_title", "program_key", "decision", "decision_id")
+DOCUMENT_COLUMNS = ("id", "org", "exhibit_family", "fiscal_year", "title", "source_url", "sha256",
+                    "bytes", "downloaded_at", "rel_path")
+
+
+def write_parquet(path: Path, cols: Sequence[str], rows: Sequence[Sequence[str]]) -> None:
+    """An all-varchar parquet through an in-memory DuckDB (era_map_fixtures._write_parquet)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect()
+    try:
+        con.execute("create table t (" + ", ".join(f'"{c}" varchar' for c in cols) + ")")
+        if rows:
+            con.executemany("insert into t values (" + ", ".join("?" * len(cols)) + ")",
+                            [list(r) for r in rows])
+        con.execute(f"copy t to '{path}' (format parquet)")
+    finally:
+        con.close()
+
+
+def make_lake(root: Path, *, add: Sequence[tuple] = (), drop: set[tuple[int, str]] = frozenset(),
+              retitle: Mapping[tuple[int, str], str] = {}, map_rows: Sequence[tuple] = MAP_ROWS,
+              programs: Sequence[tuple] = PROGRAM_ROWS, series_skip: frozenset[str] = frozenset()) -> Path:
+    """LAKE_ROWS + add, minus the (edition, pe_bli) pairs in drop, with retitle
+    replacing a pair's title. Each entry is one P-1/R-1 line printed in two
+    amount columns (fy_{e-2}_actuals with its actuals_k, fy_{e-1}_total with
+    0). Returns the DuckDB path."""
+    entries = []
+    for exhibit, e, account, org, ba, pe_bli, title, code, actuals_k in [*LAKE_ROWS, *add]:
+        if (e, pe_bli) in drop:
+            continue
+        entries.append((exhibit, e, account, org, ba, pe_bli, retitle.get((e, pe_bli), title), code,
+                        actuals_k))
+    bl_rows = []
+    for exhibit, e, account, org, ba, pe_bli, title, code, actuals_k in entries:
+        for amount_type, amount in ((f"fy_{e - 2}_actuals", actuals_k), (f"fy_{e - 1}_total", "0")):
+            bl_rows.append((exhibit, str(e), account, "Acct", org, ba, "BA", pe_bli, title, amount_type,
+                            amount, str(e - 2000), "Exhibit P-1", "O9", code))
+    write_parquet(root / "parquet" / "jbooks" / "budget_lines.parquet", BL_COLS, bl_rows)
+    write_parquet(root / "parquet" / "jbooks" / "documents.parquet", DOCUMENT_COLUMNS,
+                  [(i, "DOD", "rollup", f"20{i}", "p1_display.xlsx", "https://x.test", i * 32, "1",
+                    "2026-01-01", f"fy20{i}/dod/p1_display.xlsx") for i in ("23", "24", "25", "26")])
+
+    db = root / "duckdb" / "govbudget.duckdb"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect(str(db))
+    try:
+        con.execute("create table fct_decade_series (pe_bli varchar, fy integer, edition_year integer,"
+                    " amount_type_kind varchar, amount double, account varchar, organization varchar)")
+        con.execute("create table fct_program_decade_series (program_key varchar, fy integer,"
+                    " edition_year integer, amount_type_kind varchar, amount_thousands double)")
+        for _x, e, _a, _o, _b, pe_bli, _t, code, actuals_k in entries:
+            if pe_bli not in series_skip:
+                con.execute("insert into fct_decade_series values (?, ?, ?, 'actuals', ?, null, null)",
+                            [pe_bli, e - 2, e, float(actuals_k)])
+            con.executemany("insert into fct_program_decade_series values (?, ?, ?, ?, ?)",
+                            [[code or pe_bli, e - 2, e, "actuals", float(actuals_k)],
+                             [code or pe_bli, e - 1, e, "enacted", 0.0]])
+        con.execute("create table p1_era_line_map (edition integer, "
+                    + ", ".join(f"{c} varchar" for c in MAP_COLUMNS[1:]) + ")")
+        if map_rows:
+            con.executemany("insert into p1_era_line_map values (" + ", ".join("?" * len(MAP_COLUMNS))
+                            + ")", [list(r) for r in map_rows])
+        con.execute("create table dim_programs (pe_bli varchar, account varchar, org varchar)")
+        if programs:
+            con.executemany("insert into dim_programs values (?, ?, ?)", [list(r) for r in programs])
+    finally:
+        con.close()
+    return db
+
+
+def make_site(root: Path) -> Path:
+    """{root}/site with the one budget-book PDF (DOC_SHA) and the archived x-book source."""
+    site = root / "site"
+    pdf = site / "pdfs" / f"{DOC_SHA}.pdf"
+    pdf.parent.mkdir(parents=True, exist_ok=True)
+    make_pdf(pdf, [["X-1 development", "continues in FY2026"]])
+    archived = site / "sources" / "x-book.txt"
+    archived.parent.mkdir(parents=True, exist_ok=True)
+    archived.write_bytes(SRC_BYTES)
+    return site
