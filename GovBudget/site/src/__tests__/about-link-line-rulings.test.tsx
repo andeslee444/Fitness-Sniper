@@ -22,6 +22,7 @@ import React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import AboutPage from "@/app/about/page";
+import { makeProseAllowlist } from "../../scripts/gates/prose-allowlist.mjs";
 
 afterEach(cleanup);
 
@@ -182,5 +183,37 @@ describe("/about/ labels the contract-link withdrawal a correction", () => {
     );
     // the gross FY2022 figure is the larger number; it is not printed
     expect(text).not.toContain("$157.9 million");
+  });
+
+  /**
+   * The release proof's P12 build (2026-10-24) failed build gate 2
+   * (render-static (b)): "$147.0 " sat outside any [data-amount], and no
+   * prose-allowlist entry covered it. It had since review r2 M-1 (4504be40);
+   * no full `npm run verify` ran on a build of the page in between, and no
+   * unit test applied the gate's rule. This applies it to the rendered page:
+   * every currency token outside a cite is a page-scoped allowlist entry for
+   * /about/, with the gate's own regex (pinned to render-static.mjs below).
+   */
+  it("every dollar token outside a cite is allowlisted for /about/, as gate 2 requires", () => {
+    const CURRENCY_RE = /\$[\d,]+(\.\d+)?\s*[TBMK]?/g;
+    const gate = fs.readFileSync(path.resolve(__dirname, "../../scripts/gates/render-static.mjs"), "utf8");
+    expect(gate).toContain(`const CURRENCY_RE = ${CURRENCY_RE.toString()};`);
+
+    const entries = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, "../../scripts/gates/prose-allowlist.json"), "utf8"),
+    );
+    const allow = makeProseAllowlist(entries);
+    expect(allow.shapeErrors).toEqual([]);
+
+    const { container } = render(<AboutPage />);
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    const tokens: string[] = [];
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if ((n.parentElement as Element | null)?.closest("[data-amount], [data-prose-cite]")) continue;
+      tokens.push(...((n.textContent ?? "").match(CURRENCY_RE) ?? []));
+    }
+    // non-vacuity: the correction's own figure is among the tokens scanned
+    expect(tokens.map((t) => t.trim())).toContain("$147.0");
+    expect(tokens.filter((t) => !allow.isAllowed("/about/", t))).toEqual([]);
   });
 });

@@ -155,5 +155,12 @@
       "/methodology/"
     ],
     "reason": "2026-08-21 corrections table: Medium Landing Ship's FY2026 request, the second named example. Cited on /program/3050-SCN/."
+  },
+  {
+    "pattern": "$147.0",
+    "pages": [
+      "/about/"
+    ],
+    "reason": "2026-10-21 contract-link correction (R-DEC-LINK-2026-10-21, R4): the Rolls-Royce maintenance order N0001922F0001's net obligation over all years ($147.0 million in the page's words), the measured removal from the all-years /district/IN-07/ F-35 row and the programs.json F-35 concentration dollars (the flows row and the FY2022 figures lost its $157.9M gross; the page prints the smaller true number). The fact that carried it retires with the correction (the IN-07 F-35 receipt 44ee093c2bab2ea8), so it cannot carry a citation; same rule as the 2026-08-08 corrections table's withdrawn WAS values above. Bound to the measured net removal by about-link-line-rulings.test.tsx."
   }
 ]
