@@ -3296,7 +3296,27 @@ def _cmd_platform_families(args) -> None:
         print(f"platform-families preview: {args.family} cumulative {result.cumulative_thousands:.3f} thousand"
               f" -> {args.out}")
         return
-    raise NotImplementedError(f"{args.pf_action} lands in Task 7d")
+    if args.pf_action == "answer":
+        import json
+
+        from govbudget import platform_family_review as review
+
+        path = review.answer(platform_family=args.family, batch=args.batch, answers_path=args.answers,
+                             review_root=reg.REVIEW_ROOT, out_root=review.OUT_ROOT)
+        decided_on = json.loads(path.read_text(encoding="utf-8"))["decided_on"]
+        print(f"platform-families answer: {args.family} {args.batch} -> {path}; next: platform-families ratify"
+              f" --family {args.family} --batch {args.batch} --decided-on {decided_on}")
+        return
+    if args.pf_action == "ratify":
+        from govbudget import platform_family_review as review
+
+        out = review.ratify(platform_family=args.family, batch=args.batch, decided_on=args.decided_on,
+                            duckdb_path=args.duckdb or config.DUCKDB_PATH, site_dir=args.site_dir or config.SITE_DIR,
+                            paths=reg.DEFAULT_PATHS, review_root=reg.REVIEW_ROOT, out_root=review.OUT_ROOT)
+        print(f"platform-families ratify: {args.family} {out['status']} as {out['ruling_id']}; {out['members']}"
+              f" member row(s), {out['era_lines']} era line(s) -> data-seeds/")
+        return
+    raise ValueError(f"unknown action {args.pf_action!r}")
 
 
 def cmd_refresh(args) -> None:

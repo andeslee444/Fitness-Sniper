@@ -27,9 +27,9 @@ from govbudget import platform_families as reg
 import govbudget.platform_family_history as hist
 import govbudget.platform_family_review as review
 import govbudget.verify_families as vf
-from platform_families_helpers import (ATA000, B1_MART, B1_POINTS, B1_REF, DRAFT_F35, F35_PREFILL, F35_RULING_ID,
-                                       JSM000, MEASURES, MSAR, FakeLake, add_family, add_source, f15_registry,
-                                       fake_export, ratified_f35, site_tree, write_prefill)
+from platform_families_helpers import (ATA000, B1_MART, B1_POINTS, B1_REF, DRAFT_F35, EMD, F15_ORDER, F35_PREFILL,
+                                       F35_RULING_ID, JSM000, MEASURES, MSAR, FakeLake, add_family, add_source,
+                                       f15_registry, fake_export, ratified_f35, site_tree, write_prefill)
 
 LOCK = 'IO Error: Could not set lock on file "/x/govbudget.duckdb": Conflicting lock is held in /usr/bin/python3 (PID 1)'
 
@@ -317,23 +317,37 @@ def test_propose_refuses_a_source_id_that_differs_from_the_shared_list(proposing
     assert not (rr / "f-35").exists()
 
 
-@pytest.mark.parametrize("tool", ["propose"])
+@pytest.mark.parametrize("tool", ["propose", "ratify"])
 def test_propose_and_ratify_write_nothing_on_a_lock(proposing, request, monkeypatch, capsys, tool):   # Review Focus 5
     fj, rc, db, paths, rr, _before = _unpack(proposing)
-    baseline = _registry_bytes(paths)
+    if tool == "ratify":
+        # Ratify reaches the lake only at step 6, after it has read the answer, the
+        # manifest and both review files: build that state first (answering renders B1
+        # on the proposing this test holds), then lock the lake.
+        a = request.getfixturevalue("answering")
+        review.answer(platform_family="f-35", batch="B1", answers_path=a.ans, review_root=rr, out_root=a.out_root)
+        baseline = _snap(paths, rr)
+        argv = ["platform-families", "ratify", "--family", "f-35", "--batch", "B1", "--decided-on", "2026-10-22",
+                "--duckdb", str(db), "--site-dir", str(a.site)]
+    else:
+        baseline = _registry_bytes(paths)
+        argv = ["platform-families", "propose", "--family", "f-35", "--family-json", str(fj), "--rows", str(rc),
+                "--duckdb", str(db)]
 
     def locked(path):
         raise duckdb.IOException(LOCK)
 
     monkeypatch.setattr(reg, "open_lake", locked)
-    argv = ["platform-families", "propose", "--family", "f-35", "--family-json", str(fj), "--rows", str(rc),
-            "--duckdb", str(db)]
     assert _exit(argv) == 2
     err = capsys.readouterr().err
     assert err.startswith(f"platform-families {tool}: ERROR — ")
     assert "Could not set lock on file" in err
-    assert _registry_bytes(paths) == baseline
-    assert not (rr / "f-35").exists()
+    if tool == "ratify":
+        assert "answer B1 first" not in err
+        _assert_unchanged(baseline, paths, rr)
+    else:
+        assert _registry_bytes(paths) == baseline
+        assert not (rr / "f-35").exists()
 
 
 def _seed_argv(tmp_path, reply) -> list[str]:
@@ -570,3 +584,228 @@ def test_compare_reference_refuses_a_reference_whose_named_years_disagree(tmp_pa
 ], ids=["render", "preview"])
 def test_cli_render_and_preview_require_duckdb_and_site_dir(argv):
     assert _exit(argv) == 2
+
+
+# ---------------------------------------------------------------------------
+# answer and ratify (Task 7d; spec §8.2, §8.3, §9.1 rules 16, 22, 23, 25; Review Focus 1 and 5)
+# ---------------------------------------------------------------------------
+
+ATA, F00, JSM, SLICE = ("f-35|P-1:3010F:AF:ATA000|2017-2026", "f-35|R-1:3600F:AF:0604800F|2017-2023",
+                        "f-35|P-1:3020F:AF:JSM000|2022-2026", "f-35|R-1:3600F:AF:0207268F|2017-2026")
+
+
+def _sha(path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _answers(path, *, rows, decided_on="2026-10-22", owner_reply="approved", **extra):
+    """Write the owner's answers to B1 at `path`: {"batch": "B1", decided_on, owner_reply, rows},
+    with any `extra` keys after them. Returns `path`."""
+    obj = {"batch": "B1", "decided_on": decided_on, "owner_reply": owner_reply, "rows": rows, **extra}
+    path.write_text(json.dumps(obj, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return path
+
+
+def _snap(paths, rr) -> dict:
+    """The bytes of the three registry files and both review files."""
+    return {p: p.read_bytes() for p in (paths.json, paths.members, paths.era_lines, *review.review_files(rr, "f-35"))}
+
+
+def _assert_unchanged(baseline, paths, rr) -> None:
+    assert _snap(paths, rr) == baseline
+
+
+@pytest.fixture
+def answering(rendering, monkeypatch):
+    """rendering, plus B1 rendered once (no differences) under out_root (the patched
+    review.OUT_ROOT), the owner's answers B1-answers.json (no amendments, decided_on
+    2026-10-22, reply "approved"), the lake measures stubbed with MEASURES and stage 2
+    with an empty report."""
+    r = rendering
+    out = review.render(platform_family="f-35", batch="B1", duckdb_path=r.db, site_dir=r.site, review_root=r.rr,
+                        out_root=r.out_root, preview_out=r.scratch)
+    assert out["differences"] == 0
+    ans = _answers(r.tmp_path / "B1-answers.json", rows={})
+    monkeypatch.setattr(reg, "measure_member", lambda lake, member, *, headline: MEASURES[member.member_id])
+    monkeypatch.setattr(reg, "check_lake", lambda r, **kw: reg.LakeReport([], [], []))
+    return SimpleNamespace(**vars(r), ans=ans)
+
+
+def _answer(a):
+    return review.answer(platform_family="f-35", batch="B1", answers_path=a.ans, review_root=a.rr, out_root=a.out_root)
+
+
+def _ratify(a, decided_on="2026-10-22"):
+    return review.ratify(platform_family="f-35", batch="B1", decided_on=decided_on, duckdb_path=a.db, site_dir=a.site,
+                         paths=a.paths, review_root=a.rr, out_root=a.out_root)
+
+
+def test_answer_writes_the_batch_file_with_both_shas(answering):
+    a = answering
+    path = review.answer(platform_family="f-35", batch="B1", answers_path=a.ans, review_root=a.rr, out_root=a.out_root)
+    assert path == a.rr / "f-35" / "batches" / "B1.json"
+    got = json.loads(path.read_text())
+    assert got == {"batch": "B1", "decided_on": "2026-10-22", "owner_reply": "approved", "rows": {},
+                   "review_sha256": _sha(a.rr / "f-35" / "review.csv"),
+                   "manifest_sha256": _sha(a.out_root / "f-35" / "B1.json")}
+    assert list(got)[-2:] == ["review_sha256", "manifest_sha256"]
+    assert path.read_text(encoding="utf-8") == json.dumps(got, indent=2, ensure_ascii=False) + "\n"
+
+
+@pytest.mark.parametrize("change,needle", [({"extra": 1}, "unknown key"), ({"owner_reply": "  "}, "owner_reply"),
+                                           ({"decided_on": "20261022"}, "not an ISO date")])
+def test_answer_refuses_unknown_keys_a_blank_reply_or_a_non_iso_date(answering, change, needle):
+    a = answering
+    _answers(a.ans, rows={}, **change)
+    with pytest.raises(reg.RegistryError) as e:
+        _answer(a)
+    assert needle in str(e.value)
+    assert not (a.rr / "f-35" / "batches" / "B1.json").exists()
+
+
+def test_answer_refuses_a_changed_review_csv(answering):
+    a = answering
+    review_csv = a.rr / "f-35" / "review.csv"
+    text = review_csv.read_text(encoding="utf-8")
+    assert text.count("waits for the project-slice pilot") == 1
+    review_csv.write_text(text.replace("waits for the project-slice pilot", "waits for the slice pilot"),
+                          encoding="utf-8")
+    with pytest.raises(reg.RegistryError, match="changed since B1 was rendered"):
+        _answer(a)
+    assert not (a.rr / "f-35" / "batches" / "B1.json").exists()
+
+
+@pytest.mark.parametrize("column", ["member_id", "valid_from_edition", "drift_sha256", "titles_seen", "member_order"])
+def test_answer_refuses_identity_edition_or_lake_column_amendments(answering, column):   # Review Focus 1
+    a = answering
+    _answers(a.ans, rows={ATA: {column: "x"}})
+    with pytest.raises(reg.RegistryError) as e:
+        _answer(a)
+    assert f"{ATA}: {column} is not amendable in an answer" in str(e.value) and "re-run propose" in str(e.value)
+    assert not (a.rr / "f-35" / "batches" / "B1.json").exists()
+
+
+def test_answer_refuses_a_row_not_on_the_page(answering):               # Review Focus 1
+    a = answering
+    _answers(a.ans, rows={"f-35|P-1:3010F:AF:F03500|2017-2026": {"note": "x"}})
+    with pytest.raises(reg.RegistryError, match=r"f-35\|P-1:3010F:AF:F03500\|2017-2026 is not on the B1 page"):
+        _answer(a)
+    assert not (a.rr / "f-35" / "batches" / "B1.json").exists()
+
+
+def test_ratify_writes_members_era_lines_and_the_batch_ruling(answering):
+    a = answering
+    _answers(a.ans, rows={JSM: {"note": "context only"}})
+    _answer(a)
+    out = review.ratify(platform_family="f-35", batch="B1", decided_on="2026-10-22", duckdb_path=a.db, site_dir=a.site,
+                        paths=a.paths, review_root=a.rr, out_root=a.out_root)
+    assert out == {"members": 4, "era_lines": 1, "ruling_id": "R-DEC-FAM-F35-B1", "status": "ratified"}
+    registry = reg.load_registry(a.paths)
+    ruling = registry.rulings["R-DEC-FAM-F35-B1"]
+    assert (registry["f-35"].status, ruling.kind, ruling.platform_family, ruling.decided_by, ruling.decided_on,
+            ruling.owner_reply, ruling.seed_basis) == ("ratified", "batch", "f-35", "owner", "2026-10-22", "approved", False)
+    assert ruling.spec == review.BATCH_RULING_SPEC and ruling.spec.endswith("#82-r-dec-fam-f35-b1-one-batch-through-the-batch-page")
+    rows = {r["member_row_id"]: r for r in _csv(a.paths.members) if r["platform_family"] == "f-35"}
+    assert [rows[i]["member_order"] for i in (ATA, F00, JSM, SLICE)] == ["1", "2", "", ""]
+    assert {r["ruling_id"] for r in rows.values()} == {"R-DEC-FAM-F35-B1"} and rows[JSM]["note"] == "context only"
+    assert rows[SLICE]["verdict"] == "deferred"
+    assert [r["member_id"] for r in _csv(a.paths.era_lines) if r["platform_family"] == "f-35"] == ["P-1:3010F:AF:ATA000"]
+    assert [m.member_id for m in registry["f-15"].counted] == F15_ORDER        # F-15 untouched
+
+
+def test_ratify_renumbers_member_order_after_a_deferral(answering):     # Review Focus 1
+    a = answering
+    _answers(a.ans, rows={ATA: {"defer": True}})
+    _answer(a)
+    out = _ratify(a)
+    rows = {r["member_row_id"]: r for r in _csv(a.paths.members) if r["platform_family"] == "f-35"}
+    assert (rows[ATA]["verdict"], rows[ATA]["member_order"], rows[F00]["member_order"]) == ("deferred", "", "1")
+    assert out["era_lines"] == 0
+
+
+def test_ratify_refuses_a_decided_on_unlike_the_answer(answering):      # Review Focus 1
+    a = answering
+    _answer(a)
+    baseline = _snap(a.paths, a.rr)
+    with pytest.raises(reg.RegistryError, match="--decided-on 2026-10-23 differs from the answer's decided_on 2026-10-22"):
+        _ratify(a, decided_on="2026-10-23")
+    _assert_unchanged(baseline, a.paths, a.rr)
+
+
+def test_ratify_refuses_a_family_object_changed_since_the_render(answering):
+    a = answering
+    _answer(a)
+    doc = json.loads(a.paths.json.read_text(encoding="utf-8"))
+    next(f for f in doc["families"] if f["platform_family"] == "f-35")["scope_note"] = "Edited."
+    a.paths.json.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    baseline = _snap(a.paths, a.rr)     # holds the edit
+    with pytest.raises(reg.RegistryError, match="family object changed since B1 was rendered"):
+        _ratify(a)
+    _assert_unchanged(baseline, a.paths, a.rr)
+
+
+def test_ratify_refuses_a_reused_batch(answering):
+    a = answering
+    _answer(a)
+    _ratify(a)
+    baseline = _snap(a.paths, a.rr)
+    with pytest.raises(reg.RegistryError, match="R-DEC-FAM-F35-B1 already exists"):
+        _ratify(a)
+    _assert_unchanged(baseline, a.paths, a.rr)
+
+
+def test_ratify_refuses_a_lake_hash_unlike_the_review_time_drift(answering, monkeypatch):
+    a = answering
+    _answer(a)
+    monkeypatch.setitem(MEASURES, EMD, dataclasses.replace(MEASURES[EMD], drift_sha256="e" * 64))
+    baseline = _snap(a.paths, a.rr)
+    with pytest.raises(reg.RegistryError) as e:
+        _ratify(a)
+    assert f"{F00}: drift_sha256 {'e' * 64} differs from the review-time {'b' * 64}" in str(e.value)
+    _assert_unchanged(baseline, a.paths, a.rr)
+
+
+def test_ratify_lists_every_refusal_at_once_and_writes_nothing(answering, monkeypatch):
+    a = answering
+    _answer(a)
+    monkeypatch.setitem(MEASURES, EMD, dataclasses.replace(MEASURES[EMD], drift_sha256="e" * 64))
+    baseline = _snap(a.paths, a.rr)
+    with pytest.raises(reg.RegistryError) as e:
+        _ratify(a, decided_on="2026-10-23")
+    errors = e.value.errors
+    assert any("--decided-on 2026-10-23 differs from the answer's decided_on 2026-10-22" in line for line in errors)
+    assert any(f"{F00}: drift_sha256 {'e' * 64} differs from the review-time {'b' * 64}" in line for line in errors)
+    _assert_unchanged(baseline, a.paths, a.rr)
+
+
+def test_propose_render_answer_ratify_round_trip(proposing, monkeypatch, capsys):
+    p = proposing
+    site = site_tree(p.tmp_path)
+    monkeypatch.setattr(hist, "export_family_histories", fake_export(B1_POINTS))
+    monkeypatch.setattr(reg, "open_lake", lambda path: FakeLake(B1_MART))
+    monkeypatch.setattr(reg, "check_lake", lambda r, **kw: reg.LakeReport([], [], []))
+    ans = _answers(p.tmp_path / "B1-answers.json", rows={})
+    db, s = str(p.db), str(site)
+
+    def run(argv):   # each command exits 0 or returns
+        try:
+            cli.main(["platform-families", *argv])
+        except SystemExit as exit_:
+            assert exit_.code == 0, capsys.readouterr().err
+
+    run(["propose", "--family", "f-35", "--family-json", str(p.fj), "--rows", str(p.rc), "--duckdb", db])
+    (p.rr / "f-35" / "reference-b1.json").write_text(json.dumps(B1_REF, indent=2) + "\n", encoding="utf-8")
+    run(["render", "--family", "f-35", "--batch", "B1", "--duckdb", db, "--site-dir", s,
+         "--preview-out", str(p.tmp_path / "fam2-preview-f-35-B1")])
+    run(["answer", "--family", "f-35", "--batch", "B1", "--answers", str(ans)])
+    run(["ratify", "--family", "f-35", "--batch", "B1", "--decided-on", "2026-10-22", "--duckdb", db, "--site-dir", s])
+    run(["check"])
+    out = capsys.readouterr().out.splitlines()
+    assert (p.out_root / "f-35" / "B1.html").is_file() and (p.out_root / "f-35" / "B1.json").is_file()
+    batch_file = p.rr / "f-35" / "batches" / "B1.json"
+    assert (f"platform-families answer: f-35 B1 -> {batch_file}; next: platform-families ratify --family f-35"
+            " --batch B1 --decided-on 2026-10-22") in out
+    assert ("platform-families ratify: f-35 ratified as R-DEC-FAM-F35-B1; 4 member row(s), 1 era line(s)"
+            " -> data-seeds/") in out
+    assert reg.load_registry(p.paths)["f-35"].status == "ratified"
+    assert out[-1] == "platform-families check: families=2 failures=0 undecided=0 stale=0"

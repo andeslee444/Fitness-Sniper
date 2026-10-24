@@ -21,6 +21,15 @@ writes the batch page and its manifest under tmp/platform-families/<pf>/
 (D10). A preview error, or a difference whose cause is a row of the proposal,
 writes no page (§8.2, Review Focus 3).
 
+Task 7d: `answer` records the owner's reply to a batch page as
+data/research/platform_families/<pf>/batches/B<n>.json, bound to the page by
+the sha256 of review.csv and of the manifest; it amends rows only (never an
+identity, edition or lake column) and only rows on the page. `ratify` merges
+the answered batch into the registry as the batch ruling R-DEC-FAM-<FAM>-B<n>
+(draft -> ratified): it renumbers member_order over the approved counted rows,
+runs stage 1 on the merged registry and stage 2 for every family, and lists
+every refusal at once, writing nothing (#198; §8.3, Review Focus 1 and 5).
+
 Every registry (I-REG) and history (I-HIST) function is called through the
 module attribute (`reg.open_lake`, `reg.measure_member`,
 `hist.export_family_histories`, …), so a test patches it there (R15).
@@ -909,3 +918,336 @@ def render(*, platform_family: str, batch: str, duckdb_path: Path, site_dir: Pat
     era_map._atomic_write_texts({page_path: page,
                                  manifest_path: json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"})
     return {"page": page_path, "manifest": manifest_path, "rows": len(ordered), "differences": len(differences)}
+
+
+# ---------------------------------------------------------------------------
+# answer and ratify (spec §8.2 "The answer", §8.3; Review Focus 1 and 5)
+# ---------------------------------------------------------------------------
+
+AMENDABLE_COLUMNS = ("role", "verdict", "program_tag", "purpose_tag", "purpose", "variant_ids", "variant_scope",
+                     "scope_note", "services_using", "paying_org", "predecessor_member_id", "successor_member_id",
+                     "link_basis", "link_evidence", "evidence", "coverage_expected_from_edition",
+                     "expected_next_edition", "note")
+ANSWER_KEYS = frozenset({"batch", "decided_on", "owner_reply", "rows"})
+BATCH_RULING_SPEC = ("docs/superpowers/specs/2026-10-20-families-piece2-registry-design.md"
+                     "#82-r-dec-fam-f35-b1-one-batch-through-the-batch-page")   # R13
+_ANSWER_SHA_KEYS = ("review_sha256", "manifest_sha256")   # answer appends them after the input
+
+
+def answer_path(review_root: Path, platform_family: str, batch: str) -> Path:
+    """The committed answer file <root>/<pf>/batches/<batch>.json (D10)."""
+    return Path(review_root) / platform_family / "batches" / f"{batch}.json"
+
+
+def _load_json(path: Path, errors: list[str]) -> tuple[dict | None, bytes | None]:
+    """(one JSON object, its bytes): UTF-8, duplicate keys refused. (None, None)
+    with the faults appended to `errors`; the caller checks the file exists."""
+    data = path.read_bytes()
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        errors.append(reg._line(path.name, None, f"is not UTF-8 ({exc.reason} at byte {exc.start})"))
+        return None, None
+    obj, faults = reg._parse_json(text)
+    errors.extend(reg._line(path.name, None, fault) for fault in faults)
+    if faults:
+        return None, None
+    if not isinstance(obj, dict):
+        errors.append(reg._line(path.name, None, f"must be one JSON object, got {type(obj).__name__}"))
+        return None, None
+    return obj, data
+
+
+def _read_manifest(out_root: Path, platform_family: str, batch: str,
+                   errors: list[str]) -> tuple[dict | None, str | None]:
+    """(the batch manifest out_root/<pf>/<batch>.json, the sha256 of its bytes),
+    or (None, None) with the refusal appended: missing (render first), or the
+    manifest of another family or batch."""
+    path = Path(out_root) / platform_family / f"{batch}.json"
+    if not path.is_file():
+        errors.append(reg._line(path.name, None, f"missing (no batch manifest at {path}); render {batch} first"))
+        return None, None
+    manifest, data = _load_json(path, errors)
+    if manifest is None:
+        return None, None
+    if (manifest.get("platform_family"), manifest.get("batch")) != (platform_family, batch):
+        errors.append(reg._line(path.name, None, f"is the manifest of {manifest.get('platform_family')!r} "
+                                                 f"{manifest.get('batch')!r}, not {platform_family} {batch}"))
+        return None, None
+    return manifest, hashlib.sha256(data).hexdigest()
+
+
+def _review_sha_errors(manifest: Mapping, review_root: Path, platform_family: str, batch: str) -> list[str]:
+    """Both review files against the shas the manifest recorded at render time."""
+    errors: list[str] = []
+    for path, key in zip(review_files(review_root, platform_family), ("review_sha256", "review_era_lines_sha256")):
+        old = str(manifest.get(key) or "")
+        if not path.is_file():
+            errors.append(reg._line(path.name, None, f"missing (no file at {path}); it was on the {batch} page"))
+            continue
+        new = hashlib.sha256(path.read_bytes()).hexdigest()
+        if new != old:
+            errors.append(reg._line(path.name, None, f"changed since {batch} was rendered (sha256 {old[:12]} at "
+                                                     f"render, {new[:12]} now) — render the batch again"))
+    return errors
+
+
+def _is_defer(amendment: object) -> bool:
+    """Exactly {"defer": true} ({"defer": 1} is not: 1 == True in Python)."""
+    return isinstance(amendment, dict) and set(amendment) == {"defer"} and amendment["defer"] is True
+
+
+def _answer_errors(obj: Mapping, *, batch: str, page_ids: set[str] | None, name: str) -> list[str]:
+    """§8.2's refusals of an answer input: unknown keys, another batch, a blank
+    owner_reply, a non-ISO decided_on, and rows that are not an object keyed by
+    the page's member_row_ids (skipped when `page_ids` is None: no manifest)
+    whose values are exactly {"defer": true} or string amendments of
+    AMENDABLE_COLUMNS (Review Focus 1)."""
+    errors: list[str] = []
+
+    def add(reason: str) -> None:
+        errors.append(reg._line(name, None, reason))
+
+    stray = sorted(set(obj) - ANSWER_KEYS)
+    if stray:
+        add(f"unknown key(s) {stray}; an answer has exactly {sorted(ANSWER_KEYS)}")
+    if obj.get("batch") != batch:
+        add(f"batch {obj.get('batch')!r} is not --batch {batch!r}")
+    reply = obj.get("owner_reply")
+    if not isinstance(reply, str) or not reply.strip():
+        add(f"owner_reply {reply!r} is blank; it is the owner's reply, verbatim")
+    if not reg._iso_date(obj.get("decided_on")):
+        add(f"decided_on {obj.get('decided_on')!r} is not an ISO date")
+    rows = obj.get("rows")
+    if not isinstance(rows, dict):
+        add(f"rows must be an object keyed by member_row_id, got {rows!r}")
+        return errors
+    for row_id, amendment in rows.items():
+        if page_ids is not None and row_id not in page_ids:
+            add(f"{row_id} is not on the {batch} page")
+            continue
+        if _is_defer(amendment):
+            continue
+        if not isinstance(amendment, dict):
+            add(f'{row_id}: an amendment is an object of amendable columns or {{"defer": true}}, got {amendment!r}')
+            continue
+        for column, value in amendment.items():
+            if column == "defer":
+                add(f'{row_id}: defer is {{"defer": true}} alone, never with another column or value')
+            elif column not in AMENDABLE_COLUMNS:
+                add(f"{row_id}: {column} is not amendable in an answer; change it in the prefill and re-run propose")
+            elif not isinstance(value, str):
+                add(f"{row_id}: {column} must be a string, got {value!r}")
+    return errors
+
+
+def answer(*, platform_family: str, batch: str, answers_path: Path, review_root: Path = reg.REVIEW_ROOT,
+           out_root: Path = OUT_ROOT) -> Path:
+    """`platform-families answer` (§8.2): check the owner's answers against the
+    batch manifest and the review files, then write the answer file
+    review_root/<pf>/batches/<batch>.json atomically: the input, then
+    review_sha256 and manifest_sha256. Every refusal is raised together as one
+    RegistryError, writing nothing. It does not open the registry: a reused
+    batch is ratify's refusal."""
+    pf = platform_family
+    answers_path = Path(answers_path)
+    errors: list[str] = []
+
+    # 1. The manifest; 2. the review files against it.
+    manifest, manifest_sha = _read_manifest(out_root, pf, batch, errors)
+    page_ids = None
+    if manifest is not None:
+        errors.extend(_review_sha_errors(manifest, review_root, pf, batch))
+        page_ids = {row.get("member_row_id") for row in manifest.get("rows") or () if isinstance(row, dict)}
+
+    # 3. The answer input.
+    obj = None
+    if not answers_path.is_file():
+        errors.append(reg._line(answers_path.name, None, f"missing (no file at {answers_path})"))
+    else:
+        obj, _data = _load_json(answers_path, errors)
+    if obj is not None:
+        errors.extend(_answer_errors(obj, batch=batch, page_ids=page_ids, name=answers_path.name))
+    if errors:
+        raise reg.RegistryError(errors)
+
+    # 4. One atomic write.
+    review_csv, _review_era_csv = review_files(review_root, pf)
+    out = {**obj, "review_sha256": hashlib.sha256(review_csv.read_bytes()).hexdigest(),
+           "manifest_sha256": manifest_sha}
+    path = answer_path(review_root, pf, batch)
+    era_map._atomic_write_texts({path: json.dumps(out, indent=2, ensure_ascii=False) + "\n"})
+    return path
+
+
+def _merge(rows: Sequence[Mapping[str, str]], amendments: Mapping[str, Mapping]) -> list[dict[str, str]]:
+    """The review rows with the answer applied: {"defer": true} sets verdict
+    deferred, an amendment overwrites its columns. member_order is cleared on
+    every row that is not approved counted, and the approved counted rows are
+    renumbered 1..n by (review-time member_order, blank after the numbered
+    ones; then member_row_id), so a deferral leaves no gap (rule 16)."""
+    merged: list[dict[str, str]] = []
+    for row in rows:
+        row = dict(row)
+        amendment = amendments.get(row["member_row_id"])
+        if _is_defer(amendment):
+            row["verdict"] = "deferred"
+        elif amendment:
+            row.update(amendment)
+        merged.append(row)
+
+    def counted(row: Mapping[str, str]) -> bool:
+        return row["verdict"] == "approved" and row["role"] == "counted"
+
+    def order(row: Mapping[str, str]) -> tuple[int, int, str]:
+        value = row["member_order"]
+        return (0, int(value), row["member_row_id"]) if reg._POSITIVE_RE.fullmatch(value) \
+            else (1, 0, row["member_row_id"])
+
+    for n, row in enumerate(sorted((r for r in merged if counted(r)), key=order), 1):
+        row["member_order"] = str(n)
+    for row in merged:
+        if not counted(row):
+            row["member_order"] = ""
+    return merged
+
+
+def _tally(rows: Sequence[Mapping[str, str]]) -> tuple[int, int, int]:
+    """(approved, deferred, rejected or excluded): each row counted once."""
+    deferred = sum(1 for r in rows if r["verdict"] == "deferred")
+    out = sum(1 for r in rows
+              if r["verdict"] != "deferred" and (r["verdict"] == "rejected" or r["role"] == "excluded"))
+    return len(rows) - deferred - out, deferred, out
+
+
+def ratify(*, platform_family: str, batch: str, decided_on: str, duckdb_path: Path, site_dir: Path,
+           paths: reg.RegistryPaths = reg.DEFAULT_PATHS, review_root: Path = reg.REVIEW_ROOT,
+           out_root: Path = OUT_ROOT) -> dict:
+    """`platform-families ratify` (§8.3, R13): merge the answered batch into the
+    registry as ruling R-DEC-FAM-<FAM>-<batch> and flip the family from draft
+    to ratified. Every reviewed row is written (approved, deferred, rejected,
+    excluded) with the era lines of the approved counted rows. Every refusal
+    is collected first (the answer, the manifest and both review files out of
+    step; a reused batch; a family that is not a draft or whose object changed
+    since the render; a --decided-on unlike the answer's; a row already
+    ratified; stage 1 on the merged registry; a review-time drift_sha256 the
+    lake no longer gives; stage 2 failures or stale rows for every family),
+    then raised as one RegistryError with nothing written (#198). A DuckDB
+    lock propagates, with nothing written. The three registry files are
+    written in one atomic call; the review and answer files stay as they are.
+    Returns {"members", "era_lines", "ruling_id", "status"}."""
+    pf = platform_family
+    review_csv, _review_era_csv = review_files(review_root, pf)
+    ruling_id = batch_ruling_id(pf, batch)
+    errors: list[str] = []
+
+    # Step 1: the answer, the manifest and both review files, all in step.
+    answer_file = answer_path(review_root, pf, batch)
+    answer_obj = None
+    if not answer_file.is_file():
+        errors.append(reg._line(answer_file.name, None, f"missing (no answer at {answer_file}); answer {batch} first"))
+    else:
+        answer_obj, _data = _load_json(answer_file, errors)
+    manifest, manifest_sha = _read_manifest(out_root, pf, batch, errors)
+    page_ids = None
+    if manifest is not None:
+        errors.extend(_review_sha_errors(manifest, review_root, pf, batch))
+        page_ids = {row.get("member_row_id") for row in manifest.get("rows") or () if isinstance(row, dict)}
+    answer_ok = False
+    if answer_obj is not None:
+        answered = {key: value for key, value in answer_obj.items() if key not in _ANSWER_SHA_KEYS}
+        answer_errors = _answer_errors(answered, batch=batch, page_ids=page_ids, name=answer_file.name)
+        if manifest is not None:
+            got_manifest, got_review = answer_obj.get("manifest_sha256"), answer_obj.get("review_sha256")
+            if got_manifest != manifest_sha:
+                answer_errors.append(reg._line(
+                    answer_file.name, None, f"manifest_sha256 {got_manifest} is not the {batch} manifest's sha256 "
+                                            f"{manifest_sha}; the page changed after the answer — answer {batch} "
+                                            "again"))
+            if got_review != manifest.get("review_sha256"):
+                answer_errors.append(reg._line(
+                    answer_file.name, None, f"review_sha256 {got_review} is not the {batch} manifest's review_sha256 "
+                                            f"{manifest.get('review_sha256')}"))
+        errors.extend(answer_errors)
+        answer_ok = not answer_errors
+    rows = era_rows = None
+    try:
+        rows, era_rows = _read_review_files(review_root, pf)
+    except reg.RegistryError as e:
+        errors.extend(e.errors)
+
+    # Step 2: the batch and the family.
+    registry = family = None
+    try:
+        registry = reg.load_registry(paths)
+    except reg.RegistryError as e:
+        errors.extend(e.errors)
+    if registry is not None:
+        if ruling_id in registry.rulings:
+            errors.append(reg._line(paths.json.name, None, f"{ruling_id} already exists (batch {batch} is ratified)"))
+        family = next((f for f in registry.families if f.platform_family == pf), None)
+        if family is None:
+            errors.append(reg._line(paths.json.name, pf, f"{pf} is not in {paths.json.name}"))
+        elif family.status != "draft":
+            errors.append(reg._line(paths.json.name, pf, f"{pf} is {family.status}; ratify merges a draft family only"))
+        if family is not None and manifest is not None \
+                and reg.family_hash(registry.doc, pf) != manifest.get("family_sha256"):
+            errors.append(reg._line(paths.json.name, pf, f"the {pf} family object changed since {batch} was "
+                                                         "rendered — re-run propose and render a new page"))
+    if answer_obj is not None and answer_obj.get("decided_on") != decided_on:
+        errors.append(f"platform-families: --decided-on {decided_on} differs from the answer's decided_on "
+                      f"{answer_obj.get('decided_on')}")
+
+    # Steps 3-5: merge, the ruling, stage 1. Only a new batch of a draft family,
+    # answered and read in full, has anything to merge.
+    trial = merged = None
+    if (answer_ok and manifest is not None and rows is not None and family is not None
+            and family.status == "draft" and ruling_id not in registry.rulings):
+        merged = _merge([row for row in rows if row["member_row_id"] in page_ids], answer_obj["rows"])
+        existing = {m.member_row_id: m for m in family.members}
+        for row in merged:
+            old = existing.get(row["member_row_id"])
+            if old is not None and old.verdict != "deferred":
+                errors.append(reg._line(paths.members.name, None, f"{row['member_row_id']} is already ratified"))
+        approved, deferred, out = _tally(merged)
+        ruling = {"ruling_id": ruling_id, "kind": "batch", "platform_family": pf, "decided_by": "owner",
+                  "decided_on": decided_on, "owner_reply": answer_obj["owner_reply"], "spec": BATCH_RULING_SPEC,
+                  "text": f"The owner ratified batch {batch} of the {pf} family as shown on its batch page (manifest "
+                          f"sha256 {manifest_sha}): {approved} approved, {deferred} deferred, {out} rejected or "
+                          "excluded row(s).",
+                  "seed_basis": False}
+        try:
+            trial_doc, trial_members, trial_era, trial = _trial_registry(
+                registry, platform_family=pf, rows=merged, era_lines=era_rows, ruling=ruling, paths=paths)
+        except reg.RegistryError as e:
+            errors.extend(e.errors)
+
+    # Step 6: stage 2, only on a parseable trial; read-only, a lock propagates.
+    if trial is not None:
+        at_review = {row["member_row_id"]: row["drift_sha256"] for row in merged}
+        fam = trial[pf]
+        start = vf._now()
+        vf.sam_guard(duckdb_path, start=start)
+        lake = reg.open_lake(duckdb_path)
+        try:
+            for member in fam.members:
+                if member.verdict != "approved" or member.member_row_id not in at_review:
+                    continue
+                new = reg.measure_member(lake, member, headline=fam.headline).drift_sha256
+                old = at_review[member.member_row_id]
+                if new != old:
+                    errors.append(reg._line(review_csv.name, None, f"{member.member_row_id}: drift_sha256 {new} "
+                                                                   f"differs from the review-time {old}"))
+            report = reg.check_lake(trial, lake=lake, site_dir=site_dir)   # every family (§9.2, R13)
+            errors.extend(report.failures + report.stale)                  # R4: undecided is not a refusal
+        finally:
+            lake.close()
+        vf.sam_guard(duckdb_path, start=start, end=vf._now())
+
+    if errors or trial is None:
+        raise reg.RegistryError(errors or [f"platform-families: ratify built no merged registry for {pf} {batch}"])
+
+    # Step 7: one atomic write of the three registry files.
+    reg.write_registry(paths, doc=trial_doc, members=trial_members, era_lines=trial_era)
+    added = sum(1 for row in trial_era if row["platform_family"] == pf) - len(family.era_lines)
+    return {"members": len(merged), "era_lines": added, "ruling_id": ruling_id, "status": "ratified"}
