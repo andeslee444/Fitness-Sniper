@@ -1,0 +1,165 @@
+{
+  "family": {
+    "platform_family": "f-35",
+    "short_name": "F-35",
+    "history_dataset": "f35_funding_history",
+    "on_partial_corpus": "raise",
+    "headline": {
+      "measure": "cumulative_actuals",
+      "first_fy": 2015,
+      "last_fy": 2024
+    },
+    "scope_note": "Recorded F-35 research, development and procurement budget lines in the imported P-1/R-1 workbooks: the Air Force and Navy aircraft and modification lines, and the F-35 development lines counted by the service that paid. This is a covered-record total, not the program's lifetime cost. Initial spares bought from shared lines, military construction, operating and support, and partner-nation and foreign-buyer money are outside this calculation.",
+    "coverage_notes": [
+      "Coverage begins with FY2015 actuals in PB2017. Earlier funding, including F-35 development before FY2015, is not represented.",
+      "Development lines are counted once, in a development column labelled by the service that paid; they are never divided among the F-35A, F-35B and F-35C.",
+      "Historical procurement line numbers change between editions. Each legacy line is matched within its own budget edition through its owner-ratified era decision.",
+      "Actuals, current-year figures and requests are separate snapshots. Requests and current-year figures are excluded from the cumulative actuals figure.",
+      "Amounts are nominal dollars of total obligational authority (TOA), not contract obligations, cash outlays or inflation-adjusted dollars.",
+      "Missing workbook figures are not zero spending. Some current-year columns contain requests adjusted for continuing resolutions rather than final enacted appropriations.",
+      "The totals exclude classified funding, military construction, initial spares bought from shared lines, operating and support, and partner-nation and foreign-buyer money."
+    ],
+    "review_guard": {
+      "exhibits": [
+        "P-1",
+        "R-1"
+      ],
+      "title_substrings": [
+        "F-35",
+        "F35",
+        "JSF",
+        "JOINT STRIKE",
+        "F135",
+        "LIGHTNING"
+      ]
+    },
+    "program_notes": {},
+    "variants": [
+      {
+        "id": "A"
+      },
+      {
+        "id": "B",
+        "note": "F-35B is a Marine Corps jet bought from the Navy's aircraft account"
+      },
+      {
+        "id": "C",
+        "note": "F-35C includes Marine Corps jets"
+      }
+    ],
+    "program_tags": [
+      {
+        "tag": "F-35",
+        "mdap_code": "198"
+      }
+    ],
+    "purpose_tags": [
+      "production",
+      "modifications",
+      "sdd",
+      "block4",
+      "usaf_squadrons"
+    ],
+    "caveat_ids": [
+      "classified",
+      "construction",
+      "operating_and_support",
+      "spares",
+      "foreign",
+      "cr_years",
+      "nominal_dollars"
+    ],
+    "exclusions": [
+      {
+        "exclusion_id": "initial-spares",
+        "kind": "shared_line",
+        "label": "Initial spares bought from shared lines",
+        "size_text": "F-35 initial spares from shared lines 000999 and 0605: $766.3M in FY2024",
+        "evidence": [
+          "doc:528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e#p175;q=ATA000 / F-35 Squadrons [198]",
+          "src:msar-pb2027"
+        ]
+      },
+      {
+        "exclusion_id": "milcon",
+        "kind": "outside_scope",
+        "label": "Military construction",
+        "size_text": "Construction: $4,022.7M over the program life, all FY2022 or earlier",
+        "evidence": [
+          "src:msar-pb2027#p92",
+          "src:msar-pb2027#p93"
+        ]
+      },
+      {
+        "exclusion_id": "operating-support",
+        "kind": "outside_scope",
+        "label": "Operating and support",
+        "size_text": "Operating and support: $1,395.0B TY / $596.4B CY12, through 2083",
+        "evidence": [
+          "src:msar-pb2027#p32"
+        ]
+      },
+      {
+        "exclusion_id": "partner-share",
+        "kind": "outside_scope",
+        "label": "Partner nations' share of development",
+        "size_text": "Partner nations' share of development: $12.9B over the program life",
+        "evidence": [
+          "src:msar-pb2027#p85",
+          "src:msar-pb2027#p99"
+        ]
+      },
+      {
+        "exclusion_id": "fms",
+        "kind": "outside_scope",
+        "label": "Foreign buyers' aircraft (FMS)",
+        "size_text": "Foreign buyers' aircraft (FMS): 530 aircraft, $89,475.6M as listed",
+        "evidence": [
+          "src:msar-pb2027#p67",
+          "src:msar-pb2027#p68"
+        ]
+      },
+      {
+        "exclusion_id": "before-fy2015",
+        "kind": "outside_scope",
+        "label": "Spending before FY2015",
+        "size_text": "Spending before FY2015 is not shown",
+        "evidence": []
+      },
+      {
+        "exclusion_id": "classified",
+        "kind": "outside_scope",
+        "label": "Classified funding",
+        "size_text": "Classified funding: unknown",
+        "evidence": []
+      },
+      {
+        "exclusion_id": "programming-codes",
+        "kind": "not_a_budget_line",
+        "label": "Programming codes, not budget lines",
+        "size_text": "0204146N and 0204146M are named on the 0147 and 0152 P-40s but exist in no P-1 or R-1 workbook; the ATA000 note's PE 0207142F is a programming code, and the R&D line 0207142F is separate money",
+        "evidence": [
+          "doc:e7e130253786cbd906d4367bc622649fc9ad86a38ce3677da47ad33d9c628ca0#p51;q=Program Elements for Code B Items: 0204146N",
+          "doc:528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e#p55;q=Funding for this exhibit contained in PE 0207142F."
+        ]
+      }
+    ],
+    "aliases": [],
+    "contract_routes": null,
+    "official_estimates": null,
+    "art": null
+  },
+  "sources": [
+    {
+      "source_id": "msar-pb2027",
+      "title": "F-35 Modernized Selected Acquisition Report (MSAR), FY2027 President's Budget",
+      "publisher": "Department of Defense",
+      "url": "https://www.esd.whs.mil/Portals/54/Documents/FOID/Reading%20Room/Selected_Acquisition_Reports/PB_2027_MSARs/F-35_MSAR_FY2027_PB_cleared.pdf",
+      "as_of": "2026-04-21",
+      "sha256": "063345e4a46f7d58cf89356389fb36986e5a0f8c06c716030ead49932e8dca50",
+      "bytes": 1298631,
+      "archived": false,
+      "tier": "G"
+    }
+  ]
+}
