@@ -14,6 +14,7 @@ import hashlib
 import html
 import io
 import json
+import re
 import shutil
 from decimal import Decimal
 from types import SimpleNamespace
@@ -27,9 +28,10 @@ from govbudget import platform_families as reg
 import govbudget.platform_family_history as hist
 import govbudget.platform_family_review as review
 import govbudget.verify_families as vf
-from platform_families_helpers import (ATA000, B1_MART, B1_POINTS, B1_REF, DRAFT_F35, EMD, F15_ORDER, F35_PREFILL,
-                                       F35_RULING_ID, JSM000, MEASURES, MSAR, FakeLake, add_family, add_source,
-                                       f15_registry, fake_export, ratified_f35, site_tree, write_prefill)
+from platform_families_helpers import (ATA000, B1_MART, B1_POINTS, B1_REF, CIP, DRAFT_F35, EMD, F15_ORDER,
+                                       F35_PREFILL, F35_RULING_ID, JSM000, MEASURES, MSAR, FakeLake, add_family,
+                                       add_source, era_line, f15_registry, fake_export, measure, ratified_f35,
+                                       site_tree, write_prefill)
 
 LOCK = 'IO Error: Could not set lock on file "/x/govbudget.duckdb": Conflicting lock is held in /usr/bin/python3 (PID 1)'
 
@@ -266,6 +268,42 @@ def test_propose_holds_a_lake_change_to_a_ratified_row_for_review(proposing):
                                       "(drift_sha256) — confirm or keep the ratified row; no silent overturn")
     assert rows[ATA000]["drift_sha256"] == "a" * 64
     assert paths.members.read_bytes() == baseline["members"]
+
+
+def test_propose_measures_a_context_rows_figure_over_the_whole_line_through_its_era_refs(proposing, monkeypatch):
+    """Ruling R-PF-16: a context row's review-only headline_actuals_k is the whole line's
+    FY2015-24 actuals, reaching the pre-PB2024 editions through the era decisions its era:
+    evidence refs name. Its era_decision_ids stay blank, its lake columns are those of the row
+    as written and its era lines are never written; a context row naming no era decision, and
+    every counted or deferred row, is measured once, as before."""
+    fj, rc, db, paths, rr, _before = _unpack(proposing)
+    spares, decision = "P-1:3010F:AF:000999", "000999|3010F||2017-2023"
+    context = {**F35_PREFILL[2], "member_id": spares, "account": "3010F", "code": "000999",
+               "valid_from_edition": "2017", "display_title": "Initial Spares/Repair Parts",
+               "evidence": f"era:{decision}", "reason": "context: shown, never summed"}
+    fj, rc = write_prefill(proposing.tmp_path, [*F35_PREFILL, context])
+    titles = ((2026, "Initial Spares/Repair Parts"),)
+    calls = []
+
+    def measured(lake, member, *, headline):
+        calls.append((member.member_id, member.era_decision_ids))
+        if member.member_id != spares:
+            return MEASURES[member.member_id]
+        if decision in member.era_decision_ids:   # the era chain as well: the whole line
+            return measure(spares, drift="f" * 64, actuals_k="8266266.000", titles=titles, era_lines=(
+                era_line(spares, 2018, "3010F-AF-L67", "06", "Initial Spares/Repair Parts", decision),))
+        return measure(spares, drift="e" * 64, actuals_k="2540390.000", titles=titles)
+
+    monkeypatch.setattr(reg, "measure_member", measured)
+    out = review.propose(platform_family="f-35", family_json=fj, rows_csv=rc, duckdb_path=db, paths=paths, review_root=rr)
+    assert out == {"rows": 5, "era_lines": 1, "held_for_review": 0}
+    rows = {r["member_id"]: r for r in _csv(rr / "f-35" / "review.csv")}
+    assert (rows[spares]["headline_actuals_k"], rows[spares]["era_decision_ids"]) == ("8266266.000", "")
+    assert (rows[spares]["titles_seen"], rows[spares]["drift_sha256"]) == ("2026: Initial Spares/Repair Parts", "e" * 64)
+    assert rows[JSM000]["headline_actuals_k"] == "373500.000"
+    assert sorted(calls) == sorted([(ATA000, ("ATA000|3010F||2017-2023",)), (EMD, ()), (JSM000, ()),
+                                    ("R-1:3600F:AF:0207268F", ()), (spares, ()), (spares, (decision,))])
+    assert [r["member_id"] for r in _csv(rr / "f-35" / "review_era_lines.csv")] == [ATA000]
 
 
 def test_propose_lists_every_error_at_once_and_writes_nothing(proposing):
@@ -570,6 +608,69 @@ def test_render_orders_the_page_and_records_the_manifest(rendering):
     assert manifest["preview"]["years"][0] == {"fy": 2015, "kind": "actuals", "edition": 2017,
                                                "total_thousands": "4611600.000"}
     assert manifest["preview"]["differences"] == []
+
+
+_FIGURE_ROW = re.compile(r'<tr><td>FY(\d{4})</td><td>(\w+)</td><td>PB(\d{4})</td><td class="n">([^<]*)</td>'
+                         r'<td class="n">([^<]*)</td></tr>')
+
+
+def test_render_shows_the_reference_only_beside_its_basis_points(rendering, monkeypatch):
+    """Ruling R-PF-17: the reference column carries the reference's figure only beside its
+    basis points (each FY's actuals from PB fy+2, the enacted and the request at the edition the
+    reference uses); every other preview point shows —, and the agreement sentence says it
+    covers the basis years."""
+    site, db, scratch, _paths, rr = _rendered(rendering)
+    other = [(2025, "request", 2025, "5100000.000", {ATA000: "5100000.000"}),
+             (2016, "enacted", 2017, "4700000.000", {ATA000: "4700000.000"})]
+    monkeypatch.setattr(hist, "export_family_histories", fake_export([*B1_POINTS, *other]))
+    out = review.render(platform_family="f-35", batch="B1", duckdb_path=db, site_dir=site, review_root=rr,
+                        out_root=rendering.out_root, preview_out=scratch)
+    assert out["differences"] == 0
+    page = out["page"].read_text(encoding="utf-8")
+    assert _FIGURE_ROW.findall(page) == [
+        ("2015", "actuals", "2017", "4,611.6", "4,611.6"), ("2025", "enacted", "2026", "4,972.5", "4,972.5"),
+        ("2026", "request", "2026", "4,086.7", "4,086.7"), ("2025", "request", "2025", "5,100.0", "—"),
+        ("2016", "enacted", "2017", "4,700.0", "—")]
+    text = html.unescape(page)
+    assert ("The preview agrees with the reference in every basis year (FY2015 actuals, FY2025 enacted and FY2026 "
+            "request) and in the cumulative, at $0.1M.") in text
+    assert "in every year" not in text
+
+
+_ROW = re.compile(r'<li class="chain" id="row-\d+">\n(.*?)\n</li>', re.DOTALL)
+_NOTES = re.compile(r"<div><dt>Notes</dt><dd>(.*?)</dd></div>")
+
+
+def test_render_shows_each_rows_notes_and_labels_a_slice_figure_as_its_whole_lines(rendering, monkeypatch):
+    """Ruling R-PF-18: each row also renders one notes line (its scope_note, services_using,
+    paying_org and predecessor/successor links, blank fields omitted), and a project slice's
+    figure is labelled as its whole line's, not the project's."""
+    p = rendering
+    linked = {"link_basis": "inferred", "link_evidence": "src:msar-pb2027#p26"}
+    fj, rc = write_prefill(p.tmp_path, [{**F35_PREFILL[0], "predecessor_member_id": EMD, **linked},
+                                        {**F35_PREFILL[1], "successor_member_id": ATA000, **linked},
+                                        *F35_PREFILL[2:]])
+    slice_line = measure(CIP, drift="d" * 64, actuals_k="1056578.000", titles=((2026, "F-35 Squadrons"),))
+    monkeypatch.setattr(reg, "measure_member", lambda lake, member, *, headline:
+                        slice_line if member.member_id == CIP else MEASURES[member.member_id])
+    review.propose(platform_family="f-35", family_json=fj, rows_csv=rc, duckdb_path=p.db, paths=p.paths,
+                   review_root=p.rr)
+    out = review.render(platform_family="f-35", batch="B1", duckdb_path=p.db, site_dir=p.site, review_root=p.rr,
+                        out_root=p.out_root, preview_out=p.scratch)
+    page = html.unescape(out["page"].read_text(encoding="utf-8"))
+    rows = {re.search(r"<code>([^<]+)</code>", row).group(1): row for row in _ROW.findall(page)}
+    assert list(rows) == [ATA000, EMD, JSM000, CIP]
+    notes = {member_id: [m.group(1) for m in _NOTES.finditer(row)] for member_id, row in rows.items()}
+    assert notes == {
+        ATA000: ["services using USAF · paying org AF · predecessor R-1:3600F:AF:0604800F (inferred: "
+                 "src:msar-pb2027#p26 (G))"],
+        EMD: ["scope note Development shared by A, B and C, counted by paying service. · services using "
+              "USAF;USN;USMC · paying org AF · successor P-1:3010F:AF:ATA000 (inferred: src:msar-pb2027#p26 (G))"],
+        JSM000: ["scope note A missile the F-35 carries, not the aircraft; never summed."],
+        CIP: []}   # every notes field blank: no line
+    assert '$1,056.6M</span> <span class="label">whole line 0207268F, not project 675365</span>' in rows[CIP]
+    assert '<span class="label">not counted</span>' in rows[JSM000]
+    assert "whole line" not in rows[ATA000] + rows[EMD] + rows[JSM000]
 
 
 def test_compare_reference_refuses_a_reference_whose_named_years_disagree(tmp_path):

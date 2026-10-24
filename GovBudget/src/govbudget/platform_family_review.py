@@ -216,6 +216,25 @@ def _draft_doc(registry: reg.Registry, platform_family: str, family: dict, sourc
     return doc
 
 
+def _context_headline_k(lake, member: reg.Member, headline: reg.Headline,
+                        measure: reg.MemberMeasure) -> Decimal | None:
+    """The review-only headline_actuals_k of a measured row (ruling R-PF-16).
+    A context row shows its whole line's headline actuals: the line is
+    measured again with the era decisions its era: evidence refs name, so the
+    pre-PB2024 editions count too. Only the figure is taken from that measure:
+    the row keeps its era_decision_ids, its lake columns and no era lines, as
+    written. Every other row, and a context row naming no era decision beyond
+    its own era_decision_ids, keeps `measure`'s figure."""
+    if member.role != "context":
+        return measure.headline_actuals_k
+    named = tuple(ref.partition(":")[2] for ref in member.evidence if ref.partition(":")[0] == "era")
+    era_ids = tuple(dict.fromkeys((*member.era_decision_ids, *named)))
+    if era_ids == member.era_decision_ids:
+        return measure.headline_actuals_k
+    whole = reg.measure_member(lake, dataclasses.replace(member, era_decision_ids=era_ids), headline=headline)
+    return whole.headline_actuals_k
+
+
 def propose(*, platform_family: str, family_json: Path, rows_csv: Path, duckdb_path: Path,
             paths: reg.RegistryPaths = reg.DEFAULT_PATHS, review_root: Path = reg.REVIEW_ROOT) -> dict:
     """`platform-families propose` (§8.3, R12). Steps 1–5 (the two inputs, the
@@ -224,7 +243,9 @@ def propose(*, platform_family: str, family_json: Path, rows_csv: Path, duckdb_p
     1 on the measured rows, naming the review files) raise together after it
     closes. Then the draft family, review.csv and review_era_lines.csv are
     written in one atomic call; the members and era-lines CSVs are rewritten
-    byte-identical. Returns {"rows", "era_lines", "held_for_review"}."""
+    byte-identical. A context row's review-only headline_actuals_k is its
+    whole line's (_context_headline_k, ruling R-PF-16). Returns {"rows",
+    "era_lines", "held_for_review"}."""
     pf = platform_family
     family_json, rows_csv = Path(family_json), Path(rows_csv)
     review_csv, review_era_csv = review_files(review_root, pf)
@@ -282,6 +303,7 @@ def propose(*, platform_family: str, family_json: Path, rows_csv: Path, duckdb_p
     try:
         for member, reason, approved in pending:
             measure = reg.measure_member(lake, member, headline=family.headline)
+            headline_k = _context_headline_k(lake, member, family.headline, measure)
             row = dataclasses.replace(member, titles_seen=measure.titles_seen,
                                       budget_activities=measure.budget_activities,
                                       drift_sha256=measure.drift_sha256).as_row()
@@ -294,8 +316,7 @@ def propose(*, platform_family: str, family_json: Path, rows_csv: Path, duckdb_p
                           " — confirm or keep the ratified row; no silent overturn")
                 held += 1
             row["reason"] = reason
-            row["headline_actuals_k"] = ("" if measure.headline_actuals_k is None
-                                         else f"{measure.headline_actuals_k:.3f}")
+            row["headline_actuals_k"] = "" if headline_k is None else f"{headline_k:.3f}"
             review_rows.append(row)
             review_era.extend(_era_row(line) for line in measure.era_lines)
     finally:
@@ -481,6 +502,22 @@ def _lake_caused(member_diffs: Sequence[dict]) -> bool:
     return bool(member_diffs) and all(d["cause"] == CAUSE_LAKE for d in member_diffs)
 
 
+# The edition rule (platform_family_history; LakeReader.program_series): a
+# point's edition is its FY plus this offset for its kind.
+_EDITION_OFFSET = {"actuals": 2, "enacted": 1, "request": 0}
+
+
+def _reference_kind(totals: Mapping[str, object]):
+    """The reference's basis kind per FY: its last FY is the request, the one
+    before it the enacted, every other FY actuals."""
+    last = max(int(fy) for fy in totals)
+
+    def kind(fy: int) -> str:
+        return "request" if fy == last else "enacted" if fy == last - 1 else "actuals"
+
+    return kind
+
+
 def compare_reference(result: PreviewResult, reference: dict, *, lake) -> list[dict]:
     """The preview beside a batch's reference figures ($M), at $0.1M (Review
     Focus 3). The reference's last FY is the request, the one before it the
@@ -494,10 +531,7 @@ def compare_reference(result: PreviewResult, reference: dict, *, lake) -> list[d
     totals, lines = reference["totals"], reference["lines"]
     if not totals:
         raise ValueError("reference totals is empty; a reference names at least its request year")
-    last = max(int(fy) for fy in totals)
-
-    def kind(fy: int) -> str:
-        return "request" if fy == last else "enacted" if fy == last - 1 else "actuals"
+    kind = _reference_kind(totals)
 
     for name, fy in (("fy2025_enacted", 2025), ("fy2026_request", 2026)):
         if str(fy) in totals and reference[name] != totals[str(fy)]:
@@ -661,13 +695,35 @@ def _tone(row: Mapping[str, str]) -> str:
     return "other"
 
 
+def _notes_text(row: Mapping[str, str], sources: Mapping[str, reg.Source]) -> str:
+    """One compact line of the row's scope_note, services_using, paying_org
+    and predecessor/successor links, blank fields omitted (ruling R-PF-18);
+    "" when all are blank."""
+    parts = [f"{name} {row[col]}" for name, col in (
+        ("scope note", "scope_note"), ("services using", "services_using"), ("paying org", "paying_org"))
+        if row[col]]
+    refs = ", ".join(f"{ref} ({ref_tier(ref, sources)})" for ref in reg.split_refs(row["link_evidence"]))
+    basis = ": ".join(part for part in (row["link_basis"], refs) if part)
+    parts += [f"{name} {row[col]}" + (f" ({basis})" if basis else "") for name, col in (
+        ("predecessor", "predecessor_member_id"), ("successor", "successor_member_id")) if row[col]]
+    return " · ".join(parts)
+
+
 def _row_html(n: int, row: Mapping[str, str], sources: Mapping[str, reg.Source], *, not_counted: bool) -> str:
     amount = "—" if row["headline_actuals_k"] == "" else _fmt_m(_to_m(Decimal(row["headline_actuals_k"])))
     usd = amount if amount == "—" else f"${amount}M"
-    label = ' <span class="label">not counted</span>' if not_counted else ""
+    if not_counted:
+        label = ' <span class="label">not counted</span>'
+    elif row["project_number"]:   # a project slice is measured over its whole line (ruling R-PF-18)
+        label = (f' <span class="label">whole line {_e(row["code"])}, not project '
+                 f'{_e(row["project_number"])}</span>')
+    else:
+        label = ""
     tags = " · ".join(f"{name} {_e(row[col]) or '—'}" for name, col in (
         ("program", "program_tag"), ("purpose", "purpose_tag"), ("variants", "variant_ids"),
         ("variant scope", "variant_scope")))
+    notes = _notes_text(row, sources)
+    notes_html = f"<div><dt>Notes</dt><dd>{_e(notes)}</dd></div>\n" if notes else ""
     return (
         f'<li class="chain" id="row-{n}">\n'
         f'<div class="chain-head"><span class="num">{n}</span><h2><code>{_e(row["member_id"])}</code>'
@@ -678,6 +734,7 @@ def _row_html(n: int, row: Mapping[str, str], sources: Mapping[str, reg.Source],
         f'<span class="cid">{_e(row["member_row_id"])}</span></p>\n'
         f"<dl>\n"
         f"<div><dt>Tags</dt><dd>{tags}</dd></div>\n"
+        f"{notes_html}"
         f"<div><dt>Evidence</dt><dd>{_refs_html(reg.split_refs(row['evidence']), sources)}</dd></div>\n"
         f'<div><dt>drift_sha256</dt><dd><code class="cid">{_e(row["drift_sha256"]) or "—"}</code></dd></div>\n'
         f"</dl>\n"
@@ -698,12 +755,42 @@ def _difference_label(d: Mapping) -> str:
     return f"{where} {d['member_id'] or 'total'}"
 
 
+def _fy_span(years: Sequence[int]) -> str:
+    """FY2015; FY2015–24 when contiguous; else FY2015, FY2017."""
+    years = sorted(years)
+    if len(years) == 1:
+        return f"FY{years[0]}"
+    if years == list(range(years[0], years[-1] + 1)):
+        return f"FY{years[0]}–{years[-1] % 100:02d}"
+    return ", ".join(f"FY{fy}" for fy in years)
+
+
+def _basis_text(totals: Mapping[str, object]) -> str:
+    """The reference's basis years in words, e.g. "FY2015–24 actuals, FY2025
+    enacted and FY2026 request"."""
+    kind = _reference_kind(totals)
+    parts = [f"{_fy_span(years)} {k}" for k in _EDITION_OFFSET
+             if (years := [int(fy) for fy in totals if kind(int(fy)) == k])]
+    return parts[0] if len(parts) == 1 else f"{', '.join(parts[:-1])} and {parts[-1]}"
+
+
 def _figures_html(result: PreviewResult, reference: Mapping | None, differences: Sequence[Mapping],
                   batch: str) -> str:
     totals = reference["totals"] if reference is not None else {}
+    kind = _reference_kind(totals) if totals else None
+
+    def reference_m(y: Mapping) -> Decimal | None:
+        """The reference's figure beside its basis points only (ruling R-PF-17):
+        the FY's basis kind at the edition the rule gives it; None elsewhere."""
+        fy = y["fy"]
+        if (kind is None or str(fy) not in totals or y["kind"] != kind(fy)
+                or y["edition"] != fy + _EDITION_OFFSET[y["kind"]]):
+            return None
+        return _ref_m(totals[str(fy)])
+
     rows = [f'<tr><td>FY{_e(y["fy"])}</td><td>{_e(y["kind"])}</td><td>PB{_e(y["edition"])}</td>'
             f'<td class="n">{_fmt_m(_to_m(y["total_thousands"]))}</td>'
-            f'<td class="n">{_fmt_m(_ref_m(totals.get(str(y["fy"]))))}</td></tr>' for y in result.years]
+            f'<td class="n">{_fmt_m(reference_m(y))}</td></tr>' for y in result.years]
     actuals = [y["fy"] for y in result.years if y["kind"] == "actuals"]
     span = ("Cumulative actuals" if not actuals else f"FY{min(actuals)} cumulative actuals"
             if min(actuals) == max(actuals) else f"FY{min(actuals)}–{max(actuals)} cumulative actuals")
@@ -714,11 +801,12 @@ def _figures_html(result: PreviewResult, reference: Mapping | None, differences:
     table = ('<div class="table-wrap"><table>\n<thead><tr><th>FY</th><th>Kind</th><th>Edition</th>'
              '<th>Preview $M</th><th>Reference $M</th></tr></thead>\n<tbody>\n' + "\n".join(rows)
              + "\n</tbody></table></div>")
+    basis = _basis_text(totals) if totals else ""
     if reference is None:
         note = f'<p class="how">No reference figures for {_e(batch)}.</p>'
     elif not differences:
-        note = ('<p class="how">The preview agrees with the reference in every year and in the cumulative, '
-                "at $0.1M.</p>")
+        note = (f'<p class="how">The preview agrees with the reference in every basis year ({_e(basis)}) and in '
+                "the cumulative, at $0.1M.</p>")
     else:
         items = "\n".join(
             f"<li><b>{_e(_difference_label(d))}</b>: preview {_fmt_m(_to_m(d['preview_k']))} vs reference "
@@ -726,10 +814,12 @@ def _figures_html(result: PreviewResult, reference: Mapping | None, differences:
             for d in differences)
         note = (f'<p class="how">{len(differences)} difference(s) from the reference, each with its cause. '
                 f"Rows are never adjusted to match.</p>\n<ul>\n{items}\n</ul>")
+    where = (f"The reference column carries {_e(batch)}'s figure only beside its basis points ({_e(basis)}); "
+             "every other point shows —, as does an absent figure." if basis else "— where a figure is absent.")
     return (f'<section>\n<h2 class="section">Preview figures</h2>\n'
             f'<p class="how">The counted rows built by the history builder from this draft against the snapshot, '
-            f"in $M (thousands rounded half-up to $0.1M), beside the reference figures for {_e(batch)} "
-            f"(— where a figure is absent).</p>\n{table}\n{note}\n</section>\n")
+            f"in $M (thousands rounded half-up to $0.1M), beside the reference figures for {_e(batch)}. "
+            f"{where}</p>\n{table}\n{note}\n</section>\n")
 
 
 def _field_text(value: object) -> str:
