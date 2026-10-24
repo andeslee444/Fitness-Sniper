@@ -2487,6 +2487,28 @@ def cmd_verify_era_map(args) -> None:
     sys.exit(0 if out["verdict"] == "PASS" else 1)
 
 
+def cmd_verify_families(args) -> None:
+    from govbudget import verify_families
+
+    # Follow-ups CLI convention (design §6; families piece 2 §13): a tool
+    # error (an unknown --legs letter, a DuckDB lock held by another writer,
+    # the SAM refusal) prints one ERROR line and exits 2; a failed check
+    # prints FAIL and exits 1.
+    try:
+        out = verify_families.run_verify_families(
+            site_dir=args.site_dir or config.SITE_DIR,
+            duckdb_path=args.duckdb or config.DUCKDB_PATH,
+            legs=args.legs,
+        )
+    except Exception as e:  # noqa: BLE001 — every tool error exits 2, never a FAIL
+        print(f"verify-families: ERROR — {e}")
+        sys.exit(2)
+    for line in verify_families.format_report(out):
+        print(line)
+    print(f"verify-families: {out['verdict']}")
+    sys.exit(0 if out["verdict"] == "PASS" else 1)
+
+
 def cmd_export_site(args) -> None:
     from govbudget.export_site import export_site, refresh_usaspending_ids
 
@@ -3160,6 +3182,69 @@ def cmd_era_map(args) -> None:
             sys.exit(1)
 
 
+def cmd_platform_families(args) -> None:
+    """Families piece 2 (spec 2026-10-20 §8.3): the platform-family registry.
+
+    propose  write a draft family and its review rows (or the one-off F-15
+             seed, --seed-shipped f-15).
+    render   preview a draft family against a snapshot, then write the batch
+             page and its manifest.
+    answer   record the owner's answer to a batch page.
+    ratify   merge one answered batch into the registry (draft -> ratified).
+    check    stage 1, plus stage 2 for every family: failures, undecided
+             and stale (exit 1 on a failure; --strict also on undecided or
+             stale).
+    preview  build a non-published family's history into a scratch dir.
+
+    Exit codes (the follow-ups' convention, FU §6): 0 pass, 1 a failed
+    check, 2 a tool error — one stderr line
+    `platform-families <action>: ERROR — <message>`, never a traceback."""
+    tool = f"platform-families {args.pf_action}"
+    try:
+        _cmd_platform_families(args)
+    except SystemExit:
+        raise
+    except Exception as e:  # noqa: BLE001 — every tool error exits 2, without a traceback
+        print(f"{tool}: ERROR — {e}", file=sys.stderr)
+        sys.exit(2)
+
+
+def _cmd_platform_families(args) -> None:
+    # Flags whose default is None resolve here, at call time, from config
+    # and the registry module, so a monkeypatched config or reg reaches them.
+    from govbudget import platform_families as reg
+    from govbudget import verify_families
+
+    if args.pf_action == "check":
+        duckdb_path = args.duckdb or config.DUCKDB_PATH
+        site_dir = args.site_dir or config.SITE_DIR
+        try:
+            registry = reg.load_registry(reg.DEFAULT_PATHS)
+        except reg.RegistryError as e:
+            for line in e.errors:
+                print(line)
+            print(f"platform-families check: stage 1 failed ({len(e.errors)} error(s))")
+            sys.exit(1)
+        start = verify_families._now()
+        verify_families.sam_guard(duckdb_path, start=start)
+        lake = reg.open_lake(duckdb_path)
+        try:
+            report = reg.check_lake(registry, lake=lake, site_dir=site_dir)
+        finally:
+            lake.close()
+        verify_families.sam_guard(duckdb_path, start=start, end=verify_families._now())
+        for line in report.failures:
+            print(f"  FAIL {line}")
+        for line in report.undecided:
+            print(f"  undecided {line}")
+        for line in report.stale:
+            print(f"  stale {line}")
+        print(f"platform-families check: families={len(registry.families)} failures={len(report.failures)}"
+              f" undecided={len(report.undecided)} stale={len(report.stale)}")
+        sys.exit(1 if report.failures or (args.strict and (report.undecided or report.stale)) else 0)
+    raise NotImplementedError(f"{args.pf_action} lands in Task 7b/7c/7d")
+
+
 def cmd_refresh(args) -> None:
     """ROADMAP #8 — unattended end-to-end refresh."""
     from govbudget import refresh as _refresh
@@ -3459,6 +3544,21 @@ def main(argv=None) -> None:
     )
     vera.set_defaults(func=cmd_verify_era_map)
 
+    vfam = sub.add_parser(
+        "verify-families",
+        help="families piece 2 release gate: registry files, lake (read-only)"
+             " and export (legs a-c)",
+    )
+    vfam.add_argument(
+        "--legs", default="abc",
+        help="legs to run, letters from abc (default: all three)",
+    )
+    vfam.add_argument("--site-dir", type=Path, default=None, dest="site_dir",
+                      help="export to check (default: config.SITE_DIR)")
+    vfam.add_argument("--duckdb", type=Path, default=None,
+                      help="warehouse, opened read-only (default: config.DUCKDB_PATH)")
+    vfam.set_defaults(func=cmd_verify_families)
+
     v5 = sub.add_parser(
         "verify-phase5",
         help="phase 5 assembly: freshness gate + eval gate (BLOCKED w/o key) + sub-phase assembly",
@@ -3623,6 +3723,73 @@ def main(argv=None) -> None:
     em_chk.add_argument("--strict", action="store_true",
                         help="also exit 1 when any era key is undecided")
     em.set_defaults(func=cmd_era_map)
+
+    pfam = sub.add_parser(
+        "platform-families",
+        help="families piece 2: the platform-family registry"
+             " (propose/render/answer/ratify/check/preview)",
+    )
+    pf_sub = pfam.add_subparsers(dest="pf_action", required=True)
+    pf_prop = pf_sub.add_parser(
+        "propose",
+        help="write a draft family object and its review rows, lake columns"
+             " measured read-only (or --seed-shipped f-15, the one-off seed)",
+    )
+    pf_prop.add_argument("--family", default=None, help="platform_family id, e.g. f-35")
+    pf_prop.add_argument("--family-json", type=Path, default=None, dest="family_json",
+                         help='{"family": <family object>, "sources": [...]}')
+    pf_prop.add_argument("--rows", type=Path, default=None, help="prefill rows CSV (PREFILL_COLUMNS)")
+    pf_prop.add_argument("--duckdb", type=Path, default=None,
+                         help="warehouse, opened read-only (default: config.DUCKDB_PATH)")
+    pf_prop.add_argument("--seed-shipped", choices=["f-15"], default=None, dest="seed_shipped",
+                         help="the one-off seed of the shipped F-15 entry")
+    pf_prop.add_argument("--site-dir", type=Path, default=None, dest="site_dir",
+                         help="with --seed-shipped: the export the seed checks the shipped history in")
+    pf_prop.add_argument("--decided-on", default=None, dest="decided_on",
+                         help="with --seed-shipped: ISO date of the owner's approval")
+    pf_prop.add_argument("--owner-reply", type=Path, default=None, dest="owner_reply",
+                         help="with --seed-shipped: file holding the owner's verbatim reply")
+    pf_ren = pf_sub.add_parser(
+        "render", help="preview a draft family, then write the batch page and its manifest")
+    pf_ren.add_argument("--family", required=True)
+    pf_ren.add_argument("--batch", required=True, help="batch label, e.g. B1")
+    pf_ren.add_argument("--duckdb", type=Path, required=True, help="snapshot warehouse (read-only)")
+    pf_ren.add_argument("--site-dir", type=Path, required=True, dest="site_dir", help="snapshot export")
+    pf_ren.add_argument("--preview-out", type=Path, default=None, dest="preview_out",
+                        help="preview scratch dir (default: beside the snapshot)")
+    pf_ans = pf_sub.add_parser("answer", help="record the owner's answer to a batch page")
+    pf_ans.add_argument("--family", required=True)
+    pf_ans.add_argument("--batch", required=True, help="batch label, e.g. B1")
+    pf_ans.add_argument("--answers", type=Path, required=True, help="the owner's answers (JSON)")
+    pf_rat = pf_sub.add_parser(
+        "ratify", help="merge one answered batch into the registry (draft -> ratified)")
+    pf_rat.add_argument("--family", required=True)
+    pf_rat.add_argument("--batch", required=True, help="batch label, e.g. B1")
+    pf_rat.add_argument("--decided-on", required=True, dest="decided_on",
+                        help="ISO date the owner approved the batch")
+    pf_rat.add_argument("--duckdb", type=Path, default=None,
+                        help="warehouse, opened read-only (default: config.DUCKDB_PATH)")
+    pf_rat.add_argument("--site-dir", type=Path, default=None, dest="site_dir",
+                        help="export the doc: refs resolve in (default: config.SITE_DIR)")
+    pf_chk = pf_sub.add_parser(
+        "check",
+        help="stage 1 plus stage 2 for every family: failures, undecided, stale;"
+             " exit 1 on a failure")
+    pf_chk.add_argument("--strict", action="store_true",
+                        help="also exit 1 on any undecided or stale row")
+    pf_chk.add_argument("--duckdb", type=Path, default=None,
+                        help="warehouse, opened read-only (default: config.DUCKDB_PATH)")
+    pf_chk.add_argument("--site-dir", type=Path, default=None, dest="site_dir",
+                        help="export the doc: refs resolve in (default: config.SITE_DIR)")
+    pf_pre = pf_sub.add_parser(
+        "preview", help="build a non-published family's history into a scratch directory")
+    pf_pre.add_argument("--family", required=True)
+    pf_pre.add_argument("--draft", action="store_true",
+                        help="read the draft family object and its review files")
+    pf_pre.add_argument("--site-dir", type=Path, required=True, dest="site_dir", help="snapshot export")
+    pf_pre.add_argument("--duckdb", type=Path, required=True, help="snapshot warehouse (read-only)")
+    pf_pre.add_argument("--out", type=Path, required=True, help="scratch dir, never inside config.SITE_DIR")
+    pfam.set_defaults(func=cmd_platform_families)
 
     dos = sub.add_parser("dossiers", help="phase 5B-3 dossier research pipeline")
     dos_sub = dos.add_subparsers(dest="dossiers_action", required=True)

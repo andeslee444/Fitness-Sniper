@@ -736,11 +736,10 @@ def test_assembly_gate_passes_with_lineage_green(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_assembly_phases_end_with_verify_era_map():
+def test_assembly_phases_end_with_verify_era_map_then_verify_families():
     from govbudget.verify_phase5 import _ASSEMBLY_PHASES
 
-    assert "verify-era-map" in _ASSEMBLY_PHASES
-    assert _ASSEMBLY_PHASES[-1] == "verify-era-map"
+    assert _ASSEMBLY_PHASES[-2:] == ["verify-era-map", "verify-families"]
     assert _ASSEMBLY_PHASES.index("verify-lineage") < _ASSEMBLY_PHASES.index("verify-era-map")
 
 
@@ -797,6 +796,57 @@ def test_assembly_gate_passes_with_era_map_green(monkeypatch):
     assert result["ok"] is True
     row = next(r for r in result["results"] if r["phase"] == "verify-era-map")
     assert row["verdict"] == "PASS"
+
+
+# ---------------------------------------------------------------------------
+# Tests: assembly families leg (families piece 2, spec 2026-10-20 §13).
+# verify-families is invoked exactly like verify-era-map: subprocess with no
+# arguments, verdict parsed from its one final line.
+# ---------------------------------------------------------------------------
+
+
+def test_verdict_regex_parses_verify_families_pass():
+    m = _VERDICT_RE.search(
+        "leg c export: published=1 histories=1 stage3=0 leaks=0 files_scanned=36038 → PASS\n"
+        "verify-families: PASS\n")
+    assert m is not None
+    assert m.group(1).upper() == "PASS"
+
+
+def test_verdict_regex_parses_verify_families_fail():
+    """PROOF-IT-CAN-FAIL (regex arm): a verify-families FAIL verdict is parsed,
+    not missed (a miss would fall back to returncode inference)."""
+    m = _VERDICT_RE.search("  FAIL json/families/index.json is missing\nverify-families: FAIL\n")
+    assert m is not None
+    assert m.group(1).upper() == "FAIL"
+
+
+def test_assembly_invokes_verify_families_with_no_arguments(monkeypatch):
+    import govbudget.verify_phase5 as vp5
+
+    seen = []
+
+    def _run(cmd, **kwargs):  # noqa: ANN001
+        seen.append(cmd)
+        return SimpleNamespace(stdout=f"{cmd[-1]}: PASS\n", stderr="", returncode=0)
+
+    monkeypatch.setattr(vp5.subprocess, "run", _run)
+    assembly_gate(repo_root=Path("/nonexistent-not-used"))
+    assert ["uv", "run", "python", "-m", "govbudget", "verify-families"] in seen
+
+
+def test_assembly_gate_fails_when_verify_families_fails(monkeypatch):
+    """PROOF-IT-CAN-FAIL (assembly arm): every other phase PASSes but
+    verify-families FAILs → the assembly is a hard FAIL."""
+    import govbudget.verify_phase5 as vp5
+
+    monkeypatch.setattr(vp5.subprocess, "run", _fake_run_factory({"verify-families"}))
+    result = assembly_gate(repo_root=Path("/nonexistent-not-used"))
+    assert result["ok"] is False
+    assert result["blocked"] is False
+    rows = [r for r in result["results"] if r["phase"] == "verify-families"]
+    assert len(rows) == 1
+    assert rows[0]["verdict"] == "FAIL"
 
 
 # ---------------------------------------------------------------------------

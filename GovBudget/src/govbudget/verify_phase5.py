@@ -39,8 +39,11 @@ Gates (CLI: verify-phase5):
      warehouse's, the F-15 history sha pinned, every era decade row minted
      by a same_program line with a page or by the F-15 roster, no era book
      diff over procurement rows; legs d–h audit the export,
-     so a missing artifact FAILs). Parses each full output with the verdict
-     regex; BLOCKED propagates. Prints a result table.
+     so a missing artifact FAILs) PLUS verify-families (families piece 2:
+     the family registry's stage 1, its stage 2 against the warehouse, and
+     its stage 3, index.json projection and leak scan against the export).
+     Parses each full output with the verdict regex; BLOCKED propagates.
+     Prints a result table.
 
 Exit codes:
   0  — all gates PASS
@@ -137,6 +140,9 @@ _URL_COLUMN_MAP: dict[str, str] = {
 # verify-era-map (families piece 1, spec 2026-10-02 V4/V10) joins on the same
 # terms: invoked with no arguments (its CLI defaults to config.SITE_DIR, the
 # warehouse and the repo seed), one final "verify-era-map: PASS|FAIL" line.
+# verify-families (families piece 2, spec 2026-10-20 §13) joins on the same
+# terms: no arguments, legs a–c (registry files, lake read-only, export plus
+# the leak scan), one final "verify-families: PASS|FAIL" line.
 _ASSEMBLY_PHASES = [
     "verify-phase1",
     "verify-phase2",
@@ -147,14 +153,16 @@ _ASSEMBLY_PHASES = [
     "verify-phase5b3",
     "verify-lineage",
     "verify-era-map",
+    "verify-families",
 ]
 
 # Verdict token regex: parse full output for verdict line. Matches the
 # verify-phaseN family, verify-lineage and verify-era-map (whose CLIs print
 # "verify-lineage: PASS|FAIL" / "verify-era-map: PASS|FAIL" in the same
-# verdict-line format).
+# verdict-line format). verify-families prints "verify-families: PASS|FAIL"
+# in the same format, so it matches too.
 _VERDICT_RE = re.compile(
-    r"verify-(?:phase\w+|lineage|era-map):\s*(PASS|FAIL|BLOCKED)", re.IGNORECASE
+    r"verify-(?:phase\w+|lineage|era-map|families):\s*(PASS|FAIL|BLOCKED)", re.IGNORECASE
 )
 
 
