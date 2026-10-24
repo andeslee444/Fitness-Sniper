@@ -15,7 +15,9 @@ program_pdf_receipts and export_site. Stage 2 (§9.2: the lake, read-only, and
 the doc:/src: files under the site directory) imports duckdb,
 govbudget.export_site, govbudget.jbooks.collision_keys,
 govbudget.jbooks.provenance_pages and openpyxl inside the functions that use
-them.
+them. Stage 3 (§9.3: the citation registry, inside the export) imports
+govbudget.platform_family_history and govbudget.program_pdf_receipts inside
+check_citations, since both import this module.
 """
 from __future__ import annotations
 
@@ -2602,3 +2604,171 @@ def seed_shipped_f15(*, constants: F15Constants, duckdb_path: Path, site_dir: Pa
         lake.close()
     write_registry(paths, doc=doc, members=rows, era_lines=era_rows)
     return {"members": len(rows), "era_lines": len(era_rows), "rulings": 1}
+
+
+# ---------------------------------------------------------------------------
+# Stage 3 (spec §9.3): the citation registry, inside the export after the main
+# citations and before any write
+# ---------------------------------------------------------------------------
+
+# The identity fields a published fact may never change (the 88538c6a post-pass's tuples).
+_WORKBOOK_IDENTITY = ("kind", "units", "amount_thousands", "sha256", "sheet", "cells", "official_url")
+_DERIVED_IDENTITY = ("kind", "units", "recorded_value", "formula", "inputs")
+
+
+def _workbook_leaves(citation: Mapping) -> list[tuple[str, str, str]]:
+    return [(citation.get("sha256"), citation.get("sheet"), cell.strip())
+            for cell in (citation.get("cells") or "").split(",") if cell.strip()]
+
+
+def expand_leaves(fact_id: str, citations: Mapping[str, Mapping]) -> list[tuple[str, str, str]]:
+    """A receipt's (sha256, sheet, cell) workbook leaves (§9.3 item 5, the
+    leaf rule of program_pdf_receipts.attach_additive_receipts): a workbook
+    citation gives its cells; a derived one the concatenation, in input
+    order, of its inputs' expansions. Duplicates are kept, so a caller sees
+    them. A missing fact, another kind, malformed inputs or a cycle raise
+    ValueError. Formulas are not judged here (item 4 does that)."""
+    fault = f"{fact_id}: not an additive workbook receipt"
+
+    def visit(fid: str, path: frozenset[str]) -> list[tuple[str, str, str]]:
+        citation = citations.get(fid)
+        if not isinstance(citation, Mapping) or fid in path:
+            raise ValueError(fault)
+        if citation.get("kind") == "workbook":
+            return _workbook_leaves(citation)
+        if citation.get("kind") != "derived":
+            raise ValueError(fault)
+        try:
+            inputs = json.loads(citation.get("inputs"))
+        except (TypeError, ValueError):
+            raise ValueError(fault) from None
+        if not isinstance(inputs, list) or not all(isinstance(item, str) for item in inputs):
+            raise ValueError(fault)
+        return [leaf for item in inputs for leaf in visit(item, path | {fid})]
+
+    return visit(fact_id, frozenset())
+
+
+def _receipt_value(citation: Mapping) -> Decimal:
+    """An input's value for a total's recompute: a workbook amount, or a
+    derived receipt's recorded value."""
+    if citation.get("kind") == "workbook":
+        return Decimal(str(citation["amount_thousands"]))
+    if citation.get("kind") == "derived":
+        return Decimal(citation["recorded_value"])
+    raise ValueError(f"not an additive input: {citation.get('kind')!r}")
+
+
+def _recomputes(citation: Mapping, merged: Mapping[str, Mapping]) -> bool:
+    try:
+        inputs = json.loads(citation["inputs"])
+        total = sum((_receipt_value(merged[item]) for item in inputs), Decimal(0))
+        return Decimal(citation["recorded_value"]) == total
+    except (KeyError, TypeError, ValueError, ArithmeticError):
+        return False
+
+
+def check_citations(family: Family, *, registry: Registry, citations: Mapping[str, Mapping],
+                    minted: Mapping[str, Mapping], identity, site_dir: Path,
+                    claimed: dict[tuple[str, str, str], str] | None = None) -> list[str]:
+    """Stage 3 (§9.3 items 1–7) for one family the export is about to write.
+
+    `citations` is json/citations.json as the pass holds it; `minted` is this
+    family's citations of the pass (new or reused); `identity` is the
+    export's program identity (export_site._fetch_program_identity) and
+    `site_dir` the export it checks program pages in. `registry` supplies the
+    receipt grammar's family tails. `claimed` (R10) maps each workbook leaf
+    to the family that counts it: one dict is shared across the families of
+    one pass, and this family's leaves are recorded in it (a leaf keeps its
+    first family). Each fault is one 'platform-families: <history path>: …'
+    line; an empty list passes. Item 8, the index projection, is the
+    post-pass's."""
+    # Imported here: platform_family_history and program_pdf_receipts both import this module.
+    from govbudget.platform_family_history import check_program_notes, program_entries
+    from govbudget.program_pdf_receipts import additive_budget_formula
+
+    lines: list[str] = []
+
+    def add(reason: str) -> None:
+        lines.append(_line(family.history_path, None, reason))
+
+    name, merged = family.short_name, {**citations, **minted}
+    for m in family.members:                                                 # item 1
+        if m.verdict != "approved":
+            continue
+        for ref in (*m.evidence, *m.link_evidence):
+            prefix, parts = parse_ref(ref)
+            if prefix == "fact" and parts["fact_id"] not in citations:
+                add(f"fact:{parts['fact_id']} on {m.member_row_id} does not resolve in json/citations.json")
+    try:                                                                     # item 2
+        check_program_notes(family, program_entries(family), citations)
+    except ValueError as exc:
+        add(str(exc))
+    for m in family.counted:                                                 # item 3
+        rows = identity.accounts(m.code)
+        if rows:
+            account_title = next((title for account, title, _org, _detail in rows if account == m.account), rows[0][1])
+            slug = identity.slug(m.code, m.account, account_title,
+                                 era_map.ERA_ORG_TO_MODERN.get(m.organization, m.organization))
+        else:
+            slug = m.code
+        want = slug if (Path(site_dir) / "json" / "program_details" / f"{slug}.json").is_file() else None
+        got = m.page_slug or None
+        if got != want:
+            add(f"{m.member_id} page_slug {got!r} differs from the export's program page {want!r}")
+    derived = {fid: c for fid, c in minted.items() if c.get("kind") == "derived"}
+    for fid, citation in derived.items():                                    # item 4
+        formula = citation.get("formula")
+        if not additive_budget_formula(formula or "", registry=registry):
+            add(f"{fid} formula fails the receipt grammar: {formula}")
+    for fid, citation in derived.items():                                    # item 5
+        if not _recomputes(citation, merged):
+            add(f"{name} receipt {fid} does not recompute from its inputs")
+            continue
+        try:
+            leaves = expand_leaves(fid, merged)
+        except ValueError as exc:
+            add(f"{name} receipt {fid} does not expand to workbook leaves: {exc}")
+            continue
+        seen: set[tuple[str, str, str]] = set()
+        for sha, sheet, cell in leaves:
+            if (sha, sheet, cell) in seen:
+                add(f"{name} receipt {fid} counts leaf {sha}/{sheet}/{cell} twice")
+                break
+            seen.add((sha, sheet, cell))
+    for fid, source in minted.items():                                       # item 6
+        if fid in citations:
+            fields = _WORKBOOK_IDENTITY if source.get("kind") == "workbook" else _DERIVED_IDENTITY
+            if any(citations[fid].get(key) != source.get(key) for key in fields):
+                add(f"{name} citation identity conflicts with published fact {fid}")
+    if claimed is not None:                                                  # item 7
+        mine = family.platform_family
+        for citation in minted.values():
+            if citation.get("kind") != "workbook":
+                continue
+            for leaf in _workbook_leaves(citation):
+                other = claimed.setdefault(leaf, mine)
+                if other != mine:
+                    add(f"leaf {leaf[0]}/{leaf[1]}/{leaf[2]} is counted by {other} and {mine}")
+    return lines
+
+
+def index_projection(registry: Registry) -> dict:
+    """json/families/index.json (§12, D7): the published families in JSON
+    order, no amounts. Members are the approved counted rows in member_order,
+    then the approved context rows by member_id; ruling_ids is the sorted
+    union of the publishing ruling and those rows' rulings."""
+    families = []
+    for fam in registry.published():
+        listed = (*fam.counted, *fam.context)
+        families.append({
+            "history": fam.history_path,
+            "history_dataset": fam.history_dataset,
+            "members": [{"member_id": m.member_id, "page_slug": m.page_slug or None, "role": m.role}
+                        for m in listed],
+            "platform_family": fam.platform_family,
+            "route": fam.route,
+            "ruling_ids": sorted({fam.published_ruling_id} | {m.ruling_id for m in listed}),
+            "short_name": fam.short_name,
+        })
+    return {"families": families, "schema_version": 1}

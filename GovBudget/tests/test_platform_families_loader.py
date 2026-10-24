@@ -6,12 +6,14 @@ import hashlib
 import json
 import subprocess
 import sys
+from dataclasses import replace
 from decimal import Decimal
 
 import duckdb
 import pytest
 from openpyxl import Workbook
 
+from govbudget.export_site import _ProgramIdentity
 from govbudget.jbooks import era_map
 from govbudget.platform_families import (
     CAVEAT_IDS, CONTRACT_LINK_POLICIES, DEFAULT_PATHS, EDITIONS, ERA_LINE_COLUMNS, EXCLUSION_KINDS,
@@ -19,9 +21,10 @@ from govbudget.platform_families import (
     MEMBER_ID_RE, PAYING_ORGS, PLATFORM_FAMILY_RE, PREFILL_COLUMNS, PURPOSES, REVIEW_COLUMNS,
     REVIEW_ROOT, ROLES, RULING_ID_RE, SEED_BASIS_ALLOWED, SERVICES, SHORT_NAME_RE, SOURCE_ID_RE,
     SOURCE_TIERS, STATUSES, TOP_KEYS, VARIANT_SCOPES, VERDICTS, EraLine, Headline, LakeReport,
-    MemberMeasure, RegistryError, ReviewGuard, check_lake, corpus_gate, family_hash, load_registry,
-    measure_member, normalize_quote_text, open_lake, parse_ref, registry_texts, resolve_doc_ref,
-    split_refs, write_registry)
+    MemberMeasure, RegistryError, ReviewGuard, check_citations, check_lake, corpus_gate, expand_leaves,
+    family_hash, index_projection, load_registry, measure_member, normalize_quote_text, open_lake, parse_ref,
+    registry_texts, resolve_doc_ref, split_refs, write_registry)
+from govbudget.platform_family_history import _json_bytes
 from pdf_factory import make_pdf
 from platform_family_fixtures import (DOC_SHA, DRIFT, ERA_XA, MAP_ROWS, PROGRAM_ROWS, RULING_X1, SRC_SHA,
                                       World, XA, XC, XR, make_lake, make_site, ruling, tmp_paths,
@@ -809,3 +812,142 @@ def test_check_lake_families_argument_limits_the_families(tmp_path):
     db, site = make_lake(tmp_path, add=[("P-1", 2026, "3010F", "F", "01", "YA0001", "Y-1 Aircraft", "YA0001", "1")]), make_site(tmp_path)
     with open_lake(db) as lake:
         assert check_lake(World().parse(), lake=lake, site_dir=site, families=["x-1"]) == LakeReport([], [], [])
+
+
+# ---------------------------------------------------------------------------
+# Stage 3 (§9.3): the citation registry, leaf expansion and the index projection
+# ---------------------------------------------------------------------------
+
+F15 = load_registry()["f-15"]
+NARRATIVE = dict(kind="jbook_narrative", page_number=71, pe_bli="F015EX",
+                 sha256="528d14414585406684021e04e74632cccf4b40f8ba039f89f8af1ddebc7bc01e")
+REFS = ("0026c924483c6624", "d9982379a24ebac6", "b30fae1fd23999e4", "c9e5c28dfebc879e", "b3dbc6ed30814fdf")
+MODERN = ("0207134F", "0207146F", "0207171F", "F01500", "F015EX", "F15EWS")
+ANNUAL = ("sum(budget_lines.amount_thousands) for reviewed F-15 members, PB2026, FY2024 actuals; one selected "
+          "scenario column per workbook line")
+
+
+def _citations():
+    return {"e7d5bcfb4a30f458": dict(NARRATIVE), **{f: dict(kind="jbook_narrative") for f in REFS}}
+
+
+def _identity(*codes):
+    return _ProgramIdentity([(m.code, m.account, "Title", "F", True) for m in F15.counted if m.code in codes])
+
+
+def _site(tmp_path, *codes):
+    site = tmp_path / "site"
+    (site / "json/program_details").mkdir(parents=True, exist_ok=True)
+    for code in codes:
+        (site / "json/program_details" / f"{code}.json").write_text("{}")
+    return site
+
+
+def _wb(cells, amount, sha="a" * 64, sheet="Exhibit R-1"):
+    return dict(kind="workbook", units="USD thousands", amount_thousands=amount, sha256=sha, sheet=sheet, cells=cells)
+
+
+def _total(inputs, value, formula=ANNUAL):
+    return dict(kind="derived", units="USD thousands", recorded_value=f"{value:.3f}", formula=formula,
+                inputs=json.dumps(inputs))
+
+
+def _stage3(tmp_path, *, citations=None, minted=None, family=F15, identity_codes=MODERN, claimed=None):
+    return check_citations(family, registry=load_registry(), citations=_citations() if citations is None else citations,
+                           minted={} if minted is None else minted, identity=_identity(*identity_codes),
+                           site_dir=_site(tmp_path, *identity_codes), claimed=claimed)
+
+
+def _b1_member(member_id, role, order=None):
+    exhibit, account, organization, code = member_id.split(":")
+    base = F15.counted[0]
+    return replace(base, member_row_id=f"b-1|{member_id}|{base.valid_from_edition}-{base.valid_to_edition}",
+                   platform_family="b-1", member_id=member_id, exhibit=exhibit, account=account,
+                   organization=organization, code=code, role=role, verdict="approved", member_order=order,
+                   page_slug="", ruling_id="R-DEC-FAM-B1-B1")
+
+
+def test_stage3_passes_on_the_committed_f15_entry(tmp_path):
+    claimed = {}
+    assert _stage3(tmp_path, minted={"1" * 16: _wb("J1", 1.0)}, claimed=claimed) == []
+    assert claimed == {("a" * 64, "Exhibit R-1", "J1"): "f-15"}
+
+
+def test_stage3_unresolved_fact_ref_is_named(tmp_path):
+    cits = _citations(); del cits["0026c924483c6624"]
+    (line,) = _stage3(tmp_path, citations=cits)
+    assert line.startswith("platform-families: json/f15_funding_history.json: ")
+    assert "fact:0026c924483c6624" in line and "f-15|R-1:3600F:AF:0207134F|2017-2026" in line
+
+
+def test_stage3_note_receipt_mismatch_keeps_the_f15_message(tmp_path):
+    cits = {**_citations(), "e7d5bcfb4a30f458": {**NARRATIVE, "page_number": 70}}
+    assert any("F-15 program note receipt mismatch: F015E0/e7d5bcfb4a30f458" in l for l in _stage3(tmp_path, citations=cits))
+
+
+def test_stage3_page_slug_must_match_the_program_identity(tmp_path):
+    lines = _stage3(tmp_path, identity_codes=(*MODERN, "F0150P"))
+    assert any("P-1:3010F:AF:F0150P page_slug None differs from the export's program page 'F0150P'" in l for l in lines)
+    wrong = replace(F15, members=tuple(replace(m, page_slug="WRONG") if m.code == "0207134F" else m for m in F15.members))
+    assert any("R-1:3600F:AF:0207134F page_slug 'WRONG'" in l for l in _stage3(tmp_path, family=wrong))
+
+
+def test_stage3_minted_formula_must_pass_the_receipt_grammar(tmp_path):
+    minted = {"2" * 16: _wb("J1", 1.0), "1" * 16: _total(["2" * 16], 1.0, "sum(budget_lines.amount_thousands) + 1")}
+    assert any("1111111111111111 formula fails the receipt grammar" in l for l in _stage3(tmp_path, minted=minted))
+
+
+def test_stage3_a_total_must_recompute_from_its_inputs(tmp_path):
+    minted = {"2" * 16: _wb("J1", 1.0), "3" * 16: _wb("J2", 1.0), "1" * 16: _total(["2" * 16, "3" * 16], 3.0)}
+    assert any("F-15 receipt 1111111111111111 does not recompute from its inputs" in l for l in _stage3(tmp_path, minted=minted))
+
+
+def test_stage3_no_leaf_twice_in_one_total(tmp_path):
+    minted = {"2" * 16: _wb("J1,J2", 2.0), "3" * 16: _wb("J2", 1.0), "1" * 16: _total(["2" * 16, "3" * 16], 3.0)}
+    assert any("F-15 receipt 1111111111111111 counts leaf" in l and "/Exhibit R-1/J2 twice" in l
+               for l in _stage3(tmp_path, minted=minted))
+
+
+def test_stage3_a_published_fact_is_never_overwritten(tmp_path):
+    cits = {**_citations(), "3" * 16: _total([], 0.0, "sum(budget_lines.amount_thousands)")}
+    minted = {"3" * 16: _total([], 0.0, "sum(budget_lines.amount_thousands where amount_type=x)")}
+    assert any("F-15 citation identity conflicts with published fact 3333333333333333" in l
+               for l in _stage3(tmp_path, citations=cits, minted=minted))
+
+
+def test_stage3_a_leaf_in_two_families_is_refused(tmp_path):
+    claimed = {("a" * 64, "Exhibit R-1", "J1"): "b-1"}
+    lines = _stage3(tmp_path, minted={"1" * 16: _wb("J1", 1.0)}, claimed=claimed)
+    assert any("is counted by b-1 and f-15" in l for l in lines)
+
+
+def test_expand_leaves_splits_cells_and_recurses_into_derived_inputs():
+    cits = {"w1": _wb("J1, J2", 2.0), "w2": _wb("J2", 1.0), "t": _total(["w1", "w2"], 3.0), "c": _total(["t"], 3.0)}
+    assert expand_leaves("c", cits) == [("a" * 64, "Exhibit R-1", "J1"), ("a" * 64, "Exhibit R-1", "J2"),
+                                        ("a" * 64, "Exhibit R-1", "J2")]
+    with pytest.raises(ValueError, match="not an additive workbook receipt"):
+        expand_leaves("missing", cits)
+
+
+def test_index_projection_of_the_committed_registry_is_spec_section_12():
+    data = _json_bytes(index_projection(load_registry()))
+    assert len(data) == 833
+    assert hashlib.sha256(data).hexdigest() == "3657d3bd36fa8f344cf2c299714dacb11fe227100cd1ff0c3d3d22f6734f1945"
+    (fam,) = index_projection(load_registry())["families"]
+    assert [m["page_slug"] for m in fam["members"]][-2:] == [None, None] and fam["ruling_ids"] == ["R-DEC-FAM-F15-SEED"]
+
+
+def test_index_projection_lists_published_families_counted_then_context():
+    b1 = replace(F15, platform_family="b-1", short_name="B-1", history_dataset="b1_funding_history",
+                 published_ruling_id="R-DEC-FAM-B1-PUB", members=(
+                     _b1_member("P-1:3010F:AF:B00100", "counted", order=1),
+                     _b1_member("P-1:3020F:AF:ZZ0001", "context"), _b1_member("P-1:3020F:AF:AA0001", "context")))
+    draft = replace(b1, platform_family="x-1", short_name="X-1", history_dataset="x1_funding_history",
+                    status="draft", published_ruling_id=None)
+    out = index_projection(replace(load_registry(), families=(F15, b1, draft)))
+    assert [f["platform_family"] for f in out["families"]] == ["f-15", "b-1"]
+    b = out["families"][1]
+    assert [(m["member_id"], m["role"]) for m in b["members"]] == [
+        ("P-1:3010F:AF:B00100", "counted"), ("P-1:3020F:AF:AA0001", "context"), ("P-1:3020F:AF:ZZ0001", "context")]
+    assert b["ruling_ids"] == ["R-DEC-FAM-B1-B1", "R-DEC-FAM-B1-PUB"]
+    assert (b["route"], b["history"]) == ("/families/b-1/", "json/b1_funding_history.json")
