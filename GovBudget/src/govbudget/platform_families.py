@@ -1113,12 +1113,17 @@ def _tier(cx: _Cross, source_id: str) -> str | None:
 
 def _check_era_ref(item: str, decision_id: str, label: str, cx: _Cross, add: _Add,
                    member: Mapping[str, str] | None) -> None:
-    """Rule 20 for one era: ref; `member` is the citing row (None for an exclusion)."""
+    """Rule 20 for one era: ref; `member` is the citing row (None for an
+    exclusion, which has no code, account or organization to compare, but
+    whose era: refs must still name a same_program or history_only decision)."""
     d = cx.decisions.get(decision_id)
     if d is None:
         add(f"{label} ref {item!r} does not resolve to a decision of the era seed "
             "(p1_era_code_decisions)")
         return
+    if d.get("decision") not in _ERA_REF_DECISIONS:
+        add(f"{label} ref {item!r} resolves to decision {d.get('decision')!r}, not "
+            f"{' or '.join(_ERA_REF_DECISIONS)}")
     if member is None:
         return
     code, account, org = member["code"], member["account"], member["organization"]
@@ -1132,9 +1137,6 @@ def _check_era_ref(item: str, decision_id: str, label: str, cx: _Cross, add: _Ad
     elif d.get("organization") != "":
         add(f"{label} ref {item!r} has organization {d.get('organization')!r}; it must be blank "
             f"(code {code!r} is not organization-split)")
-    if d.get("decision") not in _ERA_REF_DECISIONS:
-        add(f"{label} ref {item!r} resolves to decision {d.get('decision')!r}, not "
-            f"{' or '.join(_ERA_REF_DECISIONS)}")
 
 
 def _check_src_ref(item: str, source_id: str, label: str, cx: _Cross, add: _Add, *,

@@ -515,6 +515,8 @@ STAGE1_CROSS_RULES = [
      M, XA_ID, "XB0001"),
     ("r20-era-excluded", _set(MXA, evidence="era:XA0001|3010F||2017-2022;src:x-book#p3"),
      M, XA_ID, "exclude_placeholder"),
+    ("r20-era-excluded-exclusion", lambda w: w.family()["exclusions"][0].update(
+        evidence=["era:XA0001|3010F||2017-2022"]), J, "x-1", "exclude_placeholder"),
     ("r20-era-org-split", _org_split_context, M, "x-1|P-1:0300D:DTRA:20|2024-2026", "organization"),
     ("r20-src-unknown", _set(MXA, evidence=f"era:{ERA_XA};src:nope"), M, XA_ID, "nope"),
     ("r20-no-independent-signal", _set(MXA, evidence=f"era:{ERA_XA}"), M, XA_ID, "independent"),
