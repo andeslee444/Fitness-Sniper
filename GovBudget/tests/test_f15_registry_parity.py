@@ -416,3 +416,17 @@ def test_a_registry_fault_at_import_names_the_file_and_the_row(tmp_path, monkeyp
         monkeypatch.undo()
         importlib.reload(facade)
     assert "platform_family_members.csv" in str(raised.value) and row in str(raised.value)
+
+
+# program_pdf_receipts.py:274-276 at 88538c6a, in order.
+RECEIPT_TAILS_88538C6A = [
+    r" for reviewed F-15 members, PB20\d{2}, FY20\d{2} (?:actuals|enacted|request); one selected scenario column per workbook line",
+    r" for workbook program (?:P-1|R-1):[A-Za-z0-9:]+, PB20\d{2}, FY20\d{2} (?:actuals|enacted|request); each selected workbook input once",
+    r" via annual reviewed F-15 actuals totals, FY20\d{2}–FY20\d{2}; each fiscal year once, nominal USD thousands; excludes enacted/current-year figures and requests",
+]
+
+
+def test_family_formula_tails_equal_the_88538c6a_strings():
+    from govbudget.platform_families import load_registry   # local: Task 6 may land before Task 3b's imports
+    from govbudget.program_pdf_receipts import family_formula_tails
+    assert family_formula_tails(load_registry()) == RECEIPT_TAILS_88538C6A

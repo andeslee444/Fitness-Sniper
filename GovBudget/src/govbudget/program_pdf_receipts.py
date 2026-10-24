@@ -6,8 +6,10 @@ obligations, and R-2/P-40 detail keep their own accounting and original receipts
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Mapping
 from ctypes import c_double
 from decimal import Decimal
+import functools
 import hashlib
 import json
 from pathlib import Path
@@ -20,6 +22,7 @@ import pypdfium2 as pdfium
 
 from govbudget.budget_pdf_receipts import (amount, close_line, combine_receipts, match_cell,
     page_columns, pdf_header_key, program_lines, select_glyph_geometry, title_identity, wrapped_title, inherited_activity)
+from govbudget.platform_families import Registry, load_registry
 
 
 def source_identity(citation: dict) -> tuple[int, str] | None:
@@ -263,18 +266,44 @@ def cost_row_match(page: dict, row: dict, header: str, value: float, edition: in
     return matches[0] if len(matches) == 1 else None
 
 
-def additive_budget_formula(formula: str) -> bool:
-    """Accept the exporter's sum/selection grammar, never arithmetic suffixes."""
+# The receipt-formula tails (spec §11). A family tail is its prefix, the
+# family's short_name and its suffix; the workbook tail names no family.
+_ANNUAL_TAIL = (r" for reviewed ",
+                r" members, PB20\d{2}, FY20\d{2} (?:actuals|enacted|request); one selected scenario column per workbook line")
+_WORKBOOK_TAIL = r" for workbook program (?:P-1|R-1):[A-Za-z0-9:]+, PB20\d{2}, FY20\d{2} (?:actuals|enacted|request); each selected workbook input once"
+_CUMULATIVE_TAIL = (r" via annual reviewed ",
+                    r" actuals totals, FY20\d{2}–FY20\d{2}; each fiscal year once, nominal USD thousands; excludes enacted/current-year figures and requests")
+
+
+@functools.lru_cache(maxsize=1)
+def _default_registry() -> Registry:
+    """The committed registry, loaded once per process."""
+    return load_registry()
+
+
+def family_formula_tails(registry: Registry) -> list[str]:
+    """The tails additive_budget_formula accepts: every published family's
+    annual tail (JSON order), the workbook tail once, then every published
+    family's cumulative tail (JSON order). A draft or ratified family never
+    widens the grammar. short_name goes in verbatim, never escaped (D4):
+    stage-1 rule 3 admits no character that is special in a regex outside a
+    character class, and an escaped hyphen would break the exact strings."""
+    families = registry.published()
+    return ([_ANNUAL_TAIL[0] + family.short_name + _ANNUAL_TAIL[1] for family in families]
+            + [_WORKBOOK_TAIL]
+            + [_CUMULATIVE_TAIL[0] + family.short_name + _CUMULATIVE_TAIL[1] for family in families])
+
+
+def additive_budget_formula(formula: str, *, registry: Registry | None = None) -> bool:
+    """Accept the exporter's sum/selection grammar, never arithmetic suffixes.
+    The family tails come from the published families of `registry`, or of
+    the committed registry when none is passed."""
     predicate = r"[a-z_]+=(?:'[^'\n]*'|[a-z0-9_]+)"
     selection = rf" where {predicate}(?: and {predicate})*"
     core = r"sum\(budget_lines\.amount_thousands"
     if re.fullmatch(rf"{core}(?:{selection})?\)(?:{selection})?", formula):
         return True
-    tails = [
-        r" for reviewed F-15 members, PB20\d{2}, FY20\d{2} (?:actuals|enacted|request); one selected scenario column per workbook line",
-        r" for workbook program (?:P-1|R-1):[A-Za-z0-9:]+, PB20\d{2}, FY20\d{2} (?:actuals|enacted|request); each selected workbook input once",
-        r" via annual reviewed F-15 actuals totals, FY20\d{2}–FY20\d{2}; each fiscal year once, nominal USD thousands; excludes enacted/current-year figures and requests",
-    ]
+    tails = family_formula_tails(registry if registry is not None else _default_registry())
     return any(re.fullmatch(core + r"\)" + tail, formula) for tail in tails)
 
 
@@ -335,6 +364,20 @@ def remove_v1_receipt_shards(receipts_dir: Path) -> int:
             path.unlink()
             removed += 1
     return removed
+
+
+def default_cell_counts(site_dir: Path, registry: Registry, receipts: Mapping[str, dict]) -> tuple[int, int]:
+    """The audit's (default_cells, default_complete): the program cells of the
+    default points of every published family's history artifact, summed over
+    the families, and how many of those cells have a complete receipt. A
+    family whose artifact is missing adds nothing."""
+    cells = []
+    for family in registry.published():
+        history_path = site_dir / family.history_path
+        if history_path.exists():
+            history = json.loads(history_path.read_text())
+            cells += [c for p in history["points"] if p["id"] in history["default_point_ids"] for c in p["program_cells"]]
+    return len(cells), sum(receipts.get(c["fact_id"], {}).get("complete", False) for c in cells)
 
 
 def export_program_pdf_receipts(*, site_dir: Path, manifest: Path, cache_dir: Path, editions: set[int] | None = None) -> dict:
@@ -455,16 +498,12 @@ def export_program_pdf_receipts(*, site_dir: Path, manifest: Path, cache_dir: Pa
         shards[fact[:3]][fact] = receipt
     for i in range(4096):
         (out / f"{i:03x}.json").write_text(json.dumps(shards[f"{i:03x}"], separators=(",", ":"), sort_keys=True) + "\n")
-    history_path = site_dir / "json/f15_funding_history.json"
-    defaults = []
-    if history_path.exists():
-        history = json.loads(history_path.read_text())
-        defaults = [c for p in history["points"] if p["id"] in history["default_point_ids"] for c in p["program_cells"]]
+    default_cells, default_complete = default_cell_counts(site_dir, _default_registry(), receipts)
     report = {"schema_version": 2, "full_corpus": editions is None,
               "citation_sha256": hashlib.sha256((site_dir / "json/citations.json").read_bytes()).hexdigest(),
               "source_count": len(book_audits), "leaf_count": leaf_count, "receipt_count": len(receipts),
               "complete_receipts": sum(r["complete"] for r in receipts.values()), "books": book_audits,
-              "default_cells": len(defaults), "default_complete": sum(receipts.get(c["fact_id"], {}).get("complete", False) for c in defaults),
+              "default_cells": default_cells, "default_complete": default_complete,
               "unmatched_cells": unmatched, "shard_prefix_length": 3,
               "highlight_geometry": "tight PDFium glyph bounds verified by exact text and first-character origin"}
     (site_dir / "json/budget_pdf_receipts_audit.json").write_text(json.dumps(report, indent=2) + "\n")

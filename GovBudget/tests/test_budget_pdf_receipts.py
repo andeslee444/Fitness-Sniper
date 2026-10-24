@@ -1,9 +1,20 @@
 """Evidence tests: figures must match the same line and fiscal column, not just a numeral."""
+import inspect
 import json
+import re
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from govbudget import program_pdf_receipts
+from govbudget.platform_families import load_registry
+from govbudget.program_pdf_receipts import (
+    additive_budget_formula,
+    default_cell_counts,
+    export_program_pdf_receipts,
+    family_formula_tails,
+)
 from govbudget.budget_pdf_receipts import (
     amount,
     combine_receipts,
@@ -199,3 +210,70 @@ def test_shipped_f15_evidence_preserves_all_default_and_historical_cells():
         assert receipt["amount_thousands"] == value, fact
         assert sum(part["amount_thousands"] for part in receipt["parts"]) == value, fact
         assert receipt["unmatched_count"] == 0, fact
+
+
+def annual(name):
+    return (f"sum(budget_lines.amount_thousands) for reviewed {name} members, PB2026, FY2024 actuals;"
+            " one selected scenario column per workbook line")
+
+
+def cumulative(name):
+    return (f"sum(budget_lines.amount_thousands) via annual reviewed {name} actuals totals, FY2015–FY2024;"
+            " each fiscal year once, nominal USD thousands; excludes enacted/current-year figures and requests")
+
+
+def with_family(short_name, status="published"):
+    registry = load_registry()
+    f15 = registry["f-15"]
+    other = replace(f15, platform_family="b-52", short_name=short_name, history_dataset="b52_funding_history",
+                    status=status, published_ruling_id=f15.published_ruling_id if status == "published" else None)
+    return replace(registry, families=(f15, other))
+
+
+def test_a_second_published_family_widens_the_grammar_and_a_draft_does_not():
+    published, draft = with_family("B-52"), with_family("B-52", status="draft")
+    for formula in (annual("B-52"), cumulative("B-52")):
+        assert additive_budget_formula(formula, registry=published)
+        assert not additive_budget_formula(formula, registry=draft)
+        assert not additive_budget_formula(formula)                       # committed registry: F-15 alone
+    assert additive_budget_formula(annual("F-15")) and additive_budget_formula(annual("F-15"), registry=published)
+    tails = family_formula_tails(published)
+    assert [t.split(" members")[0] for t in tails[:2]] == [" for reviewed F-15", " for reviewed B-52"]
+    assert tails[2].startswith(" for workbook program ") and len(tails) == 5
+    assert [t.split(" actuals totals")[0] for t in tails[3:]] == [" via annual reviewed F-15", " via annual reviewed B-52"]
+
+
+def test_receipt_tails_insert_short_name_verbatim_never_re_escaped():
+    assert re.escape("F-15") == "F\\-15"                                   # why D4 exists (Python 3.12)
+    assert "F\\-15" not in "".join(family_formula_tails(load_registry()))
+    assert "re.escape" not in inspect.getsource(program_pdf_receipts.family_formula_tails)
+    assert additive_budget_formula(annual("KC-46 A/B"), registry=with_family("KC-46 A/B"))
+
+
+def _history(points, defaults):
+    return json.dumps({"points": [{"id": i, "program_cells": [{"fact_id": f} for f in cells]} for i, cells in points],
+                       "default_point_ids": defaults})
+
+
+def test_default_cell_counts_sum_over_published_family_artifacts(tmp_path):
+    (tmp_path / "json").mkdir()
+    (tmp_path / "json/f15_funding_history.json").write_text(_history([("fy2024a", ["a", "b"]), ("fy2025e", ["c"])], ["fy2024a"]))
+    (tmp_path / "json/b52_funding_history.json").write_text(_history([("fy2024a", ["d"])], ["fy2024a"]))
+    receipts = {"a": {"complete": True}, "b": {"complete": False}, "c": {"complete": True}, "d": {"complete": True}}
+    assert default_cell_counts(tmp_path, with_family("B-52"), receipts) == (3, 2)
+    assert default_cell_counts(tmp_path, with_family("B-52", status="draft"), receipts) == (2, 1)
+    (tmp_path / "json/b52_funding_history.json").unlink()
+    assert default_cell_counts(tmp_path, with_family("B-52"), receipts) == (2, 1)
+
+
+def test_the_receipt_audit_keeps_its_keys_and_order(tmp_path):
+    (tmp_path / "json").mkdir()
+    (tmp_path / "json/citations.json").write_text("{}")
+    (tmp_path / "json/f15_funding_history.json").write_text(_history([("fy2024a", ["a", "b"])], ["fy2024a"]))
+    (tmp_path / "manifest.json").write_text("[]")
+    report = export_program_pdf_receipts(site_dir=tmp_path, manifest=tmp_path / "manifest.json", cache_dir=tmp_path / "cache")
+    assert list(report) == ["schema_version", "full_corpus", "citation_sha256", "source_count", "leaf_count",
+                            "receipt_count", "complete_receipts", "books", "default_cells", "default_complete",
+                            "unmatched_cells", "shard_prefix_length", "highlight_geometry"]
+    assert (report["default_cells"], report["default_complete"]) == (2, 0)
+    assert json.loads((tmp_path / "json/budget_pdf_receipts_audit.json").read_text()) == report
