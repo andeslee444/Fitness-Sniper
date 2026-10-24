@@ -3929,12 +3929,14 @@ def export_site(
         json.dumps(manifest, indent=2, sort_keys=True)
     )
 
-    # Family history is a bounded additive projection over the completed
-    # artifacts. It preserves canonical program facts and rechecks every new
-    # historical workbook input before adding annual/cumulative receipts.
-    from govbudget.f15_funding_history import export_f15_funding_history
-    family_history = export_f15_funding_history(
-        duckdb_path=duckdb_path, out_dir=out_dir,
+    # Family histories (every published registry family) are a bounded
+    # additive projection over the completed artifacts. The post-pass
+    # preserves canonical program facts and rechecks every new historical
+    # workbook input before adding annual/cumulative receipts.
+    from govbudget.platform_families import load_registry
+    from govbudget.platform_family_history import export_family_histories
+    family_history = export_family_histories(
+        duckdb_path=duckdb_path, out_dir=out_dir, registry=load_registry(),
     )
 
     # The /downloads/ citations card's entry (final-review finding #10): every

@@ -8,20 +8,32 @@ default and cumulative rules, the reuse ranking); the values are registry data
 the output is byte-identical to the 88538c6a builder; the facade
 govbudget.f15_funding_history keeps today's names as wrappers bound to the F-15.
 
+export_family_histories is the export post-pass (spec §10.1): every published
+family, one staging directory, json/families/index.json (§12). The names it
+calls for the lake, stage 2, the index and the workbook previews
+(build_workbook_previews, open_lake, check_lake, index_projection) are
+module-level, so tests patch them here (R15).
+
 govbudget.export_site is imported inside the functions that use it, never at
 module level.
 """
 from __future__ import annotations
 
-from collections import defaultdict
-from collections.abc import Mapping
+from collections import Counter, defaultdict
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 import json
+import os
+from pathlib import Path
+import tempfile
 
+from govbudget import config
 from govbudget.jbooks.era_map import ERA_ORG_TO_MODERN
-from govbudget.platform_families import EraLine, Family, Member
+from govbudget.platform_families import (EraLine, Family, Member, Registry, RegistryError, check_citations,
+                                         check_lake, corpus_gate, index_projection, open_lake)
+from govbudget.workbook_cells import build_workbook_previews
 
 # Spec §11: filled with str.format from the registry.
 ANNUAL_FORMULA = ("sum(budget_lines.amount_thousands) for reviewed {short_name} members, PB{edition}, "
@@ -31,6 +43,8 @@ CUMULATIVE_FORMULA = ("sum(budget_lines.amount_thousands) via annual reviewed {s
                       "enacted/current-year figures and requests")
 CELL_FORMULA = ("sum(budget_lines.amount_thousands) for workbook program {member_id}, PB{edition}, "
                 "FY{fy} {kind}; each selected workbook input once")
+# Spec §12: the published families' projection, written only by the full export pass.
+INDEX_PATH = "json/families/index.json"
 
 _MODERN_TO_ERA = {modern: era for era, modern in ERA_ORG_TO_MODERN.items()}
 
@@ -361,3 +375,246 @@ def build_program_matrix(family: Family, payload: dict, previews: dict, *, exist
             raise ValueError(f"{name} matrix/annual total mismatch: {point['id']}")
         point["program_cells"] = cells
     return payload, additions, breakdowns
+
+
+def _targets(registry: Registry, families: Sequence[str] | None, preview: bool, out_dir: Path) -> tuple[Family, ...]:
+    """The families a pass builds, in JSON order; ValueError on a misused preview."""
+    if preview:
+        if families is None or len(families) != 1:
+            raise ValueError("platform-families: a preview builds exactly one family, named in families")
+        family = registry[families[0]]
+        if family.status == "published":
+            raise ValueError(f"platform-families: a preview builds an unpublished family; "
+                             f"{family.platform_family} is published")
+        site = Path(config.SITE_DIR).resolve()
+        if out_dir.resolve().is_relative_to(site):
+            raise ValueError(f"platform-families: preview refuses an out_dir inside the site dir: "
+                             f"{out_dir.resolve()} is inside {site}")
+        return (family,)
+    if families is None:
+        return registry.published()
+    named = {registry[pf].platform_family for pf in families}
+    targets = tuple(f for f in registry.families if f.platform_family in named)
+    unpublished = [f.platform_family for f in targets if f.status != "published"]
+    if unpublished:
+        raise ValueError(f"platform-families: {unpublished} not published; an unpublished family builds only "
+                         "as a preview")
+    return targets
+
+
+def _all_or_none(built: Sequence[str], skipped: Sequence[str]) -> RegistryError:
+    """D6: one published family skipping while another builds stops the pass."""
+    return RegistryError([f"platform-families: platform_families.json: all published families build or none: "
+                          f"built {list(built)}, skipped {list(skipped)}"])
+
+
+def export_family_histories(*, duckdb_path: Path, out_dir: Path, registry: Registry,
+                            families: Sequence[str] | None = None, preview: bool = False) -> dict | None:
+    """The export post-pass (spec §10.1): append every published family's
+    verified history to a completed export, idempotently, in one staging
+    directory with one replace.
+
+    families=None is the full pass: every published family, and
+    json/families/index.json (§12). Naming families builds only those, all
+    published, without the index (the F-15 facade path). preview=True builds
+    the one unpublished family named, against a registry copy in which it is
+    published (for the receipt grammar only), never into the site dir and
+    never with the index. All published families build or none does (D6);
+    when none does (a small export), nothing is written and this returns
+    None. Stage 2 (the lake) and stage 3 (the citations, §9.3) run for every
+    family it builds, and every check precedes the first write. Existing
+    canonical facts and breakdowns are kept verbatim; a conflicting identity
+    raises. This does not rewrite source data or run the general exporter.
+    """
+    import duckdb
+    from govbudget.export_site import _fetch_program_identity, _stage_parquet_path
+
+    out_dir = Path(out_dir)
+    json_dir = out_dir / "json"
+    targets = _targets(registry, families, preview, out_dir)
+    if not targets:
+        return None
+    con = duckdb.connect(str(duckdb_path), read_only=True)
+    try:
+        try:
+            cursor = con.execute("select pe_bli, fy, edition_year as edition, amount_type_kind as kind, amount, amount_type, n_source_rows from fct_decade_series")
+            series = [dict(zip([d[0] for d in cursor.description], row)) for row in cursor.fetchall()]
+        except duckdb.CatalogException:
+            return None
+        identity = _fetch_program_identity(con)
+    finally:
+        con.close()
+    # Small/partial exports (including test fixtures) need not carry a family:
+    # its on_partial_corpus decides between skipping and raising (D5).
+    series_codes = frozenset(r["pe_bli"] for r in series)
+    gated = [family for family in targets if corpus_gate(family, series_codes)]
+    if not gated:
+        return None
+    if len(gated) != len(targets):
+        gated_ids = [f.platform_family for f in gated]
+        raise _all_or_none(gated_ids, [f.platform_family for f in targets if f.platform_family not in gated_ids])
+    lake = open_lake(duckdb_path)
+    try:
+        for family in gated:
+            check_lake(registry, lake=lake, site_dir=out_dir, families=[family.platform_family]).raise_if_failed()
+    finally:
+        lake.close()
+    lake_path = _stage_parquet_path(duckdb_path, "jbooks", "budget_lines.parquet")
+    documents = _stage_parquet_path(duckdb_path, "jbooks", "documents.parquet")
+    if not lake_path or not documents:
+        raise ValueError("platform family history requires the workbook source lake")
+    grammar = registry
+    if preview:     # the previewed family's formulas pass the grammar (it admits published families only)
+        previewed = targets[0].platform_family
+        grammar = replace(registry, families=tuple(replace(f, status="published") if f.platform_family == previewed
+                                                   else f for f in registry.families))
+    con = duckdb.connect()
+    try:
+        cursor = con.execute("""select b.exhibit, cast(b.fiscal_year as integer) as edition,
+            b.account, b.account_title, b.organization, b.budget_activity,
+            b.budget_activity_title, b.pe_bli, b.title, b.amount_type,
+            cast(b.amount_thousands as double) as amount_thousands,
+            d.sha256, b.source_sheet as sheet, b.source_cells as cells,
+            d.source_url as official_url, d.downloaded_at as retrieved_at
+            from read_parquet(?) b join read_parquet(?) d on b.source_document_id=d.id
+            where b.exhibit in ('P-1','R-1')""", [str(lake_path), str(documents)])
+        source_rows = [dict(zip([d[0] for d in cursor.description], row)) for row in cursor.fetchall()]
+        manifest = json.loads((out_dir / "manifest.json").read_text())
+        current_fact_ids = {row[0] for row in con.execute("select fact_id from read_parquet(?)", [str(out_dir / "data" / "budget_lines.parquet")]).fetchall()}
+        running = json.loads((json_dir / "citations.json").read_text())
+        cit_path = out_dir / "citations" / "citations.parquet"
+        cit_columns = [r[0] for r in con.execute("describe select * from read_parquet(?)", [str(cit_path)]).fetchall()]
+        decade_path = out_dir / "data" / "budget_lines_decade.parquet"
+        existing_wb = set(row[0] for row in con.execute("select fact_id from read_parquet(?)", [str(decade_path)]).fetchall())
+        built, skipped = [], []     # built: (family, payload, workbook_rows, added citation count)
+        claimed: dict[tuple[str, str, str], str] = {}
+        new_rows, decade_new, prefixes, all_previews, all_breakdowns = [], [], set(), {}, {}
+        for family in gated:
+            name = family.short_name
+            payload, additions, workbook_rows, breakdowns = build_history(family, source_rows, series, retrieved_at=manifest["built_at"], current_fact_ids=current_fact_ids)
+            if payload is None:
+                skipped.append(family.platform_family)
+                continue
+            check_headline(family, payload)
+            wb_citations = {fid: additions[fid] for fid in workbook_rows}
+            previews = build_workbook_previews(workbook_dir=out_dir / "workbooks", citations=wb_citations)
+            if len(previews) != len(workbook_rows):
+                raise ValueError(f"Not every {name} workbook input has a verified preview")
+            payload, matrix_citations, matrix_breakdowns = build_program_matrix(family, payload, previews, existing_citations=running, retrieved_at=manifest["built_at"])
+            additions.update(matrix_citations)
+            # Preserve published canonical breakdowns, generating only absent ones.
+            breakdowns.update({fid: obj for fid, obj in matrix_breakdowns.items() if not (json_dir / "breakdowns" / f"{fid}.json").exists()})
+            # Recompute each chain from independently stored workbook amounts before writes.
+            values = {fid: Decimal(str(row["amount_thousands"])) for fid, row in workbook_rows.items()}
+            for p in payload["points"] + [payload["cumulative"]]:
+                fid = p["fact_id"]
+                values[fid] = sum((values[item] for item in json.loads(additions[fid]["inputs"])), Decimal(0))
+                if values[fid] != Decimal(additions[fid]["recorded_value"]):
+                    raise ValueError(f"{name} derived receipt recomputation failed: {fid}")
+            for point in payload["points"]:
+                for cell in point["program_cells"]:
+                    amount = sum((values[fid] for fid in cell["input_fact_ids"]), Decimal(0))
+                    citation = additions[cell["fact_id"]]
+                    recorded = citation["recorded_value"] if citation["kind"] == "derived" else citation["amount_thousands"]
+                    if amount != Decimal(str(cell["amount_thousands"])) or amount != Decimal(str(recorded)):
+                        raise ValueError(f"{name} program cell recomputation failed: {cell['fact_id']}")
+            lines = check_citations(family, registry=grammar, citations=running, minted=additions,
+                                    identity=identity, site_dir=out_dir, claimed=claimed)
+            if lines:
+                raise RegistryError(lines)
+            added = 0
+            for fid, source in additions.items():
+                if fid in running:
+                    continue
+                full = {key: source.get(key) for key in cit_columns if key != "fact_id"}
+                new_rows.append([fid if key == "fact_id" else full[key] for key in cit_columns])
+                running[fid] = {key: value for key, value in full.items() if key not in {"scenario", "amount_type"}}
+                added += 1
+            for fid, row in workbook_rows.items():
+                if fid not in existing_wb:
+                    decade_new.append([fid, row["exhibit"], row["edition"], row["account"], row["account_title"], row["organization"], row["budget_activity"], row["budget_activity_title"], row["pe_bli"], row["title"], row["amount_type"], row["amount_thousands"], "USD thousands", row["sha256"], row["sheet"], row["cells"]])
+            prefixes |= {fid[:2] for fid in additions}
+            all_previews.update(previews)
+            all_breakdowns.update(breakdowns)
+            built.append((family, payload, workbook_rows, added))
+        built_ids = [family.platform_family for family, *_ in built]
+        if not built:
+            return None
+        if skipped:
+            raise _all_or_none(built_ids, skipped)
+        index = None
+        if families is None and not preview:
+            index = index_projection(registry)
+            listed = [f["platform_family"] for f in index["families"]]
+            if listed != built_ids:
+                raise RegistryError([f"platform-families: {INDEX_PATH}: index.json lists {listed} but the pass "
+                                     f"built {built_ids}"])
+        with tempfile.TemporaryDirectory(prefix=".family-history-", dir=out_dir) as staging:
+            stage = Path(staging)
+            staged = {}
+            def put(relative, data):
+                target = stage / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+                staged[relative] = target
+            def append_parquet(relative, rows):
+                src = out_dir / relative
+                target = stage / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                con.execute("create or replace temp table history_patch as select * from read_parquet(?)", [str(src)])
+                if rows:
+                    con.executemany(f"insert into history_patch values ({','.join('?' for _ in rows[0])})", rows)
+                if con.execute("select count(*) != count(distinct fact_id) from history_patch").fetchone()[0]:
+                    raise ValueError(f"Duplicate fact IDs in {relative}")
+                con.execute("copy history_patch to ? (format parquet, compression zstd)", [str(target)])
+                staged[relative] = target
+                return con.execute("select count(*) from history_patch").fetchone()[0]
+            citation_count = append_parquet("citations/citations.parquet", new_rows)
+            decade_count = append_parquet("data/budget_lines_decade.parquet", decade_new)
+            if citation_count != len(running):
+                raise ValueError("citation JSON/parquet population mismatch")
+            put("json/citations.json", _json_bytes(running))
+            for family, payload, _rows, _added in built:
+                put(family.history_path, _json_bytes(payload))
+            if index is not None:
+                put(INDEX_PATH, _json_bytes(index))
+            for prefix in sorted(prefixes):
+                put(f"json/cite-shards/{prefix}.json", _json_bytes({fid: obj for fid, obj in running.items() if fid.startswith(prefix)}))
+            for prefix in sorted({fid[:2] for fid in all_previews}):
+                rel = f"json/workbook-cells/{prefix}.json"
+                old = json.loads((out_dir / rel).read_text()) if (out_dir / rel).exists() else {}
+                old.update({fid: obj for fid, obj in all_previews.items() if fid.startswith(prefix)})
+                put(rel, _json_bytes(old))
+            for fid, obj in all_breakdowns.items():
+                put(f"json/breakdowns/{fid}.json", _json_bytes(obj))
+            manifest["citations"] = dict(sorted(Counter(c["kind"] for c in running.values()).items()))
+            manifest["datasets"]["budget_lines_decade"] = decade_count
+            for family, payload, workbook_rows, _added in built:
+                manifest[family.history_dataset] = {"annual_points": len(payload["points"]), "source_facts": len(workbook_rows), "start_fy": payload["start_fy"], "end_fy": payload["end_fy"]}
+            manifest["json_sidecars"] = len(list(json_dir.rglob("*.json"))) + sum(not (out_dir / rel).exists() for rel in staged if rel.startswith("json/"))
+            put("manifest.json", _json_bytes(manifest))
+            meta = json.loads((json_dir / "site_meta.json").read_text())
+            meta["counts"]["citations"] = citation_count
+            meta["datasets"]["budget_lines_decade"] = decade_count
+            put("json/site_meta.json", _json_bytes(meta))
+            datasets = json.loads((json_dir / "datasets.json").read_text())
+            for entry in datasets.get("datasets", []):
+                if entry["name"] == "budget_lines_decade":
+                    entry["row_count"] = decade_count
+                    entry["bytes"] = staged["data/budget_lines_decade.parquet"].stat().st_size
+            put("json/datasets.json", _json_bytes(datasets))
+            # All source and value validation precedes the first replacement.
+            for relative, path in staged.items():
+                destination = out_dir / relative
+                if destination.exists() and destination.read_bytes() == path.read_bytes():
+                    continue
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(path, destination)
+        return {"citations": citation_count, "json_files": manifest["json_sidecars"],
+                "families": {family.platform_family: {"annual_points": len(payload["points"]),
+                                                      "source_facts": len(workbook_rows),
+                                                      "added_citations": added,
+                                                      "cumulative_actuals_thousands": payload["cumulative"]["amount_thousands"]}
+                             for family, payload, workbook_rows, added in built}}
+    finally:
+        con.close()
