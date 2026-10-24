@@ -14,8 +14,8 @@ from govbudget.platform_families import (
     MEMBER_ID_RE, PAYING_ORGS, PLATFORM_FAMILY_RE, PREFILL_COLUMNS, PURPOSES, REVIEW_COLUMNS,
     REVIEW_ROOT, ROLES, RULING_ID_RE, SEED_BASIS_ALLOWED, SERVICES, SHORT_NAME_RE, SOURCE_ID_RE,
     SOURCE_TIERS, STATUSES, TOP_KEYS, VARIANT_SCOPES, VERDICTS, EraLine, Headline, RegistryError,
-    ReviewGuard, family_hash, load_registry, registry_texts, write_registry)
-from platform_family_fixtures import (DOC_SHA, ERA_XA, RULING_X1, World, XA, XC, XR, tmp_paths,
+    ReviewGuard, family_hash, load_registry, parse_ref, registry_texts, split_refs, write_registry)
+from platform_family_fixtures import (DOC_SHA, ERA_XA, RULING_X1, World, XA, XC, XR, ruling, tmp_paths,
                                       write_world)
 
 J, M, E = "platform_families.json", "platform_family_members.csv", "platform_family_era_lines.csv"
@@ -385,3 +385,187 @@ def test_family_hash_is_d10():
     uncited = World()
     uncited.doc["sources"].append(dict(w.doc["sources"][0], source_id="uncited"))
     assert family_hash(uncited.doc, "x-1") == family_hash(w.doc, "x-1")
+
+
+A64 = "a" * 64
+
+
+def test_parse_ref_reads_every_prefix():
+    assert parse_ref("era:F01500|3010F||2017-2023") == ("era", {"decision_id": "F01500|3010F||2017-2023"})
+    assert parse_ref("fact:0026c924483c6624") == ("fact", {"fact_id": "0026c924483c6624"})
+    assert parse_ref(f"doc:{A64}#p71;q=funded outside this exhibit") == (
+        "doc", {"sha256": A64, "page": 71, "quote": "funded outside this exhibit"})
+    assert parse_ref(f"doc:{A64}#p3") == ("doc", {"sha256": A64, "page": 3, "quote": None})
+    assert parse_ref("src:msar-pb2027#p25") == ("src", {"source_id": "msar-pb2027", "page": 25})
+    assert parse_ref("src:msar-pb2027") == ("src", {"source_id": "msar-pb2027", "page": None})
+    assert parse_ref("ev:E-17") == ("ev", {"id": "E-17"})
+
+
+@pytest.mark.parametrize("ref", [
+    "", "web:x", "era:F01500", "fact:XYZ", "fact:0026c924483c662", "doc:abc#p1", f"doc:{A64}",
+    f"doc:{A64}#p0", f"doc:{A64}#p1;q=", f"doc:{A64}#p1;q=a;b", "src:Msar", "src:msar#p", "ev:"])
+def test_parse_ref_refuses_malformed(ref):
+    with pytest.raises(ValueError):
+        parse_ref(ref)
+
+
+def test_split_refs_reattaches_quotes():
+    assert split_refs(f"era:XA0001|3010F||2023-2023;doc:{A64}#p3;q=Lot 1 aircraft;src:x-book") == (
+        "era:XA0001|3010F||2023-2023", f"doc:{A64}#p3;q=Lot 1 aircraft", "src:x-book")
+    assert split_refs("") == ()
+    with pytest.raises(ValueError):
+        split_refs("q=orphan")
+
+
+def test_doc_ref_quote_with_semicolon_is_refused():
+    w = World()
+    w.member("XR0001").update(evidence=f"doc:{DOC_SHA}#p1;q=X-1 development; continued")
+    assert_refused(w.parse, M, XR_ID, "';'")
+
+
+def _z1(w, **kv):
+    """A ratified family z-1 counting XA0001 in 2024–2026 (the double-count hazard)."""
+    w.add_family("z-1", status="ratified")
+    return w.add_member("z-1", XA, 2024, 2026, role="counted", member_order="1",
+                        titles_seen="2024: X-1; 2025: X-1; 2026: X-1", display_title="X-1",
+                        drift_sha256="0" * 64, program_tag="Z-1", evidence="src:x-book#p3", **kv)
+
+
+def test_one_member_counted_in_two_families_is_refused():
+    w = World()
+    _z1(w)
+    assert_refused(w.parse, M, "z-1|P-1:3010F:AF:XA0001|2024-2026", "x-1")
+
+
+def test_a_draft_carrying_published_ruling_id_is_refused():
+    w = World()
+    w.family("y-1")["published_ruling_id"] = RULING_X1
+    assert_refused(w.parse, J, "y-1", "published_ruling_id")
+
+
+def test_load_registry_resolves_era_refs_against_the_committed_era_seed(tmp_path):
+    paths, seed = write_world(tmp_path, World())
+    assert load_registry(paths, era_decisions_path=seed)["x-1"].counted[0].code == "XA0001"
+    assert_refused(lambda: load_registry(paths), M, XA_ID, f"era:{ERA_XA}")   # not in the committed seed
+
+
+def _c_source(w, **kv):
+    entry = dict(w.doc["sources"][0], source_id="c-claim", tier="C", verified_by=[])
+    entry.update(kv)
+    w.doc["sources"].append(entry)
+    w.member("XA0001").update(evidence=f"era:{ERA_XA};src:x-book#p3;src:c-claim")
+
+
+def _deferred_xa(w):
+    w.add_member("x-1", XA, 2026, 2026, role="counted", verdict="deferred")
+
+
+def _org_split_context(w):
+    w.add_member("x-1", "P-1:0300D:DTRA:20", 2024, 2026, role="context", scope_note="Shared.",
+                 drift_sha256="0" * 64, evidence="era:20|0300D|DSS|2022-2022")
+
+
+def _y1_ruling(w) -> str:
+    w.doc["rulings"].append(ruling("R-DEC-FAM-Y1-B1", "y-1"))
+    return "R-DEC-FAM-Y1-B1"
+
+
+def _z1_era(w):
+    w.add_family("z-1", status="ratified")
+    w.add_member("z-1", "P-1:3010F:AF:XZ0001", 2023, 2026, role="counted", member_order="1",
+                 display_title="Z", drift_sha256="0" * 64, program_tag="Z-1",
+                 era_decision_ids="XZ0001|3010F||2023-2023", evidence="src:x-book#p3")
+    w.era_rows.append(dict(w.era_rows[0], platform_family="z-1", member_id="P-1:3010F:AF:XZ0001",
+                           decision_id="XZ0001|3010F||2023-2023"))
+
+
+NOTE = {"note": "A note.", "note_fact_id": "0026c924483c6624",
+        "expected_receipt": {"kind": "jbook_narrative", "page_number": 1, "pe_bli": "XA0001", "sha256": A64}}
+ERA0 = lambda w: w.era_rows[0]
+
+STAGE1_CROSS_RULES = [
+    ("r5-published-no-ruling", lambda w: w.family().pop("published_ruling_id"), J, "x-1",
+     "published_ruling_id"),
+    ("r5-unknown-ruling", _set(FAM, published_ruling_id="R-DEC-FAM-X1-B9"), J, "x-1", "R-DEC-FAM-X1-B9"),
+    ("r5-other-familys-ruling", lambda w: FAM(w).update(published_ruling_id=_y1_ruling(w)), J, "x-1", "y-1"),
+    ("r7-x-cited-by-row", _set(SRC, tier="X"), M, XA_ID, "tier X"),
+    ("r7-x-cited-by-exclusion", lambda w: (SRC(w).update(tier="X"), MXA(w).update(
+        evidence=f"doc:{DOC_SHA}#p1"), MXC(w).update(evidence="")), J, "x-1", "tier X"),
+    ("r7-c-unverified", _c_source, M, XA_ID, "verified_by"),
+    ("r7-c-verified-by-c", lambda w: _c_source(w, verified_by=["c-claim"]), M, XA_ID, "verified_by"),
+    ("r13-overlap", _deferred_xa, M, "x-1|P-1:3010F:AF:XA0001|2026-2026", "overlap"),
+    ("r15-shared-code", lambda w: w.add_member(
+        "x-1", "R-1:3600F:AF:XA0001", 2025, 2026, role="counted", member_order="3", display_title="X",
+        drift_sha256="0" * 64, program_tag="X-1", evidence="src:x-book#p3"),
+     M, "x-1|R-1:3600F:AF:XA0001|2025-2026", "code"),
+    ("r16-gap", _set(MXR, member_order="3"), M, XR_ID, "member_order"),
+    ("r16-on-deferred", lambda w: (_deferred_xa(w), w.members[-1].update(member_order="3")),
+     M, "x-1|P-1:3010F:AF:XA0001|2026-2026", "member_order"),
+    ("r19-unknown-predecessor", _set(MXR, predecessor_member_id="P-1:3010F:AF:QQ0001",
+                                     link_basis="inferred"), M, XR_ID, "predecessor_member_id"),
+    ("r19-no-basis", _set(MXR, predecessor_member_id=XA), M, XR_ID, "link_basis"),
+    ("r19-book-stated-no-quote", _set(MXR, predecessor_member_id=XA, link_basis="book_stated",
+                                      link_evidence="src:x-book#p3"), M, XR_ID, "book_stated"),
+    ("r20-malformed", _set(MXA, evidence="web:x"), M, XA_ID, "web:x"),
+    ("r20-malformed-exclusion", lambda w: w.family()["exclusions"][0].update(evidence=["web:x"]),
+     J, "x-1", "web:x"),
+    ("r20-era-unresolved", _set(MXA, evidence="era:XQ0001|3010F||2023-2023;src:x-book#p3"),
+     M, XA_ID, "XQ0001"),
+    ("r20-era-other-code", _set(MXA, evidence="era:XB0001|3010F||2023-2023;src:x-book#p3"),
+     M, XA_ID, "XB0001"),
+    ("r20-era-excluded", _set(MXA, evidence="era:XA0001|3010F||2017-2022;src:x-book#p3"),
+     M, XA_ID, "exclude_placeholder"),
+    ("r20-era-org-split", _org_split_context, M, "x-1|P-1:0300D:DTRA:20|2024-2026", "organization"),
+    ("r20-src-unknown", _set(MXA, evidence=f"era:{ERA_XA};src:nope"), M, XA_ID, "nope"),
+    ("r20-no-independent-signal", _set(MXA, evidence=f"era:{ERA_XA}"), M, XA_ID, "independent"),
+    ("r20-fact-is-not-enough", _set(MXA, evidence=f"era:{ERA_XA};fact:0026c924483c6624"),
+     M, XA_ID, "independent"),
+    ("r21-unresolved", _set(MXA, era_decision_ids="XQ0001|3010F||2023-2023"), M, XA_ID,
+     "era_decision_ids"),
+    ("r21-other-code", _set(MXA, era_decision_ids="XB0001|3010F||2023-2023"), M, XA_ID, "XB0001"),
+    ("r22-decided-by", _set(MXA, decided_by=""), M, XA_ID, "decided_by"),
+    ("r22-unknown-ruling", _set(MXA, ruling_id="R-DEC-FAM-X1-B9"), M, XA_ID, "R-DEC-FAM-X1-B9"),
+    ("r22-other-familys-ruling", lambda w: MXA(w).update(ruling_id=_y1_ruling(w)), M, XA_ID, "y-1"),
+    ("r22-decided-on", _set(MXA, decided_on="2026-10-20"), M, XA_ID, "decided_on"),
+    ("r23-row-without-family", _set(MXC, platform_family="q-1", member_row_id="q-1|P-1:3010F:AF:XC0001|2024-2026"),
+     M, "q-1|P-1:3010F:AF:XC0001|2024-2026", "q-1"),
+    ("r23-ratified-without-rows", _set(YFAM, status="ratified"), J, "y-1", "no member rows"),
+    ("r24-key-not-counted", _set(FAM, program_notes={XC: NOTE}), J, "x-1", "program_notes"),
+    ("r24-empty-note", _set(FAM, program_notes={XA: dict(NOTE, note="")}), J, "x-1", "note"),
+    ("r24-fact-id", _set(FAM, program_notes={XA: dict(NOTE, note_fact_id="XYZ")}), J, "x-1", "note_fact_id"),
+    ("r24-receipt-keys", _set(FAM, program_notes={XA: dict(NOTE, expected_receipt={
+        "kind": "jbook_narrative", "page_number": 1, "sha256": A64})}), J, "x-1", "expected_receipt"),
+    ("r25-not-counted", _set(ERA0, member_id=XC), E, ERA_ID, "approved counted"),
+    ("r25-edition-outside", _set(ERA0, edition="2022"), E, "x-1|2022|3010F-AF-L7", "edition"),
+    ("r25-key-regex", _set(ERA0, era_key="3010F-AF-7"), E, "x-1|2023|3010F-AF-7", "era_key"),
+    ("r25-key-account", _set(ERA0, era_key="3011F-AF-L7"), E, "x-1|2023|3011F-AF-L7", "account"),
+    ("r25-key-org", _set(ERA0, era_key="3010F-NAVY-L7"), E, "x-1|2023|3010F-NAVY-L7", "organization"),
+    ("r25-decision", _set(ERA0, decision_id="XB0001|3010F||2023-2023"), E, ERA_ID, "decision_id"),
+    ("r25-duplicate", lambda w: w.era_rows.append(dict(w.era_rows[0])), E, ERA_ID, "duplicate"),
+    ("r25-two-families", _z1_era, E, "z-1|2023|3010F-AF-L7", "x-1"),
+]
+
+
+@pytest.mark.parametrize("mutate,file,row,fragment",
+                         [c[1:] for c in STAGE1_CROSS_RULES], ids=[c[0] for c in STAGE1_CROSS_RULES])
+def test_stage_one_cross_red_case(mutate, file, row, fragment):
+    w = World()
+    mutate(w)
+    assert_refused(w.parse, file, row, fragment)
+
+
+def test_a_c_source_verified_by_a_g_source_may_be_cited():
+    w = World()
+    _c_source(w, verified_by=["x-book"])
+    assert w.parse()["x-1"].counted[0].evidence[-1] == "src:c-claim"
+
+
+def test_a_seed_basis_ruling_stands_without_an_independent_signal():
+    w = World()
+    w.doc["rulings"][0].update(ruling_id="R-DEC-FAM-F15-SEED", seed_basis=True)
+    w.family()["published_ruling_id"] = "R-DEC-FAM-F15-SEED"
+    for row in w.members:
+        row["ruling_id"] = "R-DEC-FAM-F15-SEED"
+    w.member("XA0001").update(evidence=f"era:{ERA_XA}")
+    w.member("XR0001").update(evidence="fact:0026c924483c6624")
+    assert [m.code for m in w.parse()["x-1"].counted] == ["XA0001", "XR0001"]

@@ -9,7 +9,8 @@ raises one RegistryError whose lines read
 normalizes a value.
 
 Module-level imports are the standard library, govbudget.config and
-govbudget.jbooks.era_map only: stage 1 runs on every import of the F-15 facade,
+govbudget.jbooks.era_map (with govbudget.jbooks.era_keys, which era_map itself
+imports) only: stage 1 runs on every import of the F-15 facade,
 program_pdf_receipts and export_site.
 """
 from __future__ import annotations
@@ -25,10 +26,11 @@ from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
+from functools import partial
 from pathlib import Path
 
 from govbudget import config
-from govbudget.jbooks import era_map
+from govbudget.jbooks import era_keys, era_map
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -198,23 +200,79 @@ class Source:
     verified_by: tuple[str, ...]
 
 
-def split_refs(text: str) -> tuple[str, ...]:
-    """A ';'-list of typed evidence refs (§7.5). A `q=` segment belongs to the
-    `doc:` ref before it (a quote is the last part of a doc ref), so it is
-    re-attached; prefixes are not validated here."""
-    if text == "":
-        return ()
+def _split_ref_items(text: str) -> tuple[list[str], str | None]:
+    """split_refs' scan: the refs read so far and its fault (None when the
+    whole list splits)."""
     refs: list[str] = []
+    if text == "":
+        return refs, None
     for seg in text.split(";"):
         if seg.startswith("q="):
             if refs and refs[-1].startswith("doc:") and ";q=" not in refs[-1]:
                 refs[-1] = f"{refs[-1]};{seg}"
                 continue
-            raise ValueError("dangling q=")
+            return refs, "dangling q="
         if seg == "":
-            raise ValueError("empty list item")
+            return refs, "empty list item"
         refs.append(seg)
+    return refs, None
+
+
+def split_refs(text: str) -> tuple[str, ...]:
+    """A ';'-list of typed evidence refs (§7.5). A `q=` segment belongs to the
+    `doc:` ref before it (a quote is the last part of a doc ref), so it is
+    re-attached; prefixes are not validated here (parse_ref does)."""
+    refs, fault = _split_ref_items(text)
+    if fault is not None:
+        raise ValueError(fault)
     return tuple(refs)
+
+
+# The typed-ref grammar (spec §7.5), applied with .fullmatch. A `q=` quote may
+# not contain ';', the list separator.
+_REF_RES = {
+    "era": re.compile(r"^era:([^|;]+\|[^|;]+\|[^|;]*\|[0-9]{4}-[0-9]{4})$"),
+    "fact": re.compile(r"^fact:([0-9a-f]{16})$"),
+    "doc": re.compile(r"^doc:([0-9a-f]{64})#p([1-9][0-9]*)(?:;q=([^;]+))?$"),
+    "src": re.compile(r"^src:([a-z0-9][a-z0-9-]*)(?:#p([1-9][0-9]*))?$"),
+    "ev": re.compile(r"^ev:(\S+)$"),
+}
+# A src: ref to a source of one of these tiers is an independent membership
+# signal (§7.5); so is a doc: ref. At stage 1 a fact: ref never is (R1).
+INDEPENDENT_TIERS = frozenset({"G", "PG"})
+
+
+def parse_ref(ref: str) -> tuple[str, dict]:
+    """One typed evidence ref -> (prefix, parts); ValueError on anything else.
+    Parts: era {decision_id}; fact {fact_id}; doc {sha256, page, quote (None
+    without q=)}; src {source_id, page (None without #p)}; ev {id}."""
+    prefix = ref.partition(":")[0]
+    pattern = _REF_RES.get(prefix)
+    if pattern is None:
+        raise ValueError(f"malformed ref {ref!r}: the prefix is not one of {', '.join(_REF_RES)}")
+    m = pattern.fullmatch(ref)
+    if m is None:
+        raise ValueError(f"malformed ref {ref!r}: it does not match {pattern.pattern}")
+    if prefix == "era":
+        return prefix, {"decision_id": m.group(1)}
+    if prefix == "fact":
+        return prefix, {"fact_id": m.group(1)}
+    if prefix == "doc":
+        return prefix, {"sha256": m.group(1), "page": int(m.group(2)), "quote": m.group(3)}
+    if prefix == "src":
+        return prefix, {"source_id": m.group(1), "page": int(m.group(2)) if m.group(2) else None}
+    return prefix, {"id": m.group(1)}
+
+
+def _quote_hint(prev: str | None, item: str) -> str:
+    """Review Focus 2: a ';' typed inside a q= quote ends the quote there, so
+    the fault shows on the item after a quoted doc: ref (a ';'-list column) or
+    inside the doc: item itself (an exclusion's evidence list)."""
+    if prev is not None and prev.startswith("doc:") and ";q=" in prev:
+        return " (the quote of the doc: ref before it contains ';', which a q= quote may not)"
+    if item.startswith("doc:") and ";" in item.partition(";q=")[2]:
+        return " (its quote contains ';', which a q= quote may not)"
+    return ""
 
 
 def _parse_int(text: str) -> int | None:
@@ -503,6 +561,7 @@ _OFFICIAL_ESTIMATE_TYPES = {"msar_program_number": _STR_OR_NULL, "msar_source_id
 _ART_TYPES = {"src": str, "alt": str, "caption": str, "generated": bool}
 
 _Add = Callable[[str], None]
+_Rows = list[tuple[str, Mapping[str, str]]]     # (row id, row), CSV order
 
 
 def _has_type(value: object, kind: object) -> bool:
@@ -875,10 +934,9 @@ def _check_member_values(row: Mapping[str, str], add: _Add) -> None:
         if not _EDITION_RE.fullmatch(item):
             add(f"allocation_years item {item!r} is not a 4-digit year")
     for col in _REF_COLUMNS:
-        try:
-            split_refs(row[col])
-        except ValueError as exc:
-            add(f"{col} {row[col]!r}: {exc}")
+        refs, fault = _split_ref_items(row[col])
+        if fault is not None:
+            add(f"{col} {row[col]!r}: {fault}{_quote_hint(refs[-1] if refs else None, '')}")
     for col in _BOOL_COLUMNS:
         if row[col] not in ("", "true", "false"):
             add(f"{col} {row[col]!r} must be blank, 'true' or 'false'")
@@ -941,8 +999,12 @@ def _check_tags(row: Mapping[str, str], fam: Mapping, add: _Add) -> None:
 
 
 def _check_members(rows: Sequence[Mapping[str, str]], families: Mapping[str, dict],
-                   add_at: Callable[[str, str], None]) -> None:
+                   add_at: Callable[[str, str], None]) -> _Rows:
+    """The per-row rules. Returns the rows that pass rule 8 (exactly the frozen
+    columns, every value a string) with their row ids, in CSV order: the rows
+    the cross-row rules read."""
     seen: set[str] = set()
+    valid: _Rows = []
     for i, row in enumerate(rows):
         # The row id is member_row_id as written; without one, the row's line
         # in the CSV (the header is line 1).
@@ -956,6 +1018,7 @@ def _check_members(rows: Sequence[Mapping[str, str]], families: Mapping[str, dic
             continue
         if not _row_columns(row, MEMBER_COLUMNS, add):
             continue
+        valid.append((rid, row))
         expected = (f"{row['platform_family']}|{row['member_id']}|"
                     f"{row['valid_from_edition']}-{row['valid_to_edition']}")
         if row["member_row_id"] != expected:
@@ -968,9 +1031,13 @@ def _check_members(rows: Sequence[Mapping[str, str]], families: Mapping[str, dic
         fam = families.get(row["platform_family"])
         if fam is not None:
             _check_tags(row, fam, add)
+    return valid
 
 
-def _check_era_rows(rows: Sequence[Mapping[str, str]], add_at: Callable[[str, str], None]) -> None:
+def _check_era_rows(rows: Sequence[Mapping[str, str]], add_at: Callable[[str, str], None]) -> _Rows:
+    """Rules 8 and 12 per era row; returns the rows that pass rule 8 with their
+    row ids, in CSV order."""
+    valid: _Rows = []
     for i, row in enumerate(rows):
         parts = [row.get(k) for k in ("platform_family", "edition", "era_key")] \
             if isinstance(row, Mapping) else []
@@ -984,9 +1051,381 @@ def _check_era_rows(rows: Sequence[Mapping[str, str]], add_at: Callable[[str, st
             continue
         if not _row_columns(row, ERA_LINE_COLUMNS, add):
             continue
+        valid.append((rid, row))
         edition = row["edition"]
         if not _EDITION_RE.fullmatch(edition) or int(edition) not in EDITIONS:
             add(f"edition {edition!r} is not an edition in {EDITIONS[0]}–{EDITIONS[-1]}")
+    return valid
+
+
+# ---------------------------------------------------------------------------
+# Stage 1 (spec §9.1): the rules across rows and files
+# ---------------------------------------------------------------------------
+
+_ERA_REF_DECISIONS = ("same_program", "history_only")
+_FACT_ID_RE = re.compile(r"^[0-9a-f]{16}$")
+
+
+@dataclass(frozen=True)
+class _Cross:
+    """What the cross-row rules read. They run beside the per-row rules on
+    whatever is well-formed enough to compare, so every value is guarded."""
+
+    json_name: str
+    rulings: Mapping[str, dict]               # by ruling_id, first occurrence
+    sources: Mapping[str, dict]               # by source_id, first occurrence
+    families: Mapping[str, dict]              # by platform_family, JSON order
+    rows: _Rows                               # member rows that pass rule 8, CSV order
+    decisions: Mapping[str, Mapping[str, str]]  # the era seed by decision_id
+
+
+def _by_id(entries: object, key: str) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    if isinstance(entries, list):
+        for entry in entries:
+            if isinstance(entry, dict) and isinstance(entry.get(key), str):
+                out.setdefault(entry[key], entry)
+    return out
+
+
+def _span(row: Mapping[str, str]) -> tuple[int, int] | None:
+    """[valid_from_edition, valid_to_edition], or None when rule 12 refuses it."""
+    frm, to = row["valid_from_edition"], row["valid_to_edition"]
+    if not (_EDITION_RE.fullmatch(frm) and _EDITION_RE.fullmatch(to)) or int(frm) > int(to):
+        return None
+    return int(frm), int(to)
+
+
+def _intersect(a: tuple[int, int], b: tuple[int, int]) -> bool:
+    return a[0] <= b[1] and b[0] <= a[1]
+
+
+def _is_counted(row: Mapping[str, str]) -> bool:
+    return row["verdict"] == "approved" and row["role"] == "counted"
+
+
+def _tier(cx: _Cross, source_id: str) -> str | None:
+    """The source's tier, or None when it is unknown or not a string (rule 1
+    reports a mistyped tier)."""
+    tier = cx.sources.get(source_id, {}).get("tier")
+    return tier if isinstance(tier, str) else None
+
+
+def _check_era_ref(item: str, decision_id: str, label: str, cx: _Cross, add: _Add,
+                   member: Mapping[str, str] | None) -> None:
+    """Rule 20 for one era: ref; `member` is the citing row (None for an exclusion)."""
+    d = cx.decisions.get(decision_id)
+    if d is None:
+        add(f"{label} ref {item!r} does not resolve to a decision of the era seed "
+            "(p1_era_code_decisions)")
+        return
+    if member is None:
+        return
+    code, account, org = member["code"], member["account"], member["organization"]
+    if (d.get("line_item_code"), d.get("account")) != (code, account):
+        add(f"{label} ref {item!r} is for line_item_code {d.get('line_item_code')!r}, account "
+            f"{d.get('account')!r}; the member's are {code!r}, {account!r}")
+    if code in era_map.ORG_SPLIT_CODES:
+        if d.get("organization") != org:
+            add(f"{label} ref {item!r} has organization {d.get('organization')!r}; code {code!r} is "
+                f"organization-split, so it must be the member's {org!r}")
+    elif d.get("organization") != "":
+        add(f"{label} ref {item!r} has organization {d.get('organization')!r}; it must be blank "
+            f"(code {code!r} is not organization-split)")
+    if d.get("decision") not in _ERA_REF_DECISIONS:
+        add(f"{label} ref {item!r} resolves to decision {d.get('decision')!r}, not "
+            f"{' or '.join(_ERA_REF_DECISIONS)}")
+
+
+def _check_src_ref(item: str, source_id: str, label: str, cx: _Cross, add: _Add, *,
+                   refuse_x: bool) -> None:
+    """Rules 7 and 20 for one src: ref."""
+    source = cx.sources.get(source_id)
+    if source is None:
+        add(f"{label} ref {item!r} names no source in sources[]")
+        return
+    tier = _tier(cx, source_id)
+    if tier == "X" and refuse_x:
+        add(f"{label} ref {item!r} cites tier X source {source_id!r}, which no approved row or "
+            "exclusion may cite")
+    elif tier == "C" and not any(_tier(cx, v) in INDEPENDENT_TIERS
+                                 for v in _strs(source, "verified_by")):
+        add(f"{label} ref {item!r} cites tier C source {source_id!r}, whose verified_by "
+            f"{source.get('verified_by')!r} names no tier G or PG source")
+
+
+def _check_ref_list(items: Sequence[str], label: str, cx: _Cross, add: _Add, *,
+                    member: Mapping[str, str] | None, refuse_x: bool) -> list[tuple[str, dict]]:
+    """Rules 7 and 20 on one ref list (a member's column or an exclusion's
+    evidence). Every fault quotes the ref; returns the refs that parse."""
+    parsed: list[tuple[str, dict]] = []
+    prev = None
+    for item in items:
+        try:
+            prefix, parts = parse_ref(item)
+        except ValueError as exc:
+            add(f"{label}: {exc}{_quote_hint(prev, item)}")
+        else:
+            parsed.append((prefix, parts))
+            if prefix == "era":
+                _check_era_ref(item, parts["decision_id"], label, cx, add, member)
+            elif prefix == "src":
+                _check_src_ref(item, parts["source_id"], label, cx, add, refuse_x=refuse_x)
+        prev = item
+    return parsed
+
+
+def _independent(parsed: Sequence[tuple[str, dict]], cx: _Cross) -> bool:
+    """§7.5's bar at stage 1: a doc: ref, or a src: ref to a tier G or PG source."""
+    return any(prefix == "doc"
+               or (prefix == "src" and _tier(cx, parts["source_id"]) in INDEPENDENT_TIERS)
+               for prefix, parts in parsed)
+
+
+def _check_family_links(cx: _Cross, member_rows: Sequence[object],
+                        add_at: Callable[[str, str], None]) -> None:
+    """Rules 5 (the ruling link), 7 and 20 (exclusions), 23 (a family without
+    rows) and 24."""
+    with_rows = {row.get("platform_family") for row in member_rows
+                 if isinstance(row, Mapping) and isinstance(row.get("platform_family"), str)}
+    for pf, fam in cx.families.items():
+        add = partial(add_at, pf)
+        status = fam.get("status")
+        rid = fam.get("published_ruling_id")
+        if status == "published":
+            if "published_ruling_id" not in fam:
+                add("a published family needs published_ruling_id (the ruling that published it)")
+            elif isinstance(rid, str):
+                ruling = cx.rulings.get(rid)
+                if ruling is None:
+                    add(f"published_ruling_id {rid!r} is not a ruling in rulings")
+                elif ruling.get("platform_family") != pf:
+                    add(f"published_ruling_id {rid!r} is a ruling for "
+                        f"{ruling.get('platform_family')!r}, not {pf!r}")
+        elif status == "draft" and "published_ruling_id" in fam:
+            add(f"published_ruling_id {rid!r} is not allowed on a draft family (only ratify moves a "
+                "family out of draft)")
+        if status in ("ratified", "published") and pf not in with_rows:
+            add(f"a {status} family has no member rows (only a draft may have none)")
+
+        exclusions = fam.get("exclusions")
+        for j, exclusion in enumerate(exclusions if isinstance(exclusions, list) else ()):
+            if isinstance(exclusion, dict):
+                _check_ref_list(_strs(exclusion, "evidence"), f"exclusions[{j}] evidence", cx, add,
+                                member=None, refuse_x=True)
+
+        notes = fam.get("program_notes")
+        if isinstance(notes, dict):   # expected_receipt's exact keys are rule 1's (_check_family_fields)
+            counted = {row["member_id"] for _, row in cx.rows
+                       if row["platform_family"] == pf and _is_counted(row)}
+            for member_id, note in notes.items():
+                label = f"program_notes[{member_id!r}]"
+                if member_id not in counted:
+                    add(f"program_notes key {member_id!r} is not the member_id of an approved "
+                        f"counted row of {pf!r}")
+                if not isinstance(note, dict):
+                    continue
+                text, fact_id = note.get("note"), note.get("note_fact_id")
+                if isinstance(text, str) and not text.strip():
+                    add(f"{label} note {text!r} is blank")
+                if isinstance(fact_id, str) and not _FACT_ID_RE.fullmatch(fact_id):
+                    add(f"{label} note_fact_id {fact_id!r} is not 16 lower-case hex")
+
+
+def _check_row_links(cx: _Cross, add_at: Callable[[str, str], None]) -> None:
+    """Per member row: rules 7 and 20 (its refs and the independent-signal
+    bar), 21, 22 and 23 (a row without a family)."""
+    for rid, row in cx.rows:
+        add = partial(add_at, rid)
+        pf = row["platform_family"]
+        if pf not in cx.families:
+            add(f"platform_family {pf!r} is not a family in {cx.json_name}")
+        approved = row["verdict"] == "approved"
+        ruling = cx.rulings.get(row["ruling_id"])
+
+        parsed: dict[str, list[tuple[str, dict]]] = {}
+        for col in _REF_COLUMNS:
+            items, fault = _split_ref_items(row[col])
+            if fault is None:      # a split fault is rule 11's line (_check_member_values)
+                parsed[col] = _check_ref_list(items, col, cx, add, member=row, refuse_x=approved)
+        # The bar reads the membership evidence only (link_evidence evidences a
+        # link); a column that does not split already carries its fault.
+        evidence = parsed.get("evidence")
+        seed_basis = ruling is not None and ruling.get("seed_basis") is True
+        if evidence is not None and _is_counted(row) and not seed_basis \
+                and not _independent(evidence, cx):
+            add("an approved counted row needs an independent membership signal in evidence: a "
+                "doc: ref, or a src: ref to a tier G or PG source (era: and fact: refs do not count; "
+                f"its ruling {row['ruling_id']!r} has no seed_basis)")
+
+        for decision_id in filter(None, row["era_decision_ids"].split(";")):
+            d = cx.decisions.get(decision_id)
+            if d is None:
+                add(f"era_decision_ids item {decision_id!r} does not resolve to a decision of the era "
+                    "seed (p1_era_code_decisions)")
+            elif (d.get("line_item_code"), d.get("account")) != (row["code"], row["account"]):
+                add(f"era_decision_ids item {decision_id!r} is for line_item_code "
+                    f"{d.get('line_item_code')!r}, account {d.get('account')!r}; the member's are "
+                    f"{row['code']!r}, {row['account']!r}")
+
+        if not approved:
+            continue
+        if row["decided_by"] != "owner":
+            add(f"decided_by {row['decided_by']!r} must be 'owner' on an approved row")
+        if ruling is None:
+            add(f"ruling_id {row['ruling_id']!r} is not a ruling in rulings")
+            continue
+        if ruling.get("platform_family") != pf:
+            add(f"ruling_id {row['ruling_id']!r} is a ruling for {ruling.get('platform_family')!r}, "
+                f"not {pf!r}")
+        if ruling.get("decided_on") != row["decided_on"]:
+            add(f"decided_on {row['decided_on']!r} differs from the decided_on "
+                f"{ruling.get('decided_on')!r} of ruling {row['ruling_id']!r}")
+
+
+def _has_quoted_doc(text: str) -> bool:
+    """Rule 19's book_stated test: a doc: ref carrying q= among the refs."""
+    for item in _split_ref_items(text)[0]:
+        try:
+            prefix, parts = parse_ref(item)
+        except ValueError:
+            continue
+        if prefix == "doc" and parts["quote"] is not None:
+            return True
+    return False
+
+
+def _check_family_rows(pf: str, rows: _Rows, add_at: Callable[[str, str], None]) -> None:
+    """Rules 13, 15, 16 and 19 over one family's rows; a fault between two
+    rows goes on the later one by CSV order."""
+    member_ids = {row["member_id"] for _, row in rows}
+    n = sum(1 for _, row in rows if _is_counted(row))
+    spans: dict[str, list[tuple[str, tuple[int, int]]]] = defaultdict(list)
+    codes: dict[str, tuple[str, str]] = {}       # code -> (member_id, row id) of its first counted row
+    orders: dict[int, str] = {}                  # member_order -> row id
+    for rid, row in rows:
+        add = partial(add_at, rid)
+        member_id, span = row["member_id"], _span(row)
+        if span is not None:
+            for other_rid, other in spans[member_id]:
+                if _intersect(span, other):
+                    add(f"member_id {member_id!r} overlaps row {other_rid!r}: editions "
+                        f"{span[0]}–{span[1]} and {other[0]}–{other[1]} intersect")
+            spans[member_id].append((rid, span))
+
+        order = row["member_order"]
+        if _is_counted(row):
+            first_id, first_rid = codes.setdefault(row["code"], (member_id, rid))
+            if first_id != member_id:
+                add(f"code {row['code']!r} is also the code of approved counted member {first_id!r} "
+                    f"(row {first_rid!r}); two counted members of one family may not share a code")
+            if order == "" or _POSITIVE_RE.fullmatch(order):    # _check_editions reports any other
+                value = int(order) if order else 0
+                if not 1 <= value <= n:
+                    add(f"member_order {order!r} is not in 1..{n} (contiguous over the {n} approved "
+                        f"counted rows of {pf!r})")
+                elif value in orders:
+                    add(f"member_order {order!r} repeats row {orders[value]!r}")
+                else:
+                    orders[value] = rid
+        elif order and row["role"] != "context":    # a context row's member_order is rule 17's line
+            add(f"member_order {order!r} is set on a {row['verdict']} {row['role']} row; only approved "
+                "counted rows carry one")
+
+        for col in ("predecessor_member_id", "successor_member_id"):
+            if row[col] and row[col] not in member_ids:
+                add(f"{col} {row[col]!r} is not the member_id of a row of {pf!r}")
+        if (row["predecessor_member_id"] or row["successor_member_id"]) and row["link_basis"] == "":
+            add("link_basis is required when predecessor_member_id or successor_member_id is set "
+                "(got '')")
+        if row["link_basis"] == "book_stated" and not _has_quoted_doc(row["link_evidence"]):
+            add(f"link_basis 'book_stated' needs a doc: ref with a quote (q=) in link_evidence "
+                f"(got {row['link_evidence']!r})")
+
+
+def _check_row_sets(cx: _Cross, add_at: Callable[[str, str], None]) -> None:
+    """Rules 13, 15, 16, 19 within each family; rule 14 across families, on
+    the later family's row (JSON order), naming the earlier family."""
+    by_family: dict[str, _Rows] = defaultdict(list)
+    for rid, row in cx.rows:
+        by_family[row["platform_family"]].append((rid, row))
+    for pf, rows in by_family.items():
+        _check_family_rows(pf, rows, add_at)
+
+    counted: dict[str, list[tuple[str, str, tuple[int, int]]]] = defaultdict(list)
+    for pf in cx.families:
+        mine = []
+        for rid, row in by_family.get(pf, ()):
+            span = _span(row)
+            if not _is_counted(row) or span is None:
+                continue
+            for other_pf, other_rid, other in counted[row["member_id"]]:
+                if _intersect(span, other):
+                    add_at(rid, f"member_id {row['member_id']!r} is also counted in family "
+                                f"{other_pf!r} (row {other_rid!r}, editions {other[0]}–{other[1]}); "
+                                "a member is counted in one family only")
+            mine.append((row["member_id"], (pf, rid, span)))
+        for member_id, entry in mine:
+            counted[member_id].append(entry)
+
+
+def _check_era_links(cx: _Cross, era_rows: _Rows, add_at: Callable[[str, str], None]) -> None:
+    """Rule 25."""
+    counted: dict[tuple[str, str], list[tuple[str, Mapping[str, str], tuple[int, int]]]] = \
+        defaultdict(list)
+    for rid, row in cx.rows:
+        span = _span(row)
+        if _is_counted(row) and span is not None:
+            counted[(row["platform_family"], row["member_id"])].append((rid, row, span))
+
+    seen: set[tuple[str, str, str]] = set()
+    for rid, row in era_rows:
+        add = partial(add_at, rid)
+        pf, member_id, era_key = row["platform_family"], row["member_id"], row["era_key"]
+        key = (pf, row["edition"], era_key)
+        if key in seen:
+            add(f"duplicate era line (platform_family, edition, era_key) {key!r}")
+        seen.add(key)
+        m = era_keys._ERA_KEY_RE.fullmatch(era_key)
+        if m is None:
+            add(f"era_key {era_key!r} does not match {era_keys._ERA_KEY_RE.pattern}")
+        rows = counted.get((pf, member_id), [])
+        if not rows:
+            add(f"member {member_id!r} is not an approved counted row of {pf!r}")
+            continue
+        if not _EDITION_RE.fullmatch(row["edition"]):
+            continue                                  # rule 12's line (_check_era_rows)
+        edition = int(row["edition"])
+        member = next((entry for entry in rows if entry[2][0] <= edition <= entry[2][1]), None)
+        if member is None:
+            spans = ", ".join(f"{s[0]}–{s[1]}" for _, _, s in rows)
+            add(f"edition {edition} is outside the editions of approved counted member "
+                f"{member_id!r} ({spans})")
+            continue
+        member_rid, member_row, _ = member
+        if m is not None:
+            if m.group(1) != member_row["account"]:
+                add(f"era_key {era_key!r} has account {m.group(1)!r}; the member's account is "
+                    f"{member_row['account']!r}")
+            if m.group(2) != member_row["organization"]:
+                add(f"era_key {era_key!r} has organization {m.group(2)!r}; the member's organization "
+                    f"is {member_row['organization']!r}")
+        if row["decision_id"] not in set(filter(None, member_row["era_decision_ids"].split(";"))):
+            add(f"decision_id {row['decision_id']!r} is not in the era_decision_ids of member row "
+                f"{member_rid!r}")
+
+    # One (edition, era_key) bound in two families: the later family's row
+    # (JSON order) carries the fault. sorted() is stable, so CSV order holds
+    # within a family.
+    position = {pf: i for i, pf in enumerate(cx.families)}
+    first: dict[tuple[str, str], str] = {}
+    for rid, row in sorted((r for r in era_rows if r[1]["platform_family"] in position),
+                           key=lambda r: position[r[1]["platform_family"]]):
+        bound = (row["edition"], row["era_key"])
+        earlier = first.setdefault(bound, row["platform_family"])
+        if earlier != row["platform_family"]:
+            add_at(rid, f"(edition, era_key) {bound!r} is already bound by family {earlier!r}; an era "
+                        "line is counted in one family only")
 
 
 # ---------------------------------------------------------------------------
@@ -1030,15 +1469,37 @@ def parse_registry(doc: dict, member_rows: Sequence[Mapping[str, str]],
                    era_rows: Sequence[Mapping[str, str]], *,
                    era_decisions: Mapping[str, Mapping[str, str]],
                    paths: RegistryPaths = DEFAULT_PATHS) -> Registry:
-    """Stage 1 on in-memory files (pure): collect every fault, then raise one
-    RegistryError; otherwise build the Registry. `era_decisions` is the era
-    seed keyed by decision_id."""
-    errors: list[str] = []
+    """Stage 1 on in-memory files (pure): the per-row rules and the rules
+    across rows and files (rules 1–27) all run, every fault is collected (the
+    JSON's lines, then the members', then the era lines'), then one
+    RegistryError is raised; otherwise the Registry is built. `era_decisions`
+    is the era seed keyed by decision_id."""
     json_name, members_name, era_name = paths.json.name, paths.members.name, paths.era_lines.name
-    families = _check_doc(doc, lambda row, reason: errors.append(_line(json_name, row, reason)))
-    _check_members(member_rows, families,
-                   lambda row, reason: errors.append(_line(members_name, row, reason)))
-    _check_era_rows(era_rows, lambda row, reason: errors.append(_line(era_name, row, reason)))
+    json_errors: list[str] = []
+    member_errors: list[str] = []
+    era_errors: list[str] = []
+
+    def add_json(row: str | None, reason: str) -> None:
+        json_errors.append(_line(json_name, row, reason))
+
+    def add_member(row: str, reason: str) -> None:
+        member_errors.append(_line(members_name, row, reason))
+
+    def add_era(row: str, reason: str) -> None:
+        era_errors.append(_line(era_name, row, reason))
+
+    families = _check_doc(doc, add_json)
+    rows = _check_members(member_rows, families, add_member)
+    era = _check_era_rows(era_rows, add_era)
+    top = doc if isinstance(doc, dict) else {}
+    cx = _Cross(json_name=json_name, rulings=_by_id(top.get("rulings"), "ruling_id"),
+                sources=_by_id(top.get("sources"), "source_id"), families=families, rows=rows,
+                decisions=era_decisions)
+    _check_family_links(cx, member_rows, add_json)
+    _check_row_links(cx, add_member)
+    _check_row_sets(cx, add_member)
+    _check_era_links(cx, era, add_era)
+    errors = json_errors + member_errors + era_errors
     if errors:
         raise RegistryError(errors)
 
