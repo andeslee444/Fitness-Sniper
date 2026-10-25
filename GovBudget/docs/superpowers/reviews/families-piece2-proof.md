@@ -12,7 +12,9 @@ Snapshot: `.proofs/fam2` (scratch database govbudget_proof_fam2), taken 2026-10-
 c9e75aa9fc733b21b2051697180887c78dbd5430b9b06a21785a2d8b242bfd4a, the post-repoint sha `fam2/snapshot.json`
 records (re-hashed read-only on 2026-10-25 for this note).
 
-Every bracketed log is under `.proofs/fam2-logs/`; Task 10c copies them into the ledger. Times are EDT unless
+Every bracketed log is under `.proofs/fam2-logs/`; Task 10c copies them into the ledger. The checks this note
+says were re-run read-only for it are logged in [step7-readonly-checks.txt, parquet-listing-fam2.txt,
+parquet-listing-fam2-B.txt, parquet-listing-fam2-B-eval.txt]. Times are EDT unless
 they carry `+00:00`.
 
 A@fam2 = the deployed code's export of fam2 (clone `fam2-A`). B@fam2 = the piece-2 code's export of the same
@@ -28,7 +30,8 @@ equal to D7's projection: the F-15 alone, with its 8 counted members) and `manif
 and no fact is added, removed or changed (143,804 citations on each side). Link coverage prints the same lines on
 A and B, PASS with 0 violations on each. Built over each export, `/families/f-15/` and `/methodology/` weigh the same raw bytes on A and B (705,056
 and 161,453, also Task 1's `base-weight:`), and each page is identical on A and B once the build ID and the export
-stamps are masked; the F-15 page snapshot passes on both builds. Every gate passes on B's export:
+stamps are masked; the F-15 page snapshot passes on both builds. Every gate passes on B (on B's export, except
+pytest and W1, which check B's code):
 verify-era-map, verify-families, verify-phase5b1, verify-phase5e, verify-lineage, `evals check`, `npm run verify`
 (27 gates; gate 21's leg (r) green for the first time, K1, beside the link fix's leg (q)), vitest, pytest on 55432
 (4,914 passed), W1 at the Task 1 baselines, and `verify-phase5` (whose assembly now includes verify-families). The
@@ -122,7 +125,8 @@ snapshot.log: parquet files 112 · site files 36,328 · raw_docs files 1,112; 18
 ### Gates [gate-*.log, verify-phase5.log, verify-phase5-runtime.txt, evals.log, site-verify-B.log, vitest-B.log, pytest.txt, w1.txt]
 
 On B@fam2 (`source .proofs/fam2/env.sh .proofs/fam2-B`; the site build over the `data/*` links pointed at
-fam2-B), except `verify-phase5`, which ran on fam2-B-eval (R-PF-20):
+fam2-B), except `verify-phase5`, which ran on fam2-B-eval (R-PF-20), and pytest and W1, which check B's code:
+pytest under `scripts/era/env.sh` with the test Postgres on 55432, not against a proof clone, and W1 as a lint:
 
 - **verify-era-map** exit 0, legs a–h PASS: 7 workbooks, 6,927 keys checked; 6,927 keys, 0 undecided, 1,253
   decisions; f15 31 map rows; fact ids 56,294 rows, 17,523 era P-1 rows, 0 mismatched; published map
