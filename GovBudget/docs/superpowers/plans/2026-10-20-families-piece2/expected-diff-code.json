@@ -1,0 +1,4 @@
+[
+  {"path": "json/families/index.json", "status": ["only_b"], "required": true, "why": "piece 2 §12, §16: the families index (published families only, pointers, no amounts), written by export_family_histories in the same staging pass"},
+  {"path": "manifest.json", "status": ["changed"], "pointer": "/json_sidecars", "change": ["changed"], "required": true, "why": "piece 2 §16: json_sidecars counts json/families/index.json, exactly +1 (Task 9a Step 7 asserts B - A = 1)"}
+]
