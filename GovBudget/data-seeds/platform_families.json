@@ -11,6 +11,17 @@
       "spec": "docs/superpowers/specs/2026-10-20-families-piece2-registry-design.md#81-r-dec-fam-f15-seed-class-ruling-pending-owner-approval-with-this-spec",
       "text": "The F-15 family's registry entry records the eight budget lines the shipped F-15 history counts, as they ship at main 88538c6a. It records: their order, identities and display titles; the coverage rule (which lines are expected in which editions); the 31-line era roster; the F015E0 note and its receipt; the family's scope and coverage notes. It changes no published figure, text or fact ID. Its evidence basis is the shipped family history (the F-15 family funding correction recorded in the ROADMAP on 2026-09-24), the piece-1 era decisions and the page's record-link narratives. Piece 3 must add an independent signal for each line before any F-15 row changes.",
       "seed_basis": true
+    },
+    {
+      "ruling_id": "R-DEC-FAM-F35-B1",
+      "kind": "batch",
+      "platform_family": "f-35",
+      "decided_by": "owner",
+      "decided_on": "2026-10-25",
+      "owner_reply": "yes",
+      "spec": "docs/superpowers/specs/2026-10-20-families-piece2-registry-design.md#82-r-dec-fam-f35-b1-one-batch-through-the-batch-page",
+      "text": "The owner ratified batch B1 of the f-35 family as shown on its batch page (manifest sha256 e434eacf3eda829fa367dc9e2beb1349add37a1923bbf408ca0a6160cb6377df): 18 approved, 1 deferred, 0 rejected or excluded row(s).",
+      "seed_basis": false
     }
   ],
   "sources": [
@@ -120,7 +131,7 @@
     },
     {
       "platform_family": "f-35",
-      "status": "draft",
+      "status": "ratified",
       "short_name": "F-35",
       "history_dataset": "f35_funding_history",
       "on_partial_corpus": "raise",
