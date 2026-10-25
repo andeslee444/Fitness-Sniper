@@ -174,6 +174,8 @@ rounded half up to $0.1M. The export check is verify-families leg c (`leaks=0`) 
 
 **Correction (2026-10-25): Task 9b Step 3 (`verify-phase5`) ran three times; run 3 is the result above.** Steps 1,
 5 and 6 ran once. Step 2's build ran a second time under R-PF-20a, and Step 4's restore a second time after run 3.
+One of Step 3's assembly legs also ran on its own: a standalone `verify-phase5b3` on the same tree after run 2,
+13:32:45–13:41:16 (run 2's bullet below), as gate 21 ran on its own over Step 2's build (`### Page and weight`).
 Each paid eval left one untracked `data/research/eval-runs/` file in this worktree; none is committed.
 
 - **Run 1 (12:29:03–13:00:14, runtime 1871 s), on fam2-B as the brief wrote it: `verify-phase5: FAIL`.** `gate
@@ -201,11 +203,17 @@ Each paid eval left one untracked `data/research/eval-runs/` file in this worktr
   - The `data/*` links and the environment pointed at fam2-B-eval; `site/out` stayed Step 2's B@fam2 build.
 - **Run 2 (13:06–13:32, runtime 1566 s), on fam2-B-eval: `verify-phase5: FAIL`.** `gate eval: accuracy 47/48,
   citation 43/43 → PASS` (eval-20261025T171335Z.json) and freshness PASS. The assembly failed on verify-phase5b3
-  alone: its dossier gate passed, and its site run failed gate 1 only (the other 26 gates PASS), with `out/ is
-  stale: a source file is 3567.8s newer than out/.build-meta.json (source_max=2026-10-25T17:01:53.721Z,
-  marker=2026-10-25T16:02:25.951Z)` [verify-phase5-eval-clone-run2.log, verify-phase5-eval-clone-run2-runtime.txt,
-  gate-verify-phase5b3-eval-clone.log]. That newer file is Step 4's `llms.txt` restore at 13:01:53, after Step 2's
-  12:02:25 build: the controller had run Step 4 before re-running Step 3, so the order was wrong, not B.
+  alone. Run 2's log, created 13:06:06 and last written 13:32:12, prints only that leg's verdict,
+  `verify-phase5b3: FAIL` [verify-phase5-eval-clone-run2.log, verify-phase5-eval-clone-run2-runtime.txt].
+  - **The leg's detail comes from a standalone `verify-phase5b3` run** on the same tree after run 2's log ended:
+    13:32:45–13:41:16, the log's creation and last write. Its log names this worktree as repo root, reads
+    `build-meta git_head: e48ab21b`, and finds `out/`'s marker at Step 2's build [gate-verify-phase5b3-eval-clone.log].
+    Its dossier gate passed. Its site run failed gate 1 only (the other 26 gates PASS), with `out/ is stale: a
+    source file is 3567.8s newer than out/.build-meta.json (source_max=2026-10-25T17:01:53.721Z,
+    marker=2026-10-25T16:02:25.951Z)`, and it ends `verify-phase5b3: FAIL`.
+  - That newer file is `site/public/llms.txt`, newer than Step 2's 12:02:25 build. Step 4 had already run (the
+    first implementer, 13:01:53, after run 1), and the controller re-ran Step 3 without first re-running Step 2's
+    build, so the order was wrong, not B.
 - **R-PF-20a (controller): a re-run starts from Step 3's tree state.** Step 2's build was re-run on fam2-B-eval,
   whose site is a `cp -c -p -R` of fam2-B/site, at 13:42–13:43: build exit 0 [site-build-B-eval.log],
   `f15-page-snapshot: PASS`, and the f-15 page equal to Step 2's with the build ID masked. All three come from the
