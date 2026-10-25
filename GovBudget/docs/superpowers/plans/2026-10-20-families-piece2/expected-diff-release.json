@@ -1,0 +1,14 @@
+[
+  {"path": "json/sam/*.json", "status": ["only_b", "changed"], "why": "piece-2 spec §15 step 4: a SAM.gov registration the hourly job stored after snapshot fam2 (the SAM parquet has been unchanged since 2026-10-04, so none is expected). A late SAM registration also moves data/dim_entities.parquet and its citation's formula/retrieved_at, which no rule excuses, so it stops the release for the owner (fail-closed by design; none is expected since the SAM job finished on 2026-10-13)"},
+  {"path": "json/entity_details/*.json", "status": ["changed"], "pointer": "/sam*", "why": "piece-2 spec §15 step 4: a company page's SAM registration block, as above"},
+  {"path": "json/citations.json", "status": ["changed"], "pointer": "/{fid}", "change": ["added"], "why": "piece-2 spec §15 step 4: one derived citation per newly published SAM registration"},
+  {"path": "json/cite-shards/*.json", "status": ["changed"], "pointer": "/{fid}", "change": ["added"], "why": "the cite shards carry those citations"},
+  {"path": "citations/citations.parquet", "status": ["changed"], "why": "the citation table, as above"},
+  {"path": "json/site_meta.json", "status": ["changed"], "pointer": "/counts/citations", "change": ["changed"], "why": "site_meta counts.citations, as above"},
+  {"path": "json/site_meta.json", "status": ["changed"], "pointer": "/counts/companies_with_sam", "change": ["changed"], "why": "site_meta counts.companies_with_sam, as above"},
+  {"path": "manifest.json", "status": ["changed"], "pointer": "/citations/derived", "change": ["changed"], "why": "the manifest's derived citation count, as above"},
+  {"path": "manifest.json", "status": ["changed"], "pointer": "/json_sidecars", "change": ["changed"], "why": "a new json/sam receipt file, as above"},
+  {"path": "json/datasets.json", "status": ["changed"], "pointer": "/citations/row_count", "change": ["changed"], "why": "the citations card's row count, as above"},
+  {"path": "json/datasets.json", "status": ["changed"], "pointer": "/citations/kinds/[]", "change": ["added", "removed"], "why": "the citations card's derived count, as above"},
+  {"path": "json/budget_pdf_receipts_audit.json", "status": ["changed"], "pointer": "/citation_sha256", "change": ["changed"], "why": "the audit fingerprints the citation registry, as above"}
+]
