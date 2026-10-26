@@ -468,3 +468,14 @@ def test_preview_builds_one_unpublished_family_without_an_index_and_refuses_the_
     with pytest.raises(ValueError, match="site dir"):
         export_family_histories(duckdb_path=duckdb_path, out_dir=out, registry=registry, families=["b-1"], preview=True)
     assert _tree(out) == before
+
+
+def test_an_unknown_family_id_is_a_value_error_naming_preview(tmp_path, stubbed):
+    duckdb_path, out = _v5_export(tmp_path)
+    before = _tree(out)
+    with pytest.raises(ValueError, match=r"^platform-families: preview names \['z-9'\], not a family"):
+        export_family_histories(duckdb_path=duckdb_path, out_dir=out, registry=load_registry(), families=["z-9"],
+                                preview=True)
+    with pytest.raises(ValueError, match=r"^platform-families: export \(or preview\) names \['z-9'\]"):
+        export_family_histories(duckdb_path=duckdb_path, out_dir=out, registry=load_registry(), families=["z-9"])
+    assert _tree(out) == before

@@ -378,7 +378,15 @@ def build_program_matrix(family: Family, payload: dict, previews: dict, *, exist
 
 
 def _targets(registry: Registry, families: Sequence[str] | None, preview: bool, out_dir: Path) -> tuple[Family, ...]:
-    """The families a pass builds, in JSON order; ValueError on a misused preview."""
+    """The families a pass builds, in JSON order; ValueError on a misused
+    preview or a family id that is not in the registry."""
+    if families is not None:
+        known = {f.platform_family for f in registry.families}
+        unknown = [pf for pf in families if pf not in known]
+        if unknown:
+            mode = "preview" if preview else "export (or preview)"
+            raise ValueError(f"platform-families: {mode} names {unknown}, not a family in platform_families.json "
+                             f"(known: {sorted(known)})")
     if preview:
         if families is None or len(families) != 1:
             raise ValueError("platform-families: a preview builds exactly one family, named in families")
