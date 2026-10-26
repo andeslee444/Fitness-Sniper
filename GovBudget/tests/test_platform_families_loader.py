@@ -13,14 +13,15 @@ import duckdb
 import pytest
 from openpyxl import Workbook
 
+from govbudget import platform_families
 from govbudget.export_site import _ProgramIdentity
 from govbudget.jbooks import era_map
 from govbudget.platform_families import (
     CAVEAT_IDS, CONTRACT_LINK_POLICIES, DEFAULT_PATHS, EDITIONS, ERA_LINE_COLUMNS, EXCLUSION_KINDS,
     EXHIBITS, FAMILY_KEYS, F15_SEED_RULING_ID, HISTORY_DATASET_RE, LINK_BASES, MEMBER_COLUMNS,
     MEMBER_ID_RE, PAYING_ORGS, PLATFORM_FAMILY_RE, PREFILL_COLUMNS, PURPOSES, REVIEW_COLUMNS,
-    REVIEW_ROOT, ROLES, RULING_ID_RE, SEED_BASIS_ALLOWED, SERVICES, SHORT_NAME_RE, SOURCE_ID_RE,
-    SOURCE_TIERS, STATUSES, TOP_KEYS, VARIANT_SCOPES, VERDICTS, EraLine, Headline, LakeReport,
+    REVIEW_ROOT, ROLES, RULING_ID_RE, SEED_BASIS_ALLOWED, SEED_BASIS_MEMBER_ROWS, SERVICES, SHORT_NAME_RE,
+    SOURCE_ID_RE, SOURCE_TIERS, STATUSES, TOP_KEYS, VARIANT_SCOPES, VERDICTS, EraLine, Headline, LakeReport,
     MemberMeasure, RegistryError, ReviewGuard, check_citations, check_lake, corpus_gate, expand_leaves,
     family_hash, index_projection, load_registry, measure_member, normalize_quote_text, open_lake, parse_ref,
     registry_texts, resolve_doc_ref, split_refs, write_registry)
@@ -574,7 +575,8 @@ def test_a_c_source_verified_by_a_g_source_may_be_cited():
     assert w.parse()["x-1"].counted[0].evidence[-1] == "src:c-claim"
 
 
-def test_a_seed_basis_ruling_stands_without_an_independent_signal():
+def _seed_basis_world() -> World:
+    """x-1 under R-DEC-FAM-F15-SEED, its counted rows without a G/PG or doc: signal."""
     w = World()
     w.doc["rulings"][0].update(ruling_id="R-DEC-FAM-F15-SEED", seed_basis=True)
     w.family()["published_ruling_id"] = "R-DEC-FAM-F15-SEED"
@@ -582,7 +584,71 @@ def test_a_seed_basis_ruling_stands_without_an_independent_signal():
         row["ruling_id"] = "R-DEC-FAM-F15-SEED"
     w.member("XA0001").update(evidence=f"era:{ERA_XA}")
     w.member("XR0001").update(evidence="fact:0026c924483c6624")
-    assert [m.code for m in w.parse()["x-1"].counted] == ["XA0001", "XR0001"]
+    return w
+
+
+def test_a_seed_basis_ruling_stands_without_an_independent_signal(monkeypatch):
+    monkeypatch.setattr(platform_families, "SEED_BASIS_MEMBER_ROWS", frozenset({XA_ID, XR_ID}))
+    assert [m.code for m in _seed_basis_world().parse()["x-1"].counted] == ["XA0001", "XR0001"]
+
+
+def test_seed_basis_exempts_only_the_pinned_seed_rows(monkeypatch):
+    # A row the seed did not write stands on its own evidence even under the seed ruling.
+    monkeypatch.setattr(platform_families, "SEED_BASIS_MEMBER_ROWS", frozenset({XA_ID}))
+    with pytest.raises(RegistryError) as exc:
+        _seed_basis_world().parse()
+    assert refused(exc.value.errors, M, XR_ID, "seed_basis covers only the eight seeded F-15 rows")
+    assert not any(line.startswith(f"platform-families: {M}:{XA_ID}: ") for line in exc.value.errors)
+
+
+def test_seed_basis_member_rows_are_the_eight_committed_seed_rows():
+    import csv
+
+    with DEFAULT_PATHS.members.open(encoding="utf-8", newline="") as fh:
+        seeded = {r["member_row_id"] for r in csv.DictReader(fh) if r["ruling_id"] == F15_SEED_RULING_ID}
+    assert len(seeded) == 8 and SEED_BASIS_MEMBER_ROWS == seeded
+
+
+@pytest.mark.parametrize("value,fragment", [
+    (f"doc:{DOC_SHA}#p1;doc:{DOC_SHA}#p2", "exactly one doc: ref, got 2 refs"),
+    (f"era:{ERA_XA}", "is a era: ref; it must be a doc: ref"),
+    ("src:x-book#p4", "is a src: ref; it must be a doc: ref"),
+    ("doc:abc#p1", "malformed ref"),
+    ("q=orphan", "dangling q="),
+], ids=["two-refs", "era-ref", "src-ref", "malformed", "dangling-quote"])
+def test_allocation_source_is_blank_or_exactly_one_doc_ref(value, fragment):
+    w = World()
+    w.member("XC0001").update(allocation_source=value, allocation_years="2024")
+    assert_refused(w.parse, M, XC_ID, fragment)
+
+
+def test_allocation_source_with_one_doc_ref_loads():
+    w = World()
+    w.member("XC0001").update(allocation_source=f"doc:{DOC_SHA}#p1;q=X-1 spares", allocation_years="2024")
+    assert w.parse()["x-1"].context[0].allocation_source == f"doc:{DOC_SHA}#p1;q=X-1 spares"
+
+
+@pytest.mark.parametrize("mutate,row,fragment", [
+    (lambda w: w.family()["variants"][0].update(id=["A"]), "x-1", "id must be"),
+    (lambda w: w.family()["program_tags"][0].update(tag={"t": 1}), "x-1", "tag must be"),
+    (lambda w: w.doc["rulings"][0].update(ruling_id=["R"], seed_basis=True), "rulings[0]", "seed_basis"),
+], ids=["variant-id-list", "program-tag-object", "ruling-id-list"])
+def test_a_non_string_id_tag_or_ruling_id_is_a_registry_error_line(mutate, row, fragment):
+    w = World()
+    mutate(w)
+    assert_refused(w.parse, J, row, fragment)   # never a bare TypeError
+
+
+def test_an_exclusion_evidence_fault_names_only_its_own_quote():
+    w = World()
+    # Separate JSON strings: a quoted doc: ref before a bad item is not the cause.
+    w.family()["exclusions"][0]["evidence"] = [f"doc:{DOC_SHA}#p1;q=X-1 spares", "bad-ref"]
+    with pytest.raises(RegistryError) as exc:
+        w.parse()
+    (line,) = [e for e in exc.value.errors if "bad-ref" in e]
+    assert line.startswith(f"platform-families: {J}:x-1: ") and "the doc: ref before it" not in line
+    w.family()["exclusions"][0]["evidence"] = [f"doc:{DOC_SHA}#p1;q=X-1 spares; more"]
+    assert_refused(w.parse, J, "x-1", "its quote contains ';'")
 
 
 HEAD = Headline("cumulative_actuals", 2015, 2024)
@@ -633,6 +699,8 @@ def test_open_lake_surfaces_a_duckdb_lock_as_an_exception(tmp_path):
             open_lake(db)
     finally:
         holder.kill()
+        holder.wait()
+        holder.stdout.close()
 
 
 def test_measure_member_measures_each_row(tmp_path):
@@ -749,13 +817,13 @@ def test_doc_ref_miss_names_sha_page_and_quote(tmp_path):
 def test_doc_ref_quote_matches_across_breaks_nbsp_dashes_and_curly_quotes(tmp_path):
     site = make_site(tmp_path)
     make_pdf(site / "pdfs" / f"{'e' * 64}.pdf", [['F-35 "Lightning" II - Block 4', "modernization continues"]])
-    quote = "F‑35 “Lightning” II – Block 4 modernization"   # NB hyphen, curly quotes, en dash, NBSP; the page breaks after "Block 4"
+    quote = "F\u201135 \u201cLightning\u201d II \u2013 Block\u00a04 modernization"   # NB hyphen, curly quotes, en dash, NBSP; the page breaks after "Block 4"
     assert resolve_doc_ref(f"doc:{'e' * 64}#p1;q={quote}", site_dir=site) is None
     assert resolve_doc_ref(f"doc:{'e' * 64}#p1;q=f-35", site_dir=site) is not None    # case-sensitive
 
 
 def test_normalize_quote_text_folds_and_keeps_case():
-    assert normalize_quote_text(" a  b\n–− “q” ‘s’ ") == "a b -- \"q\" 's'"
+    assert normalize_quote_text(" a\u00a0 b\n\u2013\u2212 \u201cq\u201d \u2018s\u2019 ") == "a b -- \"q\" 's'"
     assert normalize_quote_text("Block") != normalize_quote_text("block")
 
 

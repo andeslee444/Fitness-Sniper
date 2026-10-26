@@ -86,6 +86,14 @@ HEADLINE_MEASURES = ("cumulative_actuals",)
 GUARD_EXHIBITS = ("P-1", "R-1")
 EDITIONS = range(2017, 2027)
 SEED_BASIS_ALLOWED = frozenset({"R-DEC-FAM-F15-SEED"})
+# The rows seed_basis exempts from the independent-signal bar: the eight F-15
+# rows the one-off seed wrote (data-seeds/platform_family_members.csv). Any
+# other row citing R-DEC-FAM-F15-SEED needs its own G/PG or doc: evidence.
+SEED_BASIS_MEMBER_ROWS = frozenset({
+    "f-15|P-1:3010F:AF:F01500|2017-2026", "f-15|P-1:3010F:AF:F0150P|2017-2020",
+    "f-15|P-1:3010F:AF:F015E0|2020-2022", "f-15|P-1:3010F:AF:F015EX|2021-2026",
+    "f-15|P-1:3010F:AF:F15EWS|2019-2026", "f-15|R-1:3600F:AF:0207134F|2017-2026",
+    "f-15|R-1:3600F:AF:0207146F|2021-2026", "f-15|R-1:3600F:AF:0207171F|2017-2026"})
 F15_SEED_RULING_ID = "R-DEC-FAM-F15-SEED"
 TOP_KEYS = ("schema_version", "rulings", "sources", "families")
 RULING_KEYS = ("ruling_id", "kind", "platform_family", "decided_by", "decided_on", "owner_reply",
@@ -666,7 +674,8 @@ def _check_rulings(rulings: list, add_at: Callable[[str, str], None]) -> None:
             add(f"owner_reply {reply!r} is blank")
         if isinstance(r.get("decided_on"), str) and not _iso_date(r["decided_on"]):
             add(f"decided_on {r['decided_on']!r} is not an ISO date (YYYY-MM-DD)")
-        if r.get("seed_basis") is True and ruling_id not in SEED_BASIS_ALLOWED:
+        if r.get("seed_basis") is True and not (isinstance(ruling_id, str)
+                                                and ruling_id in SEED_BASIS_ALLOWED):
             add(f"seed_basis true is allowed only on {', '.join(sorted(SEED_BASIS_ALLOWED))}, "
                 f"not on {ruling_id!r}")
 
@@ -994,12 +1003,14 @@ def _check_role_rules(row: Mapping[str, str], add: _Add) -> None:
 def _check_tags(row: Mapping[str, str], fam: Mapping, add: _Add) -> None:
     """Rule 18 (row side): tags and variants from the family's own lists."""
     pf = row["platform_family"]
-    variant_ids = {v.get("id") for v in _objects(fam, "variants")}
+    # A non-string id or tag is rule 1's own line (_check_shape); never hash it.
+    variant_ids = {v.get("id") for v in _objects(fam, "variants") if isinstance(v.get("id"), str)}
     for item in filter(None, row["variant_ids"].split(";")):
         if item not in variant_ids:
             add(f"variant_ids item {item!r} is not a variants id of {pf!r}")
     tag = row["program_tag"]
-    if tag and tag not in {t.get("tag") for t in _objects(fam, "program_tags")}:
+    if tag and tag not in {t.get("tag") for t in _objects(fam, "program_tags")
+                           if isinstance(t.get("tag"), str)}:
         add(f"program_tag {tag!r} is not in the program_tags of {pf!r}")
     purpose_tag = row["purpose_tag"]
     if purpose_tag and purpose_tag not in _strs(fam, "purpose_tags"):
@@ -1174,7 +1185,9 @@ def _check_ref_list(items: Sequence[str], label: str, cx: _Cross, add: _Add, *,
         try:
             prefix, parts = parse_ref(item)
         except ValueError as exc:
-            add(f"{label}: {exc}{_quote_hint(prev, item)}")
+            # An exclusion's evidence (member None) is a JSON list: each item is
+            # its own string, so only the item's own quote can hold the ';'.
+            add(f"{label}: {exc}{_quote_hint(prev if member is not None else None, item)}")
         else:
             parsed.append((prefix, parts))
             if prefix == "era":
@@ -1183,6 +1196,23 @@ def _check_ref_list(items: Sequence[str], label: str, cx: _Cross, add: _Add, *,
                 _check_src_ref(item, parts["source_id"], label, cx, add, refuse_x=refuse_x)
         prev = item
     return parsed
+
+
+def _check_allocation_source(row: Mapping[str, str], cx: _Cross, add: _Add) -> None:
+    """Spec §7.3 column 44: allocation_source is blank or exactly one doc: ref
+    (a book-stated per-system amount); it parses through rules 7 and 20."""
+    text = row["allocation_source"]
+    if text == "":
+        return
+    items, fault = _split_ref_items(text)
+    if fault is not None:
+        add(f"allocation_source {text!r}: {fault}{_quote_hint(items[-1] if items else None, '')}")
+    elif len(items) != 1:
+        add(f"allocation_source {text!r} must be exactly one doc: ref, got {len(items)} refs")
+    else:
+        parsed = _check_ref_list(items, "allocation_source", cx, add, member=row, refuse_x=True)
+        if parsed and parsed[0][0] != "doc":
+            add(f"allocation_source {text!r} is a {parsed[0][0]}: ref; it must be a doc: ref")
 
 
 def _independent(parsed: Sequence[tuple[str, dict]], cx: _Cross) -> bool:
@@ -1243,8 +1273,9 @@ def _check_family_links(cx: _Cross, member_rows: Sequence[object],
 
 
 def _check_row_links(cx: _Cross, add_at: Callable[[str, str], None]) -> None:
-    """Per member row: rules 7 and 20 (its refs and the independent-signal
-    bar), 21, 22 and 23 (a row without a family)."""
+    """Per member row: rules 7 and 20 (its refs, allocation_source and the
+    independent-signal bar, whose seed_basis exemption covers only
+    SEED_BASIS_MEMBER_ROWS), 21, 22 and 23 (a row without a family)."""
     for rid, row in cx.rows:
         add = partial(add_at, rid)
         pf = row["platform_family"]
@@ -1261,12 +1292,16 @@ def _check_row_links(cx: _Cross, add_at: Callable[[str, str], None]) -> None:
         # The bar reads the membership evidence only (link_evidence evidences a
         # link); a column that does not split already carries its fault.
         evidence = parsed.get("evidence")
-        seed_basis = ruling is not None and ruling.get("seed_basis") is True
+        seed_basis = (ruling is not None and ruling.get("seed_basis") is True
+                      and rid in SEED_BASIS_MEMBER_ROWS)
         if evidence is not None and _is_counted(row) and not seed_basis \
                 and not _independent(evidence, cx):
             add("an approved counted row needs an independent membership signal in evidence: a "
                 "doc: ref, or a src: ref to a tier G or PG source (era: and fact: refs do not count; "
-                f"its ruling {row['ruling_id']!r} has no seed_basis)")
+                f"its ruling {row['ruling_id']!r} has no seed_basis"
+                + (" for this row; seed_basis covers only the eight seeded F-15 rows)"
+                   if ruling is not None and ruling.get("seed_basis") is True else ")"))
+        _check_allocation_source(row, cx, add)
 
         for decision_id in filter(None, row["era_decision_ids"].split(";")):
             d = cx.decisions.get(decision_id)
