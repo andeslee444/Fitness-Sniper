@@ -8,7 +8,11 @@
  * member_order are F15_RECORD_SLUGS. Neither TypeScript file is edited (§3):
  * RECORD_CONFIG is not exported and f15-family-data.ts imports server-only,
  * so the test reads that file's source text and walks its syntax tree rather
- * than importing it.
+ * than importing it. The other three copies of the record slugs (RECORDS in
+ * site/src/lib/f15-browser-state.ts, the F15_ENTRY_VARIANTS keys in
+ * site/src/components/family-entry.tsx and the RECORD_GUIDES keys in
+ * site/src/components/f15-family-browser.tsx) are not exported either and
+ * are read the same way.
  */
 
 import { describe, it, expect } from "vitest";
@@ -67,6 +71,38 @@ function readRecordConfig(source: string): Config {
   return config;
 }
 
+/** The slugs a non-exported constant holds, read from its source text: the VariableDeclaration
+ *  named `name` whose initializer is an ArrayLiteralExpression of StringLiterals (its elements)
+ *  or an ObjectLiteralExpression (its PropertyAssignment names, Identifier or StringLiteral). */
+function readSlugs(path: string, name: string): string[] {
+  const file = ts.createSourceFile(path, readFileSync(resolve(ROOT, path), "utf8"), ts.ScriptTarget.Latest, true);
+  let init: ts.Expression | undefined;
+  const visit = (node: ts.Node): void => {
+    if (init) return;
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === name && node.initializer) {
+      init = node.initializer;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  if (init && ts.isArrayLiteralExpression(init)) {
+    return init.elements.map((element) => {
+      if (!ts.isStringLiteral(element)) throw new Error(`${path}: ${name} holds a non-string element`);
+      return element.text;
+    });
+  }
+  if (init && ts.isObjectLiteralExpression(init)) {
+    return init.properties.map((entry) => {
+      if (!ts.isPropertyAssignment(entry) || !(ts.isIdentifier(entry.name) || ts.isStringLiteral(entry.name))) {
+        throw new Error(`${path}: ${name}: unexpected entry ${entry.getText(file)}`);
+      }
+      return entry.name.text;
+    });
+  }
+  throw new Error(`${path}: no ${name} array or object literal`);
+}
+
 /** One finding per paged member whose purpose / variant_ids (";"-split) / scope_note differ. */
 function recordConfigProblems(rows: Record<string, string>[], config: Config): string[] {
   const problems: string[] = [];
@@ -101,6 +137,12 @@ describe("the F-15 registry rows mirror the F-15 TypeScript (CLAUDE.md mirror ru
   });
   it("carries RECORD_CONFIG's purpose, variant ids and scope note on every paged member", () => {
     expect(recordConfigProblems(paged, config)).toEqual([]);
+  });
+  it("ties RECORDS, the F15_ENTRY_VARIANTS keys and the RECORD_GUIDES keys to the paged counted members", () => {
+    const slugs = paged.map((r) => r.page_slug).sort();
+    expect(readSlugs("site/src/lib/f15-browser-state.ts", "RECORDS").sort()).toEqual(slugs);
+    expect(readSlugs("site/src/components/family-entry.tsx", "F15_ENTRY_VARIANTS").sort()).toEqual(slugs);
+    expect(readSlugs("site/src/components/f15-family-browser.tsx", "RECORD_GUIDES").sort()).toEqual(slugs);
   });
   it("catches a drifted scope note", () => {
     const drifted = paged.map((r) => (r.page_slug === "F15EWS" ? { ...r, scope_note: "Edited." } : r));
