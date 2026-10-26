@@ -411,8 +411,9 @@ def test_the_piece_2_findings_are_filed_once_with_effort_and_source(subject):
 
 
 # Filed after the piece-2 deploy from the final whole-branch review's backlog
-# minors (23, coverage items consolidated) and the fix wave's one open minor,
-# by phrase; each phrase sits on one line of its entry.
+# minors (23, coverage items consolidated), the export-time half of its
+# fix-now item 6 (#236) and the fix wave's one open minor, by phrase; each
+# phrase sits on one line of its entry.
 FAMILIES_PIECE_2_REVIEW_FINDINGS = [
     "Piece-2 test coverage gaps",
     "Piece-2 loader and gate hardening",

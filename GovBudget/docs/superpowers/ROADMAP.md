@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-10-25 (piece-2 final review: Ready; F1 + 12 minors fixed in 28f43fd5..693740bd; #230–#237 filed); 2026-10-25 (families piece 2 deployed at af11e625: the family registry, the F-15 on it byte-identical, the F-35 ratified; #209 re-deferred to piece 4; #227–#229 filed); 2026-10-24 (contract-link correction R-DEC-LINK-2026-10-21 and -B deployed at 9dce8219; follow-ups #222–#226 filed); 2026-10-19 (piece-1 follow-ups release 2 deployed at 1256ec35: #195; release-2 follow-ups #215–#221 filed); 2026-10-14 (families piece-1 follow-ups release 1 deployed at e362c0a7; SAM #10 status; Q23 filed for piece 2; release-1 findings #210–#214 filed); 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-10-25 (piece-2 final review: Ready; F1 + 12 minors fixed in 7ea2fcd6..693740bd; #230–#237 filed); 2026-10-25 (families piece 2 deployed at af11e625: the family registry, the F-15 on it byte-identical, the F-35 ratified; #209 re-deferred to piece 4; #227–#229 filed); 2026-10-24 (contract-link correction R-DEC-LINK-2026-10-21 and -B deployed at 9dce8219; follow-ups #222–#226 filed); 2026-10-19 (piece-1 follow-ups release 2 deployed at 1256ec35: #195; release-2 follow-ups #215–#221 filed); 2026-10-14 (families piece-1 follow-ups release 1 deployed at e362c0a7; SAM #10 status; Q23 filed for piece 2; release-1 findings #210–#214 filed); 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
@@ -5899,7 +5899,7 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   gives every member a `headline_actuals_k` of None, silently; let it raise,
   or report it on the batch page. (2) The set of a member's organization
   and its `ERA_ORG_TO_MODERN` spelling is built twice (`_member_lines` and
-  `_covers`), and `open_lake`'s FileNotFoundError message lists the three
+  `_covers`), a copy of `platform_family_history._spellings`, and `open_lake`'s FileNotFoundError message lists the three
   probe roots by hand, a copy of `export_site._stage_parquet_path`'s
   candidates that drifts if that list changes (the lookup itself calls the
   function); factor out shared helpers. (3) `verify-families` leg c reads
@@ -5932,8 +5932,10 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   "A missile the F-35 carries, not the aircraft" and spec §7.2's proposed
   F-35 contract routes (code 198) exclude Joint Strike Missile; the two
   shared-spares context rows, 0605 (line 14) and 000999 (line 15), carry the
-  same tag. Nothing reads `program_tag` in piece 2; the loader could also
-  refuse it on a non-counted row. (2) The 000999 row's page figure is its
+  same tag. No export reads `program_tag` in piece 2 (stage 1 checks it
+  against the family's `program_tags`, the batch page's Tags line shows it,
+  and `answer` may amend it); the loader could also refuse it on a
+  non-counted row. (2) The 000999 row's page figure is its
   3010F whole line, $8,266.3M FY2015–24 (review.csv `headline_actuals_k`
   8266266.000), while F35 Appendix B1's $8,556.6M also sums the Missile
   Procurement (3020F) spares chain, era decision `000999|3020F||2017-2023`,
