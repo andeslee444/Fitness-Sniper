@@ -3243,11 +3243,17 @@ def _cmd_platform_families(args) -> None:
               f" undecided={len(report.undecided)} stale={len(report.stale)}")
         sys.exit(1 if report.failures or (args.strict and (report.undecided or report.stale)) else 0)
     if args.pf_action == "propose":
+        seed_only = {"--site-dir": args.site_dir, "--decided-on": args.decided_on,
+                     "--owner-reply": args.owner_reply}
         if args.seed_shipped is not None:
-            seed_flags = (args.duckdb, args.site_dir, args.decided_on, args.owner_reply)
+            seed_flags = {"--duckdb": args.duckdb, **seed_only}
             family_flags = (args.family, args.family_json, args.rows)
-            if any(flag is not None for flag in family_flags) or any(flag is None for flag in seed_flags):
+            if any(flag is not None for flag in family_flags):
                 raise ValueError("--seed-shipped takes --duckdb, --site-dir, --decided-on and --owner-reply only")
+            missing = [name for name, flag in seed_flags.items() if flag is None]
+            if missing:
+                raise ValueError(f"--seed-shipped needs {', '.join(missing)} (it takes --duckdb, --site-dir,"
+                                 " --decided-on and --owner-reply)")
             from govbudget import f15_funding_history as f15
 
             out = reg.seed_shipped_f15(
@@ -3262,6 +3268,10 @@ def _cmd_platform_families(args) -> None:
             print(f"platform-families propose: f-15 seeded as R-DEC-FAM-F15-SEED; {out['members']} member row(s),"
                   f" {out['era_lines']} era line(s), {out['rulings']} ruling -> data-seeds/")
             return
+        given = [name for name, flag in seed_only.items() if flag is not None]
+        if given:   # D12: propose takes --duckdb only; these belong to --seed-shipped
+            raise ValueError("without --seed-shipped, propose takes --family, --family-json, --rows and --duckdb"
+                             f" only; --seed-shipped flags given: {', '.join(given)}")
         if args.family is None or args.family_json is None or args.rows is None:
             raise ValueError("propose needs --family, --family-json and --rows")
         from govbudget import platform_family_review as review
