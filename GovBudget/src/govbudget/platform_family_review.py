@@ -406,10 +406,17 @@ def preview(*, platform_family: str, draft: bool, site_dir: Path, duckdb_path: P
     it a draft is refused, never read silently. Every refusal (an `out` inside
     config.SITE_DIR or inside `site_dir`, a published family, a draft without
     `draft`, `draft` on another status, an existing `out` that is not a preview
-    scratch, a stage-1 fault of the trial) is raised together before any write;
-    an earlier preview scratch at `out` is then replaced whole."""
+    scratch, an `out` that is a symlink, a stage-1 fault of the trial) is raised
+    together before any write; an earlier preview scratch at `out` is then
+    replaced whole. `site_dir` and `out`'s parent are resolved first, so a
+    symlinked --site-dir is copied as the directory it names, never as a link
+    (BSD `cp -R` copies a symlink operand as a link); and if the copy still
+    lands as a link, or inside either site, it is refused before the marker or
+    any history is written through it."""
     pf = platform_family
-    out, site_dir = Path(out), Path(site_dir)
+    out, site_dir = Path(out), Path(site_dir).resolve()
+    out_is_link = out.is_symlink()
+    out = out.parent.resolve() / out.name
     registry = reg.load_registry(paths)
     errors: list[str] = []
     live_site = Path(config.SITE_DIR).resolve()
@@ -432,7 +439,9 @@ def preview(*, platform_family: str, draft: bool, site_dir: Path, duckdb_path: P
     elif draft and family.status != "draft":
         errors.append(reg._line(paths.json.name, pf,
                                 f"--draft reads a draft family's review files; {pf} is {family.status}"))
-    if out.exists() and not (out / PREVIEW_MARKER).is_file():
+    if out_is_link:
+        errors.append(f"platform-families: --out {out} is a symlink; a preview writes a real scratch directory")
+    elif out.exists() and not (out / PREVIEW_MARKER).is_file():
         errors.append(f"platform-families: {out} exists and is not a preview scratch (no {PREVIEW_MARKER}); "
                       "choose another --out")
     build = registry
@@ -457,6 +466,10 @@ def preview(*, platform_family: str, draft: bool, site_dir: Path, duckdb_path: P
         shutil.rmtree(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(["cp", "-c", "-R", str(site_dir), str(out)], check=True)
+    if out.is_symlink() or out.resolve().is_relative_to(site_dir) or out.resolve().is_relative_to(live_site):
+        raise reg.RegistryError([f"platform-families: the copy at --out {out} resolves to {out.resolve()}, a link "
+                                 f"into --site-dir {site_dir} or config.SITE_DIR ({live_site}); nothing written "
+                                 "through it"])
     (out / PREVIEW_MARKER).write_text(f"platform-families preview scratch for {pf}: never data/site, never "
                                       "committed\n", encoding="utf-8")
     built = hist.export_family_histories(duckdb_path=duckdb_path, out_dir=out, registry=build, families=[pf],

@@ -17,6 +17,7 @@ import json
 import re
 import shutil
 from decimal import Decimal
+from pathlib import Path
 from types import SimpleNamespace
 
 import duckdb
@@ -332,7 +333,7 @@ def test_propose_refuses_a_prefill_header_bom_or_crlf(proposing, fault):   # Rev
         csv.writer(buf, lineterminator="\n").writerows([line[:at] + line[at + 1:] for line in lines])
         text = buf.getvalue()
     elif fault == "bom":
-        text = "﻿" + text
+        text = "\ufeff" + text
     else:
         text = text.replace("\n", "\r\n")
     rc.write_bytes(text.encode("utf-8"))
@@ -437,7 +438,17 @@ def test_seed_shipped_wrapper_refuses_once_the_f15_exists(cli_env, monkeypatch, 
     (["--seed-shipped", "f-15", "--family", "f-35", "--duckdb", "D", "--site-dir", "S", "--decided-on", "2026-10-21",
       "--owner-reply", "R"], "--seed-shipped takes --duckdb, --site-dir, --decided-on and --owner-reply only"),
     (["--family", "f-35", "--family-json", "FJ"], "propose needs --family, --family-json and --rows"),
-], ids=["seed-with-family", "family-without-rows"])
+    (["--seed-shipped", "f-15", "--duckdb", "D", "--site-dir", "S"],
+     "--seed-shipped needs --decided-on, --owner-reply (it takes --duckdb, --site-dir, --decided-on and"
+     " --owner-reply)"),
+    (["--family", "f-35", "--family-json", "FJ", "--rows", "FJ", "--site-dir", "S"],
+     "without --seed-shipped, propose takes --family, --family-json, --rows and --duckdb only; --seed-shipped"
+     " flags given: --site-dir"),
+    (["--family", "f-35", "--family-json", "FJ", "--rows", "FJ", "--decided-on", "2026-10-21", "--owner-reply",
+      "R"], "without --seed-shipped, propose takes --family, --family-json, --rows and --duckdb only;"
+     " --seed-shipped flags given: --decided-on, --owner-reply"),
+], ids=["seed-with-family", "family-without-rows", "seed-missing-flags", "site-dir-without-seed",
+        "decided-on-and-reply-without-seed"])
 def test_cli_propose_refuses_mixed_seed_and_family_flags(proposing, capsys, argv, message):
     argv = [str(proposing.fj) if arg == "FJ" else arg for arg in argv]
     assert _exit(["platform-families", "propose", *argv]) == 2
@@ -485,6 +496,43 @@ def test_preview_refuses_out_inside_the_site_dir(rendering, monkeypatch):
         review.preview(platform_family="f-35", draft=True, site_dir=site, duckdb_path=db,
                        out=tmp_path / "live-site" / "preview", paths=paths, review_root=rr)
     assert not (tmp_path / "live-site").exists()
+
+
+def _site_files(site) -> list:
+    return sorted((p.relative_to(site).as_posix(), p.is_symlink()) for p in site.rglob("*"))
+
+
+def test_preview_through_a_symlinked_site_dir_writes_nothing_through_the_link(rendering):   # final review F1
+    site, db, scratch, paths, rr = _rendered(rendering)
+    link = rendering.tmp_path / "site-link"
+    link.symlink_to(site, target_is_directory=True)
+    before = _site_files(site)
+    review.preview(platform_family="f-35", draft=True, site_dir=link, duckdb_path=db, out=scratch, paths=paths,
+                   review_root=rr)
+    assert scratch.is_dir() and not scratch.is_symlink()          # a real clone, not a link to the site
+    assert (scratch / review.PREVIEW_MARKER).is_file() and (scratch / "json" / "f35_funding_history.json").is_file()
+    assert _site_files(site) == before                            # no marker, no history in the source site
+    (call,) = hist.export_family_histories.calls
+    assert call["out_dir"] == scratch and not call["out_dir"].is_symlink()
+
+
+def test_preview_refuses_a_copy_that_lands_as_a_link_before_any_write_through_it(rendering, monkeypatch):
+    site, db, scratch, paths, rr = _rendered(rendering)
+    before = _site_files(site)
+
+    def linking_cp(argv, check):   # BSD cp -R on a symlink operand copies the link itself
+        Path(argv[-1]).symlink_to(site, target_is_directory=True)
+
+    monkeypatch.setattr(review.subprocess, "run", linking_cp)
+    with pytest.raises(reg.RegistryError, match="nothing written through it"):
+        review.preview(platform_family="f-35", draft=True, site_dir=site, duckdb_path=db, out=scratch, paths=paths,
+                       review_root=rr)
+    assert _site_files(site) == before and hist.export_family_histories.calls == []
+    # A re-run refuses the leftover link up front, before any copy.
+    with pytest.raises(reg.RegistryError, match="is a symlink"):
+        review.preview(platform_family="f-35", draft=True, site_dir=site, duckdb_path=db, out=scratch, paths=paths,
+                       review_root=rr)
+    assert _site_files(site) == before
 
 
 def test_preview_builds_the_draft_into_a_scratch_clone(rendering):
