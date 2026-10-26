@@ -378,3 +378,33 @@ def test_the_link_fix_release_follow_ups_are_filed_once_with_effort_and_source(s
     assert body.rstrip().splitlines()[-1].strip().startswith("**Status:** "), (
         f"#{num} does not end with its Status line"
     )
+
+
+# Re-deferred by the piece-2 stamp (Task 10c; spec §3, owner 2026-10-21): #209
+# stays open for piece 4, its 2026-10-14 marker relabelled, never reworded.
+def test_209_is_re_deferred_to_piece_4_and_stays_open():
+    hits = [(num, body) for num, body in entries() if Q23_SUBJECT in body]
+    assert len(hits) == 1, f"{Q23_SUBJECT!r} filed {len(hits)} times, want 1"
+    num, body = hits[0]
+    assert num == 209
+    assert "re-deferred to piece 4 by the piece-2 spec §3" in body
+    assert "**Status (2026-10-14):** open (2026-10-14) — for piece 2." in body
+    assert len(STATUS_RE.findall(body)) == 1
+
+
+# Filed by the piece-2 stamp (Task 10c), by phrase.
+FAMILIES_PIECE_2_FINDINGS = [
+    "reports a no-change A/B as 72 changed facts",
+    "Re-proposing a ratified family is undefined",
+    "A non-self `fact:` ref cannot yet satisfy the evidence bar",
+]
+
+
+@pytest.mark.parametrize("subject", FAMILIES_PIECE_2_FINDINGS)
+def test_the_piece_2_findings_are_filed_once_with_effort_and_source(subject):
+    hits = [(num, body) for num, body in entries() if subject in body]
+    assert len(hits) == 1, f"{subject!r} filed {len(hits)} times, want 1"
+    num, body = hits[0]
+    assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
+    assert POINTER_RE.search(body), f"#{num} names no source path"
+    assert body.rstrip().splitlines()[-1].strip().startswith("**Status:** "), f"#{num} does not end with its Status line"

@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-10-24 (contract-link correction R-DEC-LINK-2026-10-21 and -B deployed at 9dce8219; follow-ups #222–#226 filed); 2026-10-19 (piece-1 follow-ups release 2 deployed at 1256ec35: #195; release-2 follow-ups #215–#221 filed); 2026-10-14 (families piece-1 follow-ups release 1 deployed at e362c0a7; SAM #10 status; Q23 filed for piece 2; release-1 findings #210–#214 filed); 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-10-25 (families piece 2 deployed at af11e625: the family registry, the F-15 on it byte-identical, the F-35 ratified; #209 re-deferred to piece 4; #227–#229 filed); 2026-10-24 (contract-link correction R-DEC-LINK-2026-10-21 and -B deployed at 9dce8219; follow-ups #222–#226 filed); 2026-10-19 (piece-1 follow-ups release 2 deployed at 1256ec35: #195; release-2 follow-ups #215–#221 filed); 2026-10-14 (families piece-1 follow-ups release 1 deployed at e362c0a7; SAM #10 status; Q23 filed for piece 2; release-1 findings #210–#214 filed); 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
@@ -246,6 +246,7 @@ dated findings and original backlog descriptions below remain historical records
 | Families-1 FU-1 | Piece-1 follow-ups, release 1: `/years/` sharded (schema-2 core + lazy decade and detail shards) with its era fence lifted (#193, #206 T4, #207, #208); the 0390D Chem Demil O&M line under the route-safe key 0390DOM with a rollup-tier page and the era O&M chain as owner batch R-DEC-ERA-B7, the RDT&E line recorded as an R-1 restatement of 0708081D + 0708083D (#194); `p1_era_line_map.decided_on` (#206 T6); the v1 receipt files removed (#196); JASSM/C-130J search aliases (#197); one "tier pending" definition (T7); the F015E0 gloss (T9); verify-era-map legs g and h (T11); hardening #198–#205 | P1/P2/P2b/P3 proofs on snapshots fu-pre/fu-post, the write rehearsed on fu-post and fu-pre and its `--revert` on fu-pre ([proof](reviews/fu-release1-proof.md)) + yearsmatrix leg j + verify-era-map a–h + link-coverage V9 | ✅ DEPLOYED 2026-10-14 at e362c0a7 (rollback tag 2026-10-15T033621Z) | /years/ +14,985 era cells and the org-split rows' 63 modern cells, leg j 0 mismatches, core 1,100,823 / 344,303 gzip (budget 780,074), decade 1,390,739 / 433,932, detail 1,231,643 / 284,230 [p2b-report.json]; /program/0390DOM/ with 21 points before PB2024 [p1-content.txt]; totals chart panel 524 → 1,063 programs, FY2024A→FY2026R +9.34% → −2.61%, first→last +108.17% → +103.71% (Q15; told 2026-10-04: 524 → 1,056 and +9.3% → about −2.5%) [p2b-report.json]; citations 143,841 → 143,893 (+37 0390DOM, +15 SAM #10) [fu-release-counts.json]; 256 v1 receipt files gone; universe 385,268,393 → 385,271,636 ($385.3B); dbt assertions 196 → 199; gates: npm verify overall PASS, verify-phase5 PASS (eval 46/48, the misses q007, piece 1's, and q042, an analyst error filed as #210; citations 43/43), 5b1/5e/lineage/era-map a–h PASS, link-coverage PASS, evals check PASS; live: all 236 live-asset assertions and every live check passed [release-deploy.log, live-checks.txt] |
 | Families-1 follow-ups R2 | #195: each narrative citation names the volume of its book set that prints it — migration 022 (`provenance_pages.printed_document_sha256`), the book-set relocation (`provenance_pages.plan_narrative_relocations`, written once by `scripts/fu/s195_narratives.py` with a pre-image and `--revert`), the export citing and hosting the printing volume, and `verify-jbook-narratives` (verify-phase5b1 gate 5, full population) | release-2 A/B on one snapshot (P2 equal, P1 within `expected-diff-r2-narratives.json`, `narrative_relocation_report.py`), the write and its `--revert` rehearsed, gate 5 red before and green after | ✅ DEPLOYED 2026-10-19 at 1256ec35 (rollback tag 2026-10-20T000418Z) | 4,177 narrative citations gain a page and 228 move (fact IDs unchanged); 20 superseded PB2026 volumes hosted on R2 (162,040,168 B); 111 opening-only (Q26 ratchet) and 77 opening-seen pageless (ratchet the owner approved 2026-10-14) citations; 1,444 pageless (1,342 of them Navy RDTEN BA1–3 master-XML narratives whose books are not in the corpus); `/program/0601102A/` 1,169,983 / 147,323 of 1,180,000 / 151,000 and `/families/f-15/` 69,342 of 70,000 gzip (658 bytes left), ceilings unchanged [fu2-release-site-verify.log]; gates: npm verify overall PASS, verify-phase5 PASS (eval 46/48, the misses q007, piece 1's, and q042, the analyst's DATE crash #210; citations 43/43) [fu2-release-verify-phase5.log], 5b1 (gate 5)/5e/lineage/era-map PASS, link-coverage PASS, evals check PASS; citations 143,893, unchanged; SAM registrations shipped 0; hosted PDF files 225 → 245 [fu2-release-counts.json]; live writes 2026-10-15: state digest D0 equal to the proof's, D1 and D2 not, by a three-id rotation (#219), the post-write rows equal to the proof's by key [release-live-vs-D2-by-key.txt]; release export = proven export (`proof diff: EQUAL`) [fu2-release-vs-proof.txt]; live: all 236 live-asset assertions passed, the 20 new volumes probed by sha 39/39, every page and citation check as expected [fu2-release-deploy.log, fu2-release-live-pdfs.txt, fu2-release-live-checks.txt] |
 | Link fix R-DEC-LINK-2026-10-21 (+ -B) | Contract-link correction (owner, 2026-10-21): 51 budget-to-contract links withdrawn — 39 production or long-lead contracts on aircraft- or missile-modification lines, 10 F-35 production-support contracts and orders on the F-35 Modifications line (R-DEC-LINK-2026-10-21-B), one O&M support task order on two modification lines — by `dbt/seeds/link_line_rulings.csv` (51 withdraw: 41 R-DEC-LINK-2026-10-21, 10 R-DEC-LINK-2026-10-21-B; 13 allow; no hold), read first by `audit_link_grading`; the N0001922F0001 short-PIID collision removed from every link→award dollar join by `link_award_keys` (R4); build-stopping gates `assert_no_production_award_on_modification_line` and `assert_refuted_pair_siblings_ruled`; gate 21 leg q; the /about/ correction (three species); the /methodology/ precision clause (R2) | proof lf1: A (88538c6a) vs B (a44960e4) on one snapshot, `expected-diff-lf1.json` + `lf1_fact_check.py` PASS, B vs B2 control EQUAL; the abort rebuild by main's code rehearsed on a clone; live lake = lf1-B (`lake_parity.py`, 10 relations); release export = proven export (`proof diff: EQUAL`) | ✅ DEPLOYED 2026-10-24 at 9dce8219 (rollback tag 2026-10-24T135031Z) | links 3,685 → 3,634 (high 1,106 → 1,101, medium 2,579 → 2,533); award rows 0592 5→3, 0593 4→2, 0549 1→0, F03500 118→92, 0505 37→32, 0590 69→65, 0596 16→12, 0962C50700 6→4, 3264AA0252 7→5, 6552C67500 6→5, C03200 2→1, C04000 3→2; flows 0592 $49.71B → $3.32B, 0593 $7.69B → $3.32B, ATA000 without the $157.9M Rolls-Royce IN-07 row, no flows for 0549 and C03200; /district/IN-07/ $1.15B → $1.01B (no F-35 row), TX-12 $68.96B → $33.82B, /district/PA-02/ removed (districts 191 → 190); F03500 all-links concentration $127.65B → $17.63B, HHI 7,421.77 → 7,764.17 (B-C1); fpds-ap precision 89/114 → 86/111 (R1, B-C1); announcement high 1,047 → 1,042; citations 143,893 → 143,804 (-89: 51 links, 3 district receipts, PA-02's 16 district facts, 0549's 3 concentration facts, 16 feed facts) [lf1-release-counts.json]; one live warehouse write, `dbt build --select link_line_rulings+` (1 seed, 1 table, 8 views, 46 tests, PASS=56, 52.90 s), and the live export; no Postgres write; /methodology/ 161,453 / 45,359 of 162,000 / 45,400 (re-stamped, ceiling unchanged); dbt assertions 199 → 206; gates: npm verify overall PASS, verify-phase5 PASS (eval 47/48), 5b1/5e/lineage/era-map PASS, link-coverage PASS, evals check PASS (q018 536 → 535) |
+| Families-2 | Platform families piece 2, the family registry: `data-seeds/platform_families.json` + `platform_family_members.csv` + `platform_family_era_lines.csv`, one loader that fails loudly (three stages), one generic history builder inside `export_site` (`platform_family_history.py`; `f15_funding_history.py` a facade), registry-driven receipt grammar and audit, `json/families/index.json` (published families only; never shipped), `platform-families propose/render/answer/ratify/check/preview`, `verify-families` in the verify-phase5 assembly; the F-15 seeded as entry #1 under owner ruling R-DEC-FAM-F15-SEED (2026-10-21) with program tags F-15/F-15EX/EPAWSS; the F-35 as entry #2 (ratified, R-DEC-FAM-F35-B1) | A/B on one snapshot `.proofs/fam2` (A = 00b599a6, the deployed code; B = e48ab21b): §16 only (`json/families/index.json` only in B, `json_sidecars` +1), F-15 history = pin, fact stability 0 missing/moved/changed, link coverage unchanged, `/families/f-15/` snapshot and weight equal to A's ([proof](reviews/families-piece2-proof.md)) | ✅ DEPLOYED 2026-10-25 at af11e625 (rollback tag 2026-10-26T012319Z) | readers see no change; F-15 history d0de9e8b…8d8f unchanged, `/families/f-15/` 705,056 / 69,334 of 725,000 / 70,000 (ceilings unchanged); live `/json/families/index.json` 404; citations 143,804, unchanged; SAM registrations shipped 0; gates: npm verify overall PASS (leg r), verify-phase5 PASS (eval 47/48) with verify-families and verify-era-map, link-coverage PASS, evals check PASS [fam2-release-*.log] |
 | Post-launch | Refresh automation (cron), accounts/alerts tier, text-to-SQL analyst surface | per feature | backlog — refresh orchestrator shipped 2026-09-18 (#8: `govbudget refresh`, sync shrink guards, launchd templates; loading the scheduler is the owner's action); accounts/alerts tier and the public analyst surface still backlog | — |
 
 ## Evaluator framework (how each thing is judged)
@@ -283,6 +284,24 @@ property is not mechanically checkable. Every gate is re-runnable by an operator
    *Used by: every phase's final review; 5B-4's NL eval (≥90% + REFUSE handling).*
 
 ## Findings log (what we learned; feeds future phases)
+
+- **2026-10-25: Families piece 2 (the family registry) deployed.** The F-15 moved
+  onto the registry with its bytes intact: on one snapshot (`.proofs/fam2`,
+  taken after the contract-link fix's live build) the pre-piece code and the
+  piece-2 code exported identically except the two §16 paths, the F-15 history
+  kept its pin and every fact ID held [families-piece2-proof.md]. The F-15 entry
+  was written once by `propose --seed-shipped f-15` under R-DEC-FAM-F15-SEED
+  (owner, 2026-10-21: "approved, would process with recommendation to approve
+  all") and stands on `seed_basis` until piece 3 supplies independent signals.
+  `scripts/era/fact_stability.py` cannot judge a no-change A/B: its S4 rule
+  expects the F-15's 72 A1 era leaves to restamp and reports them as changed
+  when they do not, so the proof called its functions with no restamp expected
+  (filed as #227). The F-35 is entry #2, ratified as batch R-DEC-FAM-F35-B1 on
+  2026-10-25 and not published: its B1 page showed FY2015–24 recorded actuals
+  $116,808.4M (FY2015 8,276.5 … FY2024 13,469.6; FY2025 enacted 12,532.3;
+  FY2026 request 11,467.0, $M), equal to the owner-reviewed figures, manifest
+  sha256 e434eacf3eda829fa367dc9e2beb1349add37a1923bbf408ca0a6160cb6377df,
+  amendments none.
 
 - **2026-10-24: Contract-link correction (R-DEC-LINK-2026-10-21 and -B)
   deployed.** The owner approved (2026-10-21) withdrawing 41
@@ -5545,7 +5564,12 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   `aliases.ts` and to leave this for the families registry (piece 2), which
   becomes the single source of program aliases (follow-ups design Q23,
   2026-10-04; re-read 2026-10-14). Source: `site/src/lib/aliases.ts`. Effort: hours.
-  **Status:** open (2026-10-14) — for piece 2.
+  **Status:** open (2026-10-25) — re-deferred to piece 4 by the piece-2 spec §3
+  (owner, 2026-10-21): making the registry the alias source now would change
+  `search_quick.json` and the search chips, which readers see; piece 2 reserves
+  the `aliases` family field.
+  *(Earlier marker below.)*
+  **Status (2026-10-14):** open (2026-10-14) — for piece 2.
 
 - **#210 The analyst agent crashes on a DATE value in a query result.**
   `run` in `src/govbudget/analyst/agent.py` hands each `run_sql` result back
@@ -5791,6 +5815,34 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   vehicle; the FY2024 P-40/P-3a of 0756AA6601 or MQ-1 UAV execution. Source:
   `dbt/seeds/link_line_rulings.csv`. Effort: hours.
   **Status:** open (2026-10-24).
+
+- **#227 `fact_stability.py` reports a no-change A/B as 72 changed facts.**
+  `compare_citations` treats every F-15 A1 era leaf (F01500 39, F015EX 18,
+  F15EWS 15) as one that must move `pe_bli` null → code and `retrieved_at` to its
+  `T` form, the S4 decade-tier switch; on two exports of one code it reports all
+  72 as `changed … f15_restamp` and FAIL. The piece-2 proof (Task 9a Step 9)
+  called its functions with an empty leaf map instead. Fix: a `--no-f15-restamp`
+  mode (or an `--expected-f15 0` that skips the leaf map), with a test on two
+  identical trees. Source: `scripts/era/fact_stability.py`. Effort: hours.
+  **Status:** open (2026-10-25).
+
+- **#228 Re-proposing a ratified family is undefined.** `propose` refuses a
+  `ratified` or `published` family and `ratify` flips `draft` to `ratified`, so
+  the re-propose rules (reviewed `excluded`/`rejected` rows never re-proposed; a
+  lake change to a ratified row held for review) fire only on fixtures in piece 2.
+  Piece 3 must define how a ratified or published family's rows are re-measured
+  and re-reviewed; until then a moved F-15 or ratified F-35 line stops a release
+  for the owner (plan Task 10a Step 3). Source:
+  `src/govbudget/platform_family_review.py`. Effort: days.
+  **Status:** open (2026-10-25) — for piece 3.
+
+- **#229 A non-self `fact:` ref cannot yet satisfy the evidence bar.** Spec §7.5
+  counts a `fact:` naming another line's book text as an independent signal, but
+  stage 1 cannot tell it from the member's own narrative without the export, so
+  piece 2 never lets a `fact:` clear the bar (plan R1). Piece 3's evidence
+  engine should add the non-self check at stage 3. Source:
+  `src/govbudget/platform_families.py`. Effort: days.
+  **Status:** open (2026-10-25) — for piece 3.
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
