@@ -408,3 +408,28 @@ def test_the_piece_2_findings_are_filed_once_with_effort_and_source(subject):
     assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
     assert POINTER_RE.search(body), f"#{num} names no source path"
     assert body.rstrip().splitlines()[-1].strip().startswith("**Status:** "), f"#{num} does not end with its Status line"
+
+
+# Filed after the piece-2 deploy from the final whole-branch review's backlog
+# minors (23, coverage items consolidated) and the fix wave's one open minor,
+# by phrase; each phrase sits on one line of its entry.
+FAMILIES_PIECE_2_REVIEW_FINDINGS = [
+    "Piece-2 test coverage gaps",
+    "Piece-2 loader and gate hardening",
+    "One counted row per member is assumed, not enforced",
+    "F-35 rows to settle before the F-35 is published",
+    "The batch page labels an unnamed member's difference",
+    "Review-CLI state edges for piece 3",
+    "verify-families leg c cannot see a re-minted leaf",
+    "Smaller piece-2 items",
+]
+
+
+@pytest.mark.parametrize("subject", FAMILIES_PIECE_2_REVIEW_FINDINGS)
+def test_the_piece_2_review_findings_are_filed_once_with_effort_and_source(subject):
+    hits = [(num, body) for num, body in entries() if subject in body]
+    assert len(hits) == 1, f"{subject!r} filed {len(hits)} times, want 1"
+    num, body = hits[0]
+    assert EFFORT_RE.search(body), f"#{num} has no `Effort: hours|days|weeks`"
+    assert POINTER_RE.search(body), f"#{num} names no source path"
+    assert body.rstrip().splitlines()[-1].strip().startswith("**Status:** "), f"#{num} does not end with its Status line"

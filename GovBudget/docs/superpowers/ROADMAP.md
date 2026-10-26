@@ -1,6 +1,6 @@
 # GovBudget Roadmap — Source of Truth
 
-**Updated:** 2026-10-25 (families piece 2 deployed at af11e625: the family registry, the F-15 on it byte-identical, the F-35 ratified; #209 re-deferred to piece 4; #227–#229 filed); 2026-10-24 (contract-link correction R-DEC-LINK-2026-10-21 and -B deployed at 9dce8219; follow-ups #222–#226 filed); 2026-10-19 (piece-1 follow-ups release 2 deployed at 1256ec35: #195; release-2 follow-ups #215–#221 filed); 2026-10-14 (families piece-1 follow-ups release 1 deployed at e362c0a7; SAM #10 status; Q23 filed for piece 2; release-1 findings #210–#214 filed); 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
+**Updated:** 2026-10-25 (piece-2 final review: Ready; F1 + 12 minors fixed in 28f43fd5..693740bd; #230–#237 filed); 2026-10-25 (families piece 2 deployed at af11e625: the family registry, the F-15 on it byte-identical, the F-35 ratified; #209 re-deferred to piece 4; #227–#229 filed); 2026-10-24 (contract-link correction R-DEC-LINK-2026-10-21 and -B deployed at 9dce8219; follow-ups #222–#226 filed); 2026-10-19 (piece-1 follow-ups release 2 deployed at 1256ec35: #195; release-2 follow-ups #215–#221 filed); 2026-10-14 (families piece-1 follow-ups release 1 deployed at e362c0a7; SAM #10 status; Q23 filed for piece 2; release-1 findings #210–#214 filed); 2026-10-04 (families piece 1 deployed at 916ae88e; SAM #10 status; before the deploy, families piece 1: the B6 correction, the S4 proof, the F015E0 correction, final-review backlog #198–#206); 2026-10-03 (era-map review closed); 2026-10-02 (platform families: owner direction, four decisions, piece-1 spec); 2026-09-27 (decisions wave deployed at af96700b); 2026-09-26 (decisions wave: the owner-delegated rulings' Status lines and chain G's findings; before that 2026-09-25, ledger sweep, roadmap-completion Task 1; integration merge of `codex/f15-family-browser`) · Living document: phase ledger, findings log, improvement
 backlog, and the evaluator framework. Every phase loop ends by updating this file.
 
 ## Current priorities — trust and parallel product work (2026-09-22)
@@ -5843,6 +5843,164 @@ and reports written on that branch that cite "Roadmap #89–92" (or #89–90,
   engine should add the non-self check at stage 3. Source:
   `src/govbudget/platform_families.py`. Effort: days.
   **Status:** open (2026-10-25) — for piece 3.
+
+- **#230 Piece-2 test coverage gaps.** The piece-2 final review (2026-10-25)
+  found these branches with no committed test:
+  - `src/govbudget/platform_families.py` (stage 1): `_read_text`'s not-UTF-8,
+    empty and no-final-newline refusals; rule 11's format checks in
+    `_check_member_values` (`jbook_anchor`, `quantity_row`,
+    `msar_funding_source_page`, `allocation_years`, a required
+    `display_title`, `drift_sha256` on an approved row).
+  - `src/govbudget/platform_families.py` (stage 2): item 8's source with no
+    sha256 and its missing archived copy (`_FamilyLake.sources`); item 3's
+    `program_key` mismatch (`_FamilyLake.roster`); `open_lake`'s
+    FileNotFoundError; the `CatalogException` fallbacks of `series_codes`,
+    `actuals` and `program_series`.
+  - `src/govbudget/f15_funding_history.py`: the facade's two own
+    RegistryError paths, `_one_title` (more than one title in `titles_seen`)
+    and `_era_rows` (an era key with no integer line number).
+  - `src/govbudget/platform_families.py` (stage 3, `check_citations`) and
+    `src/govbudget/platform_family_history.py`: item 1's `link_evidence`
+    refs; `expand_leaves`' cycle, malformed-input and other-kind refusals;
+    item 5's "does not expand to workbook leaves" line; the post-loop D6
+    raise in `export_family_histories` when `build_history` returns None for
+    one published family while another builds.
+  - `src/govbudget/verify_families.py`: the `components[].fact_id` mint in
+    `_named_fact_ids` (R-PF-5); leg c's "is not in json/citations.json" and
+    "json/citations.json is missing" lines; the after-read SAM span guard in
+    `run_verify_families` (a run that starts outside :15–:20 and spans it).
+  - `src/govbudget/platform_family_review.py` (`propose`): step 6's drop of a
+    reviewed `role=excluded` row (only the rejected half is tested), and
+    that steps 1–5 raise before the lake opens.
+  - `src/govbudget/platform_family_review.py` (`render`, `preview`):
+    render's four refusals (a batch that is not B<n>, a non-draft family, a
+    batch ruling already in rulings, a missing review.csv); preview's
+    published and `--draft`-on-a-non-draft refusals; the "No reference
+    figures" page.
+  - `src/govbudget/platform_family_review.py` (`ratify`, `answer`): ratify's
+    manifest_sha256 refusal after a re-render, its "answer B1 first",
+    non-draft and "is already ratified" lines, and its ruling text's
+    approved/deferred/rejected-or-excluded tally; `_answer_errors`' extra
+    amendment messages (a non-string value, defer mixed with a column, a
+    non-object amendment).
+  - `site/scripts/gates/family-history.mjs`: `checkFamilyIndex` on a
+    malformed entry (a null entry, or a non-string `history` or
+    `platform_family`); a null entry's finding reads "undefined: undefined
+    is missing".
+  Source: `tests/test_platform_families_loader.py`,
+  `tests/test_f15_registry_parity.py`, `tests/test_platform_family_history.py`,
+  `tests/test_verify_families.py`, `tests/test_platform_families_cli.py`,
+  `site/scripts/gates/__tests__/family-index.test.mjs`. Effort: days.
+  **Status:** open (2026-10-25) — from the piece-2 final review.
+
+- **#231 Piece-2 loader and gate hardening.** Three items the piece-2 final
+  review deferred. (1) `LakeReader.actuals` swallows
+  `duckdb.CatalogException`, so a warehouse without `fct_decade_series`
+  gives every member a `headline_actuals_k` of None, silently; let it raise,
+  or report it on the batch page. (2) The set of a member's organization
+  and its `ERA_ORG_TO_MODERN` spelling is built twice (`_member_lines` and
+  `_covers`), and `open_lake`'s FileNotFoundError message lists the three
+  probe roots by hand, a copy of `export_site._stage_parquet_path`'s
+  candidates that drifts if that list changes (the lookup itself calls the
+  function); factor out shared helpers. (3) `verify-families` leg c reads
+  the history artifact without type checks (`_named_fact_ids`,
+  `leg_c_export`): a `programs`, `points`, `program_cells` or `components`
+  entry that is not an object, or a `cumulative` that is not one, raises
+  AttributeError, so the CLI prints `verify-families: ERROR` and exits 2
+  instead of reporting a leg-c FAIL (fail-closed, in the wrong category).
+  Source: `src/govbudget/platform_families.py`,
+  `src/govbudget/verify_families.py`. Effort: hours.
+  **Status:** open (2026-10-25) — from the piece-2 final review.
+
+- **#232 One counted row per member is assumed, not enforced.**
+  `program_entries` and `build_program_matrix` build one `programs[]` entry
+  per approved counted row, but stage 1 (`_check_family_rows`) refuses only
+  overlapping edition spans, so it admits one `member_id` split across two
+  non-overlapping counted rows, which `_match` already handles. A split
+  member would get two `programs[]` entries with one id, so its cell is
+  counted twice and the `matrix/annual total mismatch` raise stops the export
+  (fail-closed). No F-15 or F-35 row is split today. Before piece 4, decide:
+  dedupe by `member_id`, or have stage 1 refuse a split counted member (a
+  spec decision). Source: `src/govbudget/platform_family_history.py`,
+  `src/govbudget/platform_families.py`. Effort: hours.
+  **Status:** open (2026-10-25) — from the piece-2 final review.
+
+- **#233 F-35 rows to settle before the F-35 is published.** Two findings on
+  the ratified B1 rows of `data-seeds/platform_family_members.csv`. (1) The
+  JSM000 context row (line 18, Joint Strike Missile) carries `program_tag`
+  F-35, the tag whose `mdap_code` is 198, though its own scope note reads
+  "A missile the F-35 carries, not the aircraft" and spec §7.2's proposed
+  F-35 contract routes (code 198) exclude Joint Strike Missile; the two
+  shared-spares context rows, 0605 (line 14) and 000999 (line 15), carry the
+  same tag. Nothing reads `program_tag` in piece 2; the loader could also
+  refuse it on a non-counted row. (2) The 000999 row's page figure is its
+  3010F whole line, $8,266.3M FY2015–24 (review.csv `headline_actuals_k`
+  8266266.000), while F35 Appendix B1's $8,556.6M also sums the Missile
+  Procurement (3020F) spares chain, era decision `000999|3020F||2017-2023`,
+  which stage-1 rule 20 bars a 3010F row from naming (the row's review
+  reason says so; `reference-b1.json` holds only the 15 counted lines).
+  Decide whether a separate 3020F context row is wanted. B1 is ratified
+  (R-DEC-FAM-F35-B1), so either change needs a new batch or an
+  owner-confirmed amendment. Source: `data-seeds/platform_family_members.csv`,
+  `data/research/platform_families/f-35/review.csv`. Effort: hours.
+  **Status:** open (2026-10-25) — from the piece-2 final review.
+
+- **#234 The batch page labels an unnamed member's difference as a year
+  total.** `_difference_label` prints `FY<fy> <kind> total` for a
+  member-level difference whose reference code no counted member names (its
+  `member_id` is None), so on the page and in render's blocking-error line it
+  reads like the year total; neither the difference dict nor
+  `_manifest_difference` carries the code. Fix on the next batch's page:
+  carry the reference code on each difference and print it. The final review
+  filed two more B1-page minors with it, both fixed before the owner saw B1
+  (0dbe3d60, ruling R-PF-18; the page answered at manifest sha256
+  e434eacf…, recorded in `batches/B1.json`, shows both): the deferred
+  0207268F row's $1,056.6M is labelled "whole line 0207268F, not project
+  675365", and `_notes_text` renders each row's scope_note, services_using,
+  paying_org and predecessor/successor links. Source:
+  `src/govbudget/platform_family_review.py`. Effort: hours.
+  **Status:** open (2026-10-25) — from the piece-2 final review.
+
+- **#235 Review-CLI state edges for piece 3.** Three edges of the review
+  commands, beside #228 (re-proposing a ratified family). (1) `answer`
+  writes `batches/<batch>.json` unconditionally and never opens the
+  registry, so re-answering an already-ratified batch leaves the committed
+  answer out of step with its R-DEC-FAM-<FAM>-B<n> ruling. (2)
+  `_trial_registry` keeps an approved row's existing era lines when a review
+  row replaces it, so re-proposing an approved row that has committed era
+  lines would hit stage 1's duplicate era line (fixture-only today, R17).
+  (3) When `preview`'s post-copy check refuses a copy that landed as a link,
+  it leaves that link at `--out`, and the re-run's refusal ("--out … is a
+  symlink; a preview writes a real scratch directory") does not say to
+  remove it. Source: `src/govbudget/platform_family_review.py`. Effort:
+  days.
+  **Status:** open (2026-10-25) — from the piece-2 final review.
+
+- **#236 verify-families leg c cannot see a re-minted leaf.** Stage-3 item 6
+  (a citation identity conflict) can never fail in leg c: `leg_c_export`
+  copies its `minted` map from json/citations.json, the map item 6 compares
+  it against, so the item runs only at export time
+  (`export_family_histories`), as the module docstring and leg c's summary
+  say since d6040707. For the F-15, era-map leg f's byte pin and
+  `fact_stability` already catch a re-minted leaf; a second published family
+  (piece 4) has no such pin. Fix: an optional `--baseline-citations` (the
+  previous release's json/citations.json) for leg c to compare against.
+  Source: `src/govbudget/verify_families.py`. Effort: hours.
+  **Status:** open (2026-10-25) — from the piece-2 final review.
+
+- **#237 Smaller piece-2 items.** (1) The types of the reserved
+  `official_estimates` fields (`_OFFICIAL_ESTIMATE_TYPES`:
+  `msar_program_number`, `gao_program_key` and `wsaa_exit_ruling` a string or
+  null, `msar_source_ids` a list of strings) are the Task 2a implementer's
+  reading of spec §7.2, which gives the keys only; confirm them in the
+  MSAR/GAO ingestion piece. (2) `platform_family_review.py` is 1,356 lines at
+  693740bd (911 when Task 7c's review counted it); move `render_page` and its
+  helpers into their own module in a later piece, and fold the
+  near-duplicate trial-ruling dicts of `propose` and `preview` into one
+  helper (`propose` still inlines `pf.replace('-', '').upper()` where
+  `preview` calls `_fam`). Source: `src/govbudget/platform_families.py`,
+  `src/govbudget/platform_family_review.py`. Effort: hours.
+  **Status:** open (2026-10-25) — from the piece-2 final review.
 
 *Status markers (one ledger sweep, 2026-08-24).* Every numbered entry below now
 ends with a `**Status:**` line — `CLOSED`, `PARTIAL`, `OPEN` or `UNVERIFIED` —
