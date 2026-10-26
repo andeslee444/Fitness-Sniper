@@ -24,7 +24,10 @@ leg failure.
     family's history artifact exists, names its platform_family as family_id
     and lists the counted members in member_order as programs[].id; every
     fact ID it names is in json/citations.json and passes stage 3 (§9.3,
-    check_citations, one `claimed` map across the families, R10); and the
+    check_citations, one `claimed` map across the families, R10), except
+    stage-3 item 6 (a citation identity conflict): leg c's `minted` map is
+    copied from json/citations.json itself, so item 6 cannot fail here and
+    runs only at export time (export_family_histories); and the
     leak scan (D9) finds no unpublished family's history_dataset,
     '<platform_family>|' key or 'reviewed <short_name> members' formula in any
     *.json file or in any VARCHAR column of citations/citations.parquet, and
@@ -154,6 +157,8 @@ def leg_c_export(registry: reg.Registry, *, site_dir: Path, duckdb_path: Path) -
     published = registry.published()
     identity = _program_identity(duckdb_path) if published else None
     claimed: dict[tuple[str, str, str], str] = {}    # stage-3 item 7 across the families of the leg (R10)
+    # minted is read from citations.json itself, so stage-3 item 6 (identity
+    # conflict) always agrees here: it runs only at export time.
     histories = stage3 = 0
     for family in published:
         pf, history_path = family.platform_family, family.history_path
@@ -177,7 +182,7 @@ def leg_c_export(registry: reg.Registry, *, site_dir: Path, duckdb_path: Path) -
     leaks, scanned = scan_leaks(site_dir, registry)
     failures.extend(leaks)
     summary = (f"published={len(published)} histories={histories} stage3={stage3} leaks={len(leaks)} "
-               f"files_scanned={scanned}")
+               f"files_scanned={scanned} (stage-3 item 6, citation identity, runs only at export)")
     return _leg(not failures, summary, failures)
 
 

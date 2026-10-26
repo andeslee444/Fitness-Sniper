@@ -166,7 +166,8 @@ def export_site(tmp_path, registry, recorder, monkeypatch):
 def test_leg_c_passes_on_the_projection_and_a_matching_history(export_site, registry, recorder, tmp_path):
     leg = vf.run_verify_families(site_dir=export_site, duckdb_path=tmp_path / "fam2.duckdb", legs="c",
                                  registry=registry)["legs"]["c"]
-    assert leg == {"ok": True, "failures": [], "summary": "published=1 histories=1 stage3=0 leaks=0 files_scanned=4"}
+    assert leg == {"ok": True, "failures": [], "summary": "published=1 histories=1 stage3=0 leaks=0 files_scanned=4"
+                   " (stage-3 item 6, citation identity, runs only at export)"}
     (family,), kw = recorder.calls[0]
     assert family.platform_family == "f-15" and kw["minted"] == {FID: CIT} and kw["registry"] is registry
 
